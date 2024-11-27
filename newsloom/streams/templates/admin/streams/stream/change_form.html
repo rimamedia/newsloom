@@ -1,0 +1,11 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    {% if show_copy_button %}
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Copy stream' %}" name="_copy_stream">
+        </div>
+    {% endif %}
+{% endblock %} 

@@ -82,6 +82,45 @@ class StreamAdmin(admin.ModelAdmin):
             field.widget.attrs['rows'] = 10
         return field
 
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<path:object_id>/copy/',
+                self.admin_site.admin_view(self.copy_stream),
+                name='stream-copy',
+            ),
+        ]
+        return custom_urls + urls
+
+    def copy_stream(self, request, object_id):
+        from django.shortcuts import get_object_or_404, redirect
+        from django.contrib import messages
+        
+        stream = get_object_or_404(Stream, id=object_id)
+        new_stream = Stream.objects.create(
+            name=f"Copy of {stream.name}",
+            stream_type=stream.stream_type,
+            source=stream.source,
+            frequency=stream.frequency,
+            configuration=stream.configuration,
+            status='inactive'  # Set as inactive by default
+        )
+        
+        messages.success(request, f'Stream "{stream.name}" was successfully copied.')
+        return redirect('admin:streams_stream_change', new_stream.id)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['show_copy_button'] = True
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def response_change(self, request, obj):
+        if "_copy_stream" in request.POST:
+            return self.copy_stream(request, obj.id)
+        return super().response_change(request, obj)
+
 @admin.register(LuigiTaskLog)
 class LuigiTaskLogAdmin(admin.ModelAdmin):
     list_display = ['stream', 'task_id', 'status', 'started_at', 'completed_at']
