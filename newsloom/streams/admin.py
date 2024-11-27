@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Stream
+from .models import Stream, LuigiTaskLog
 from .schemas import STREAM_CONFIG_SCHEMAS
 import json
 
@@ -81,3 +81,10 @@ class StreamAdmin(admin.ModelAdmin):
         if db_field.name == 'configuration':
             field.widget.attrs['rows'] = 10
         return field
+
+@admin.register(LuigiTaskLog)
+class LuigiTaskLogAdmin(admin.ModelAdmin):
+    list_display = ['stream', 'task_id', 'status', 'started_at', 'completed_at']
+    list_filter = ['status', 'started_at', 'completed_at']
+    search_fields = ['stream__name', 'task_id', 'error_message']
+    readonly_fields = ['started_at', 'completed_at']

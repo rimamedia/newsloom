@@ -2,6 +2,7 @@ from .sitemap import (
     SitemapNewsParsingTask,
     SitemapBlogParsingTask,
 )
+from .playwright import PlaywrightLinkExtractorTask
 # from .rss import RSSFeedParsingTask
 # from .web import WebArticleScrapingTask
 # from .telegram import TelegramChannelMonitorTask
@@ -9,6 +10,7 @@ from .sitemap import (
 # Map stream types to their corresponding Luigi task classes
 TASK_MAPPING = {
     'sitemap_news': SitemapNewsParsingTask,
+    'playwright_link_extractor': PlaywrightLinkExtractorTask,
     # 'sitemap_blog': SitemapBlogParsingTask,
     # 'rss_feed': RSSFeedParsingTask,
     # 'web_article': WebArticleScrapingTask,

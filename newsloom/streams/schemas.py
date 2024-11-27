@@ -47,8 +47,17 @@ class TelegramConfig(BaseModel):
     class Config:
         extra = 'forbid'
 
+class PlaywrightConfig(BaseModel):
+    url: HttpUrl
+    link_selector: str
+    max_links: Annotated[int, Field(gt=0, le=1000)] = 100
+    
+    class Config:
+        extra = 'forbid'
+
 # Map stream types to their configuration schemas
 STREAM_CONFIG_SCHEMAS = {
+    'playwright_link_extractor': PlaywrightConfig,
     'sitemap_news': BaseSitemapConfig,
     'sitemap_blog': BaseSitemapConfig,
     'rss_feed': RSSFeedConfig,

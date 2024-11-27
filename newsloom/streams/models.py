@@ -1,20 +1,18 @@
-from django.db import models, transaction
+from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from sources.models import Source
 from .schemas import STREAM_CONFIG_SCHEMAS
 import json
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-import luigi
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pydantic import ValidationError as PydanticValidationError
-import logging
+from django.utils import timezone
 
 class Stream(models.Model):
     TYPE_CHOICES = [
         ('sitemap_news', 'Sitemap News Parser'),
         ('sitemap_blog', 'Sitemap Blog Parser'),
+        ('playwright_link_extractor', 'Playwright Link Extractor'),
         ('rss_feed', 'RSS Feed Parser'),
         ('web_article', 'Web Article Scraper'),
         ('telegram_channel', 'Telegram Channel Monitor'),
@@ -104,7 +102,7 @@ class Stream(models.Model):
     def get_next_run_time(self):
         """Calculate the next run time based on frequency"""
         if not self.last_run:
-            return datetime.now()
+            return timezone.now()
 
         frequency_mapping = {
             '5min': timedelta(minutes=5),
@@ -116,7 +114,10 @@ class Stream(models.Model):
             'daily': timedelta(days=1),
         }
         
-        return self.last_run + frequency_mapping[self.frequency]
+        next_run = self.last_run + frequency_mapping[self.frequency]
+        if timezone.is_naive(next_run):
+            next_run = timezone.make_aware(next_run)
+        return next_run
 
     def schedule_luigi_task(self):
         """Schedule or update the Luigi task based on the configuration"""
@@ -130,9 +131,13 @@ class Stream(models.Model):
             logger.error(f"No task class found for stream_type: {self.stream_type}")
             return
 
+        next_run = self.get_next_run_time()
+        if timezone.is_naive(next_run):
+            next_run = timezone.make_aware(next_run)
+
         task_params = {
             'stream_id': self.id,
-            'scheduled_time': self.get_next_run_time().isoformat(),
+            'scheduled_time': next_run.isoformat(),
         }
         
         task_params.update(self.configuration)
@@ -145,13 +150,32 @@ class Stream(models.Model):
             # Update stream status and next run time
             Stream.objects.filter(id=self.id).update(
                 status='active',
-                next_run=self.get_next_run_time()
+                next_run=next_run
             )
             
             return task_instance
             
         except Exception as e:
             Stream.objects.filter(id=self.id).update(
-                status='failed'
+                status='failed',
+                last_run=timezone.now()
             )
             raise e
+
+class LuigiTaskLog(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('RUNNING', 'Running'),
+        ('FAILED', 'Failed'),
+        ('COMPLETED', 'Completed'),
+    ]
+
+    stream = models.ForeignKey('Stream', on_delete=models.CASCADE, related_name='luigi_logs')
+    task_id = models.CharField(max_length=255)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']

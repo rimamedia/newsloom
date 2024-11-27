@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 import luigi
 import logging
-from streams.models import Stream
+from streams.models import Stream, LuigiTaskLog
 from django.utils import timezone
 import time
 
@@ -24,14 +24,32 @@ class Command(BaseCommand):
                         # Get task instance
                         task_instance = stream.schedule_luigi_task()
                         if task_instance:
-                            # Run the task
-                            luigi.build([task_instance], local_scheduler=True)
+                            # Create task log entry
+                            task_log = LuigiTaskLog.objects.create(
+                                stream=stream,
+                                task_id=str(task_instance.task_id),
+                                status='RUNNING'
+                            )
+                            
+                            try:
+                                # Run the task
+                                luigi.build([task_instance], local_scheduler=True)
+                                # Update log on success
+                                task_log.status = 'COMPLETED'
+                                task_log.completed_at = timezone.now()
+                                task_log.save()
+                            except Exception as e:
+                                # Update log on failure
+                                task_log.status = 'FAILED'
+                                task_log.completed_at = timezone.now()
+                                task_log.error_message = str(e)
+                                task_log.save()
+                                raise  # Re-raise the exception for the outer try-except
                     except Exception as e:
                         logger.error(f"Error processing stream {stream.id}: {e}")
                 
-                # Sleep for a short period
-                time.sleep(60)  # Check every minute
+                time.sleep(60)
                 
             except Exception as e:
                 logger.error(f"Worker error: {e}")
-                time.sleep(60)  # Wait before retrying 
+                time.sleep(60)
