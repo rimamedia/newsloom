@@ -7,6 +7,7 @@ import json
 from datetime import timedelta
 from pydantic import ValidationError as PydanticValidationError
 from django.utils import timezone
+from mediamanager.models import Media
 
 class Stream(models.Model):
     TYPE_CHOICES = [
@@ -36,7 +37,20 @@ class Stream(models.Model):
 
     name = models.CharField(max_length=255)
     stream_type = models.CharField(max_length=50, choices=TYPE_CHOICES)  # Changed from task_type
-    source = models.ForeignKey(Source, on_delete=models.CASCADE, related_name='streams')  # Changed from tasks
+    source = models.ForeignKey(
+        Source, 
+        on_delete=models.CASCADE, 
+        related_name='streams',
+        null=True,
+        blank=True
+    )
+    media = models.ForeignKey(
+        Media,
+        on_delete=models.CASCADE,
+        related_name='streams',
+        null=True,
+        blank=True
+    )
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     configuration = models.JSONField(
         help_text='Stream-specific configuration parameters in JSON format'  # Updated help text
@@ -179,3 +193,15 @@ class LuigiTaskLog(models.Model):
 
     class Meta:
         ordering = ['-started_at']
+
+class TelegramPublishLog(models.Model):
+    """Tracks which news items have been published to which Telegram channels"""
+    news = models.ForeignKey('sources.News', on_delete=models.CASCADE)
+    media = models.ForeignKey('mediamanager.Media', on_delete=models.CASCADE)
+    published_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('news', 'media')
+        indexes = [
+            models.Index(fields=['media', 'published_at']),
+        ]
