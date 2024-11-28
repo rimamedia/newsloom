@@ -63,7 +63,7 @@ class TelegramPublishingTask(luigi.Task):
 
                     for news in unpublished_news:
                         try:
-                            message = f"📰 {news.title if hasattr(news, 'title') else 'New article'}\n\n{news.link}"
+                            message = f"📰 {news.title if hasattr(news, 'title') else 'New article'}\n\n{news.link}"  # noqa: E501
                             await bot.send_message(
                                 chat_id=self.channel_id,
                                 text=message,
@@ -72,9 +72,9 @@ class TelegramPublishingTask(luigi.Task):
 
                             # Create log entry synchronously
                             @sync_to_async
-                            def create_log():
+                            def create_log(news_item=news):
                                 TelegramPublishLog.objects.create(
-                                    news=news, media=media
+                                    news=news_item, media=media
                                 )
 
                             await create_log()

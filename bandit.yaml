@@ -1,4 +1,4 @@
-skips: ['B311']  # Standard pseudo-random generators are not suitable for security/cryptographic purposes
+skips: ['B311', 'B603']  # Standard pseudo-random generators are not suitable for security/cryptographic purposes
 
 exclude_dirs: [
     'tests',

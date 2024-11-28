@@ -6,4 +6,4 @@ class StreamsConfig(AppConfig):
     name = "streams"
 
     def ready(self):
-        import streams.signals
+        import streams.signals  # noqa: F401

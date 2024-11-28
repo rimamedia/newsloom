@@ -15,7 +15,6 @@ TASK_MAPPING = {
 
 def get_task_class(stream_type):
     """Get the appropriate task class for a given stream type."""
-
     logger = logging.getLogger(__name__)
 
     logger.debug(f"Looking for task class for stream_type: {stream_type}")

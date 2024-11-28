@@ -8,28 +8,65 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and Nginx
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     supervisor \
+    nginx \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt .
+# Create a non-root user
+RUN useradd -m appuser
+
+# Create directories for static and media files
+RUN mkdir -p /app/staticfiles /app/mediafiles
+
+# Copy requirements and install dependencies
+COPY requirements.txt .env ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
-COPY . .
+# Copy the Django project
+COPY newsloom /app/newsloom
+
+# Copy Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Set the working directory to where manage.py is
+WORKDIR /app/newsloom
+
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
+# Create log directory and files with proper permissions
+RUN mkdir -p /var/log && \
+    touch /var/log/gunicorn.err.log /var/log/gunicorn.out.log \
+        /var/log/luigi_worker.err.log /var/log/luigi_worker.out.log \
+        /var/log/nginx.err.log /var/log/nginx.out.log && \
+    chown -R appuser:appuser /var/log && \
+    chmod 755 /var/log && \
+    chmod 664 /var/log/*.log
 
 # Copy supervisor configuration
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Create a non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
+# Make sure supervisor has access to its own files
+RUN mkdir -p /var/run/supervisor /var/log/supervisor && \
+    chown -R appuser:appuser /var/run/supervisor /var/log/supervisor && \
+    chmod 755 /var/run/supervisor /var/log/supervisor
 
-# Expose Django port
-EXPOSE 8000
+# Set permissions for static and media files
+RUN chown -R appuser:appuser /app/staticfiles /app/mediafiles
 
-USER root
+# Set the working directory ownership
+RUN chown -R appuser:appuser /app
+
+# Create nginx directories and set permissions
+RUN mkdir -p /var/lib/nginx /var/log/nginx /var/cache/nginx /run/nginx && \
+    chown -R appuser:appuser /var/lib/nginx /var/log/nginx /var/cache/nginx /run/nginx && \
+    chmod 755 /var/lib/nginx /var/log/nginx /var/cache/nginx /run/nginx
+
+# Expose Nginx port
+EXPOSE 80
+
+# Start supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

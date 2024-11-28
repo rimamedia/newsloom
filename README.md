@@ -36,24 +36,24 @@ NewLoom is a Django-based web scraping and content aggregation system that suppo
    - Activate on Windows: venv\Scripts\activate
 
 3. Install required packages:
-   - Run: pip install -r requirements.txt
+   - Run: `pip install -r requirements.txt`
 
 4. Install Playwright browsers:
-   - Run: playwright install
+   - Run: `playwright install`
 
 5. Run migrations:
-   - Run: python manage.py migrate
+   - Run: `python manage.py migrate`
 
 6. Create a superuser:
-   - Run: python manage.py createsuperuser
+   - Run: `python manage.py createsuperuser`
 
 ## Running the Project
 
 1. Start the Django development server:
-   - Run: python manage.py runserver
+   - Run: `python manage.py runserver`
 
 2. Start the Luigi worker:
-   - Run: python manage.py run_luigi_worker
+   - Run: `python manage.py run_luigi_worker`
 
 ## Creating Content Sources and Streams
 

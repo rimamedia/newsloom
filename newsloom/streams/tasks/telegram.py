@@ -1,3 +1,6 @@
+import tempfile
+from datetime import datetime
+
 import luigi
 
 
@@ -10,4 +13,9 @@ class TelegramChannelMonitorTask(luigi.Task):
         pass
 
     def output(self):
-        return luigi.LocalTarget(f"/tmp/telegram_task_{self.stream_id}")
+        temp_file = tempfile.NamedTemporaryFile(
+            prefix=f"telegram_task_{self.stream_id}_",
+            suffix=f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
+            delete=False,
+        )
+        return luigi.LocalTarget(temp_file.name)

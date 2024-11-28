@@ -7,7 +7,7 @@ from .models import Stream
 
 @receiver(post_save, sender=Stream)
 def handle_stream_save(sender, instance, created, **kwargs):
-    """Handle stream creation and updates"""
+    """Handle stream creation and updates."""
     if created:
         # New stream - just set the next_run time
         next_run = instance.get_next_run_time()

@@ -1,9 +1,10 @@
 import logging
+import tempfile
 from datetime import datetime
-from xml.etree import ElementTree as ET
 
 import luigi
 import requests
+from defusedxml import ElementTree as ET
 from django.db import transaction
 from django.utils import timezone
 from sources.models import News
@@ -29,7 +30,7 @@ class BaseSitemapTask(luigi.Task):
         logger = logging.getLogger(__name__)
 
         try:
-            response = requests.get(self.sitemap_url)
+            response = requests.get(self.sitemap_url, timeout=60)
             response.raise_for_status()
 
             logger.info(f"Fetched sitemap from {self.sitemap_url}")
@@ -66,9 +67,12 @@ class BaseSitemapTask(luigi.Task):
             raise e
 
     def output(self):
-        return luigi.LocalTarget(
-            f'/tmp/sitemap_task_{self.stream_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+        temp_file = tempfile.NamedTemporaryFile(
+            prefix=f"sitemap_task_{self.stream_id}_",
+            suffix=f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
+            delete=False,
         )
+        return luigi.LocalTarget(temp_file.name)
 
     def process_url(self, stream, url, lastmod):
         """Process a single URL from the sitemap."""

@@ -1,5 +1,6 @@
 import logging
 import random
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
@@ -21,7 +22,7 @@ USER_AGENTS = [
 
 
 class PlaywrightLinkExtractorTask(luigi.Task):
-    """Task for extracting links from webpages using Playwright in stealth mode"""
+    """Task for extracting links from webpages using Playwright in stealth mode."""
 
     # Task parameters
     stream_id = luigi.IntParameter(description="ID of the Stream model instance")
@@ -143,6 +144,10 @@ class PlaywrightLinkExtractorTask(luigi.Task):
             raise e
 
     def output(self):
-        return luigi.LocalTarget(
-            f'/tmp/playwright_task_{self.stream_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+        # Create a temporary file with a unique name
+        temp_file = tempfile.NamedTemporaryFile(
+            prefix=f"playwright_task_{self.stream_id}_",
+            suffix=f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
+            delete=False,
         )
+        return luigi.LocalTarget(temp_file.name)

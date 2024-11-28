@@ -20,7 +20,7 @@ class Stream(models.Model):
         ("rss_feed", "RSS Feed Parser"),
         ("web_article", "Web Article Scraper"),
         ("telegram_channel", "Telegram Channel Monitor"),
-        ("telegram_publish", "Telegram Publisher"),
+        ("telegram_publish", "Telegram Links Publisher"),
     ]
 
     FREQUENCY_CHOICES = [
@@ -51,7 +51,7 @@ class Stream(models.Model):
     )
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     configuration = models.JSONField(
-        help_text="Stream-specific configuration parameters in JSON format"  # Updated help text
+        help_text="Stream-specific configuration parameters in JSON format."
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
     last_run = models.DateTimeField(null=True, blank=True)
@@ -202,7 +202,7 @@ class LuigiTaskLog(models.Model):
 
 
 class TelegramPublishLog(models.Model):
-    """Tracks which news items have been published to which Telegram channels"""
+    """Tracks which news items have been published to which Telegram channels."""
 
     news = models.ForeignKey("sources.News", on_delete=models.CASCADE)
     media = models.ForeignKey("mediamanager.Media", on_delete=models.CASCADE)

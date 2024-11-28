@@ -4,7 +4,7 @@ from .models import Stream
 
 
 class StreamScheduler:
-    """Manages the scheduling of Stream tasks"""
+    """Manages the scheduling of Stream tasks."""
 
     @classmethod
     def schedule_pending_tasks(cls):
