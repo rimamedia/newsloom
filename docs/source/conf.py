@@ -32,4 +32,4 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'django': ('https://docs.djangoproject.com/en/stable/', 'https://docs.djangoproject.com/en/stable/_objects/'),
     'luigi': ('https://luigi.readthedocs.io/en/stable/', None),
-} 
+}

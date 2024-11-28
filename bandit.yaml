@@ -1,0 +1,14 @@
+skips: ['B311']  # Standard pseudo-random generators are not suitable for security/cryptographic purposes
+
+exclude_dirs: [
+    'tests',
+    'venv',
+    '.venv',
+    '*/migrations/*',
+]
+
+any_other_function_with_shell_equals_true:
+  no_shell: [
+    'subprocess.Popen',
+    'subprocess.run',
+  ]

@@ -1,7 +1,9 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Stream
 from django.utils import timezone
+
+from .models import Stream
+
 
 @receiver(post_save, sender=Stream)
 def handle_stream_save(sender, instance, created, **kwargs):
@@ -12,11 +14,11 @@ def handle_stream_save(sender, instance, created, **kwargs):
         if timezone.is_naive(next_run):
             next_run = timezone.make_aware(next_run)
         instance.next_run = next_run
-        instance.save(update_fields=['next_run'])
+        instance.save(update_fields=["next_run"])
     else:
         # Existing stream - only schedule if active
-        if instance.status == 'active':
+        if instance.status == "active":
             try:
                 instance.schedule_luigi_task()
             except Exception as e:
-                print(f"Failed to update stream {instance.id} schedule: {e}") 
+                print(f"Failed to update stream {instance.id} schedule: {e}")

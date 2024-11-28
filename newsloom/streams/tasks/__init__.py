@@ -1,19 +1,15 @@
-
 import logging
-from .sitemap import (
-    SitemapNewsParsingTask,
-    SitemapBlogParsingTask,
-)
-from .playwright import PlaywrightLinkExtractorTask
-from .telegram_publisher import TelegramPublishingTask
 
+from .playwright import PlaywrightLinkExtractorTask
+from .sitemap import SitemapBlogParsingTask, SitemapNewsParsingTask
+from .telegram_publisher import TelegramPublishingTask
 
 # Map stream types to their corresponding Luigi task classes
 TASK_MAPPING = {
-    'sitemap_news': SitemapNewsParsingTask,
-    'sitemap_blog': SitemapBlogParsingTask,
-    'playwright_link_extractor': PlaywrightLinkExtractorTask,
-    'telegram_publish': TelegramPublishingTask,
+    "sitemap_news": SitemapNewsParsingTask,
+    "sitemap_blog": SitemapBlogParsingTask,
+    "playwright_link_extractor": PlaywrightLinkExtractorTask,
+    "telegram_publish": TelegramPublishingTask,
 }
 
 
