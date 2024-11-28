@@ -30,8 +30,13 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.ref_name }}
       run: |
+        # Build image
         docker build -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG .
+        # Tag also as latest
+        docker tag $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:latest
+        # Push both tags
         docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+        docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:latest
         echo "image=$ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: Download task definition
