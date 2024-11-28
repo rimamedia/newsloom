@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # This is important for deployment
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -21,6 +23,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install sphinx sphinx-rtd-theme
+        pip install -e .  # If your docs require your package to be installed
 
     - name: Build Sphinx documentation
       run: |
@@ -30,5 +33,5 @@ jobs:
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: docs/_build/html
+        github_token: ${{ secrets.GITHUB_TOKEN }}  # This should be fixed
+        publish_dir: docs/build/html
