@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Stream, LuigiTaskLog
+from .models import Stream, LuigiTaskLog, TelegramPublishLog
 from .schemas import STREAM_CONFIG_SCHEMAS
 import json
 
@@ -13,7 +13,7 @@ class StreamAdmin(admin.ModelAdmin):
     
     fieldsets = (
         (None, {
-            'fields': ('name', 'stream_type', 'source', 'frequency', 'status')
+            'fields': ('name', 'stream_type', 'source', 'media', 'frequency', 'status')
         }),
         ('Configuration', {
             'fields': ('configuration',),
@@ -34,12 +34,19 @@ class StreamAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if 'configuration' in form.base_fields:
-            # Add help text with example configuration
-            stream_type = obj.stream_type if obj else None
+            # Get stream_type either from existing object or from request
+            stream_type = None
+            if obj:
+                stream_type = obj.stream_type
+            elif request.method == 'POST':
+                stream_type = request.POST.get('stream_type')
+            elif request.method == 'GET':
+                stream_type = request.GET.get('stream_type')
+
             if stream_type:
                 schema = STREAM_CONFIG_SCHEMAS.get(stream_type)
+
                 if schema:
-                    # Create an example with default values
                     example = {
                         'sitemap_news': {
                             'sitemap_url': 'https://example.com/sitemap.xml',
@@ -63,17 +70,24 @@ class StreamAdmin(admin.ModelAdmin):
                                 'content': 'article'
                             }
                         },
-                        'telegram_channel': {
-                            'channel_name': '@example',
-                            'limit': 50,
-                            'include_media': True
+                        'telegram_publish': {
+                            'channel_id': '-100123456789',
+                            'bot_token': '1234567890:ABCdefGHIjklMNOpqrsTUVwxyz',
+                            'batch_size': 10,
+                            'time_window_minutes': 10
                         }
                     }.get(stream_type, {})
                     
-                    form.base_fields['configuration'].help_text = (
-                        f'Example configuration:<br/>'
-                        f'<pre>{json.dumps(example, indent=2)}</pre>'
+                    print(f"Example for {stream_type}: {example}")  # Debug print
+                    
+                    help_text = format_html(
+                        'Example configuration for {}:<br><pre>{}</pre>',
+                        stream_type,
+                        json.dumps(example, indent=2)
                     )
+                    
+                    form.base_fields['configuration'].help_text = help_text
+
         return form
 
     def formfield_for_dbfield(self, db_field, **kwargs):
@@ -127,3 +141,13 @@ class LuigiTaskLogAdmin(admin.ModelAdmin):
     list_filter = ['status', 'started_at', 'completed_at']
     search_fields = ['stream__name', 'task_id', 'error_message']
     readonly_fields = ['started_at', 'completed_at']
+
+@admin.register(TelegramPublishLog)
+class TelegramPublishLogAdmin(admin.ModelAdmin):
+    list_display = ['news', 'media', 'published_at']
+    list_filter = ['media', 'published_at']
+    search_fields = ['news__title', 'media__name']
+    readonly_fields = ['published_at']
+
+    def has_add_permission(self, request):
+        return False  # Prevent manual creation of publish logs

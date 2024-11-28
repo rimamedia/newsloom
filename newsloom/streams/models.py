@@ -17,6 +17,7 @@ class Stream(models.Model):
         ('rss_feed', 'RSS Feed Parser'),
         ('web_article', 'Web Article Scraper'),
         ('telegram_channel', 'Telegram Channel Monitor'),
+        ('telegram_publish', 'Telegram Publisher'),
     ]
 
     FREQUENCY_CHOICES = [

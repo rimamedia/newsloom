@@ -9,6 +9,7 @@ from playwright_stealth import stealth_sync
 import random
 from django.db import connection
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse, urljoin
 
 # Add user agents list at the top
 USER_AGENTS = [
@@ -91,14 +92,20 @@ class PlaywrightLinkExtractorTask(luigi.Task):
                     page.goto(self.url, timeout=60000)
                     page.wait_for_load_state('networkidle', timeout=60000)
                     
+                    # Get base URL for handling relative URLs
+                    parsed_url = urlparse(self.url)
+                    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+                    
                     elements = page.query_selector_all(self.link_selector)
                     
                     for element in elements[:self.max_links]:
                         href = element.get_attribute('href')
                         title = element.text_content()
                         if href:
+                            # Convert relative URLs to absolute URLs
+                            full_url = urljoin(base_url, href)
                             links.append({
-                                'url': href,
+                                'url': full_url,
                                 'title': title.strip() if title else None
                             })
                 finally:
