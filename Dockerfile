@@ -31,6 +31,7 @@ COPY newsloom /app/newsloom
 
 # Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN rm -f /etc/nginx/sites-enabled/default
 
 # Set the working directory to where manage.py is
 WORKDIR /app/newsloom
