@@ -13,7 +13,8 @@ repos:
             (?x)^(
                 .*\.(md|rst|conf)$|
                 .*/migrations/.*\.py$|
-                ^\.github/.*$
+                ^\.github/.*$|
+                .*/logs/.*$
             )
     -   id: check-yaml
     -   id: check-added-large-files

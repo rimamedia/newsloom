@@ -1,8 +1,7 @@
+import json
 import logging
 import random
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
 import luigi
@@ -76,6 +75,13 @@ class PlaywrightLinkExtractorTask(luigi.Task):
     def run(self):
         """Execute the Playwright link extraction task."""
         logger = logging.getLogger(__name__)
+        output_data = {
+            "extracted_count": 0,
+            "saved_count": 0,
+            "links": [],
+            "timestamp": timezone.now().isoformat(),
+            "stream_id": self.stream_id,
+        }
 
         try:
             # Get stream in a separate thread
@@ -111,12 +117,13 @@ class PlaywrightLinkExtractorTask(luigi.Task):
                         if href:
                             # Convert relative URLs to absolute URLs
                             full_url = urljoin(base_url, href)
-                            links.append(
-                                {
-                                    "url": full_url,
-                                    "title": title.strip() if title else None,
-                                }
-                            )
+                            link_data = {
+                                "url": full_url,
+                                "title": title.strip() if title else None,
+                            }
+                            links.append(link_data)
+                            output_data["links"].append(link_data)
+                            output_data["extracted_count"] += 1
                 finally:
                     browser.close()
 
@@ -124,15 +131,20 @@ class PlaywrightLinkExtractorTask(luigi.Task):
             with ThreadPoolExecutor(max_workers=1) as executor:
                 save_future = executor.submit(self.save_links, links, stream)
                 save_future.result()  # Wait for save to complete
+                output_data["saved_count"] = len(links)
 
-            # Update stream status
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                executor.submit(
-                    self.update_stream_status, self.stream_id, last_run=timezone.now()
-                )
+            # Write output to file
+            with self.output().open("w") as f:
+                json.dump(output_data, f)
 
         except Exception as e:
             logger.error(f"Error processing page: {str(e)}", exc_info=True)
+            output_data["error"] = str(e)
+
+            # Write error output to file
+            with self.output().open("w") as f:
+                json.dump(output_data, f)
+
             # Update stream status on failure
             with ThreadPoolExecutor(max_workers=1) as executor:
                 executor.submit(
@@ -144,10 +156,16 @@ class PlaywrightLinkExtractorTask(luigi.Task):
             raise e
 
     def output(self):
-        # Create a temporary file with a unique name
-        temp_file = tempfile.NamedTemporaryFile(
-            prefix=f"playwright_task_{self.stream_id}_",
-            suffix=f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
-            delete=False,
+        """Return a LocalTarget for the task output."""
+        return luigi.LocalTarget(
+            f"logs/playwright_extraction_{self.stream_id}_{self.scheduled_time}.txt"
         )
-        return luigi.LocalTarget(temp_file.name)
+
+    @classmethod
+    def get_config_example(cls):
+        """Return an example configuration for this task."""
+        return {
+            "url": "https://example.com/news",
+            "link_selector": "a.article-link",
+            "max_links": 100,
+        }

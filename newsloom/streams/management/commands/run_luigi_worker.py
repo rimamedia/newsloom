@@ -35,15 +35,27 @@ class Command(BaseCommand):
                             try:
                                 # Run the task
                                 luigi.build([task_instance], local_scheduler=True)
+
+                                # Get task output if available
+                                try:
+                                    with task_instance.output().open("r") as f:
+                                        output_data = f.read()
+                                except OSError as e:
+                                    output_data = None
+                                    logger.debug(f"Could not read task output: {e}")
+
                                 # Update log on success
                                 task_log.status = "COMPLETED"
                                 task_log.completed_at = timezone.now()
+                                task_log.output_data = output_data
                                 task_log.save()
+
                             except Exception as e:
                                 # Update log on failure
                                 task_log.status = "FAILED"
                                 task_log.completed_at = timezone.now()
                                 task_log.error_message = str(e)
+                                task_log.output_data = {"error": str(e)}
                                 task_log.save()
                                 raise  # Re-raise the exception for the outer try-except
                     except Exception as e:

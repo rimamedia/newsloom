@@ -1,5 +1,5 @@
+import json
 import logging
-import tempfile
 from datetime import datetime
 
 import luigi
@@ -24,10 +24,26 @@ class BaseSitemapTask(luigi.Task):
         default=False, description="Whether to follow next page links in sitemaps"
     )
 
+    @classmethod
+    def get_config_example(cls):
+        return {
+            "sitemap_url": "https://example.com/sitemap.xml",
+            "max_links": 100,
+            "follow_next": False,
+        }
+
     def run(self):
         from streams.models import Stream
 
         logger = logging.getLogger(__name__)
+
+        output_data = {
+            "processed_count": 0,
+            "urls": [],
+            "timestamp": timezone.now().isoformat(),
+            "stream_id": self.stream_id,
+            "sitemap_url": self.sitemap_url,
+        }
 
         try:
             response = requests.get(self.sitemap_url, timeout=60)
@@ -53,26 +69,44 @@ class BaseSitemapTask(luigi.Task):
                     lastmod = url_elem.find(f".//{lastmod_tag}", ns)
 
                     if loc is not None:
-                        self.process_url(stream, loc.text.strip(), lastmod)
+                        url = loc.text.strip()
+                        lastmod_text = (
+                            lastmod.text.strip() if lastmod is not None else None
+                        )
+
+                        self.process_url(stream, url, lastmod)
                         processed_links += 1
+
+                        output_data["urls"].append(
+                            {"url": url, "lastmod": lastmod_text}
+                        )
+                        output_data["processed_count"] += 1
 
             stream.last_run = timezone.now()
             stream.save(update_fields=["last_run"])
 
+            # Write success output
+            with self.output().open("w") as f:
+                json.dump(output_data, f)
+
         except Exception as e:
             logger.error(f"Error processing sitemap: {str(e)}", exc_info=True)
+            output_data["error"] = str(e)
+
+            # Write error output
+            with self.output().open("w") as f:
+                json.dump(output_data, f)
+
             Stream.objects.filter(id=self.stream_id).update(
                 status="failed", last_run=timezone.now()
             )
             raise e
 
     def output(self):
-        temp_file = tempfile.NamedTemporaryFile(
-            prefix=f"sitemap_task_{self.stream_id}_",
-            suffix=f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
-            delete=False,
+        """Return a LocalTarget for the task output."""
+        return luigi.LocalTarget(
+            f"logs/sitemap_task_{self.stream_id}_{self.scheduled_time}.txt"
         )
-        return luigi.LocalTarget(temp_file.name)
 
     def process_url(self, stream, url, lastmod):
         """Process a single URL from the sitemap."""

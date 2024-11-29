@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 import luigi
@@ -17,10 +18,27 @@ class TelegramPublishingTask(luigi.Task):
     batch_size = luigi.IntParameter(default=10)
     time_window_minutes = luigi.IntParameter(default=10)
 
+    @classmethod
+    def get_config_example(cls):
+        return {
+            "channel_id": "-100123456789",
+            "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+            "batch_size": 10,
+            "time_window_minutes": 10,
+        }
+
     def run(self):
         from streams.models import Stream
 
         logger = logging.getLogger(__name__)
+        output_data = {
+            "published_count": 0,
+            "failed_count": 0,
+            "published_news_ids": [],
+            "failed_news_ids": [],
+            "timestamp": timezone.now().isoformat(),
+            "stream_id": self.stream_id,
+        }
 
         try:
             # Get all necessary data synchronously first
@@ -48,6 +66,10 @@ class TelegramPublishingTask(luigi.Task):
 
             if not unpublished_news:
                 logger.info("No unpublished news found")
+                output_data["message"] = "No unpublished news found"
+                # Write output to file
+                with self.output().open("w") as f:
+                    json.dump(output_data, f)
                 return
 
             # Create a new event loop
@@ -80,10 +102,14 @@ class TelegramPublishingTask(luigi.Task):
                             await create_log()
 
                             logger.info(f"Published {news.link} to {self.channel_id}")
+                            output_data["published_count"] += 1
+                            output_data["published_news_ids"].append(news.id)
                             await asyncio.sleep(0.1)  # Small delay between messages
 
                         except Exception as e:
                             logger.error(f"Failed to publish news {news.id}: {str(e)}")
+                            output_data["failed_count"] += 1
+                            output_data["failed_news_ids"].append(news.id)
                             continue
 
                 except Exception as e:
@@ -114,12 +140,22 @@ class TelegramPublishingTask(luigi.Task):
                 except Exception as e:
                     logger.error(f"Error during cleanup: {str(e)}")
 
-            # Update stream status synchronously
+            # Update stream status
             stream.last_run = timezone.now()
             stream.save(update_fields=["last_run"])
 
+            # Write final output to file
+            with self.output().open("w") as f:
+                json.dump(output_data, f)
+
         except Exception as e:
             logger.error(f"Error publishing to Telegram: {str(e)}", exc_info=True)
+            output_data["error"] = str(e)
+
+            # Write error output to file
+            with self.output().open("w") as f:
+                json.dump(output_data, f)
+
             Stream.objects.filter(id=self.stream_id).update(
                 status="failed", last_run=timezone.now()
             )

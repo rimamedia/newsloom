@@ -5,6 +5,7 @@ from django.utils.html import format_html
 
 from .models import LuigiTaskLog, Stream, TelegramPublishLog
 from .schemas import STREAM_CONFIG_SCHEMAS
+from .tasks import get_task_class
 
 
 @admin.register(Stream)
@@ -61,7 +62,6 @@ class StreamAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if "configuration" in form.base_fields:
-            # Get stream_type either from existing object or from request
             stream_type = None
             if obj:
                 stream_type = obj.stream_type
@@ -72,44 +72,15 @@ class StreamAdmin(admin.ModelAdmin):
 
             if stream_type:
                 schema = STREAM_CONFIG_SCHEMAS.get(stream_type)
-
                 if schema:
-                    example = {
-                        "sitemap_news": {
-                            "sitemap_url": "https://example.com/sitemap.xml",
-                            "max_links": 100,
-                            "follow_next": False,
-                        },
-                        "sitemap_blog": {
-                            "sitemap_url": "https://example.com/sitemap.xml",
-                            "max_links": 100,
-                            "follow_next": False,
-                        },
-                        "rss_feed": {
-                            "feed_url": "https://example.com/feed.xml",
-                            "max_items": 50,
-                            "include_summary": True,
-                        },
-                        "web_article": {
-                            "base_url": "https://example.com",
-                            "selectors": {"title": "h1", "content": "article"},
-                        },
-                        "telegram_publish": {
-                            "channel_id": "-100123456789",
-                            "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
-                            "batch_size": 10,
-                            "time_window_minutes": 10,
-                        },
-                    }.get(stream_type, {})
-
-                    print(f"Example for {stream_type}: {example}")  # Debug print
+                    task_class = get_task_class(stream_type)
+                    example = task_class.get_config_example() if task_class else {}
 
                     help_text = format_html(
                         "Example configuration for {}:<br><pre>{}</pre>",
                         stream_type,
                         json.dumps(example, indent=2),
                     )
-
                     form.base_fields["configuration"].help_text = help_text
 
         return form

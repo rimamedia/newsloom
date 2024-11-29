@@ -194,6 +194,7 @@ class LuigiTaskLog(models.Model):
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(null=True, blank=True)
+    output_data = models.JSONField(null=True, blank=True)
 
     class Meta:
         """Meta configuration for LuigiTaskLog model."""

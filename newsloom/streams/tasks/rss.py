@@ -17,6 +17,13 @@ class RSSFeedParsingTask(luigi.Task):
     )
     scheduled_time = luigi.DateTimeParameter()
 
+    @classmethod
+    def get_config_example(cls):
+        return {
+            "feed_url": "https://example.com/feed.xml",
+            "max_entries": 100,
+        }
+
     def run(self):
         from streams.models import Stream
 

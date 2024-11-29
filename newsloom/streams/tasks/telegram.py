@@ -15,6 +15,12 @@ class TelegramChannelMonitorTask(luigi.Task):
     scheduled_time = luigi.DateTimeParameter()
     posts_limit = luigi.IntParameter(default=20)
 
+    @classmethod
+    def get_config_example(cls):
+        return {
+            "posts_limit": 20,
+        }
+
     def extract_message_details(self, message_element):
         """Extract text and timestamp from a message element."""
         try:

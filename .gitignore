@@ -26,6 +26,7 @@ db.sqlite3
 db.sqlite3-journal
 media/
 static/
+logs/
 
 # Virtual Environment
 venv/
@@ -84,3 +85,4 @@ npm-debug.log
 *.bak
 *.tmp
 *~
+newsloom/supervisord.pid

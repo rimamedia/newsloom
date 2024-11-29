@@ -27,6 +27,7 @@ class TelegramPublishConfig(BaseModel):
     channel_id: str
     batch_size: Annotated[int, Field(gt=0, le=50)] = 10
     bot_token: str
+    time_window_minutes: Annotated[int, Field(gt=0, le=1440)] = 10  # max 24 hours
 
     @field_validator("channel_id")
     def validate_channel_id(cls, v):
