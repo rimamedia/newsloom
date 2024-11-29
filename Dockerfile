@@ -18,6 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create a non-root user
 RUN useradd -m appuser
 
+# Create and set permissions for PostgreSQL certificates directory
+RUN mkdir -p /home/appuser/.postgresql && \
+    chown -R appuser:appuser /home/appuser/.postgresql && \
+    chmod 700 /home/appuser/.postgresql
+
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/mediafiles
 
