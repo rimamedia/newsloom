@@ -1,7 +1,101 @@
 NewLoom Documentation
 ===================
 
-NewLoom is a Django-based web scraping and content aggregation system that supports multiple source types including sitemaps, RSS feeds, web articles, and Telegram channels.
+NewLoom is a Django and Luigi-based platform designed for comprehensive news monitoring, content aggregation, and multi-channel publishing. It provides a robust framework for automating the entire news processing pipeline, from source monitoring to content distribution.
+
+Getting Started
+-------------
+
+Initial Setup
+~~~~~~~~~~~~
+
+1. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Unix
+   venv\Scripts\activate     # Windows
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Install Playwright browsers:
+   ```bash
+   playwright install
+   ```
+
+4. Run database migrations:
+   ```bash
+   python manage.py migrate
+   ```
+
+5. Create a superuser:
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+6. Start the development server:
+   ```bash
+   python manage.py runserver
+   ```
+
+7. Start the Luigi worker:
+   ```bash
+   python manage.py run_luigi_worker
+   ```
+
+Django Documentation References
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- `Django Documentation <https://docs.djangoproject.com/>`_
+- `Django Models <https://docs.djangoproject.com/en/stable/topics/db/models/>`_
+- `Django Admin Interface <https://docs.djangoproject.com/en/stable/ref/contrib/admin/>`_
+- `Django Migrations <https://docs.djangoproject.com/en/stable/topics/migrations/>`_
+- `Django Settings <https://docs.djangoproject.com/en/stable/ref/settings/>`_
+
+Core Functionality
+----------------
+
+* **News Monitoring**
+    - Automated tracking of multiple news sources
+    - Support for websites, RSS feeds, and Telegram channels
+    - Configurable monitoring frequencies
+    - Real-time content detection
+
+* **Content Processing**
+    - Automated content extraction and parsing
+    - Customizable processing pipelines
+    - Support for various content formats
+    - Error handling and retry mechanisms
+
+* **Publishing System**
+    - Multi-channel content distribution
+    - Configurable publishing rules
+    - Automated scheduling
+    - Publishing status tracking
+
+Technical Architecture
+--------------------
+
+* **Django Framework**
+    - Robust data models and ORM
+    - Admin interface for configuration
+    - API endpoints for integration
+    - Authentication and permissions
+
+* **Luigi Task System**
+    - Reliable task scheduling
+    - Complex workflow management
+    - Task dependency handling
+    - Processing pipeline orchestration
+
+* **Integration Features**
+    - Playwright for JavaScript rendering
+    - RSS feed parsing
+    - Telegram API integration
+    - Customizable source adapters
 
 .. toctree::
    :maxdepth: 2
@@ -9,15 +103,6 @@ NewLoom is a Django-based web scraping and content aggregation system that suppo
 
    tasks/index
    schemas/index
-
-Core Features
-------------
-
-* Multiple source type support (Web, Telegram, RSS, etc.)
-* Configurable stream scheduling
-* Luigi-based task processing
-* Playwright support for JavaScript-heavy websites
-* Automatic content extraction and storage
 
 Quick Links
 ----------

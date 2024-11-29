@@ -6,7 +6,30 @@
 [![GitHub issues](https://img.shields.io/github/issues/rimamedia/newsloom)](https://github.com/rimamedia/newsloom/issues)
 [![GitHub stars](https://img.shields.io/github/stars/rimamedia/newsloom)](https://github.com/rimamedia/newsloom/stargazers)
 
-NewLoom is a Django-based web scraping and content aggregation system that supports multiple source types including sitemaps, RSS feeds, web articles, and Telegram channels.
+NewLoom is a comprehensive news monitoring, aggregation, and publishing platform built with Django and Luigi. It provides a robust system for:
+
+- **News Monitoring**: Automated tracking of multiple news sources through various channels
+- **Content Aggregation**: Intelligent scraping and parsing of news content from diverse sources
+- **Content Processing**: Customizable processing pipelines for content transformation
+- **Multi-Channel Publishing**: Automated distribution of processed content to various platforms
+
+The system leverages Django's powerful ORM and admin interface for configuration management, while Luigi handles complex task scheduling and processing pipelines. This combination enables reliable handling of large-scale news monitoring and distribution workflows.
+
+## Key Components
+
+- **Source Management**: Configure and manage multiple news sources (websites, RSS feeds, Telegram channels)
+- **Stream Processing**: Define custom processing workflows using Luigi tasks
+- **Content Storage**: Efficient storage and indexing of news content using Django models
+- **Publishing System**: Automated content distribution to configured channels
+- **Monitoring Dashboard**: Track processing status and system health through Django admin
+
+## Architecture
+
+NewLoom is built on three main pillars:
+
+1. **Django Backend**: Handles data models, API endpoints, and admin interface
+2. **Luigi Task System**: Manages task scheduling and processing pipelines
+3. **Playwright Integration**: Enables reliable scraping of JavaScript-heavy websites
 
 ## Features
 
@@ -208,3 +231,63 @@ RimaMedia - [@rimamedia](https://github.com/rimamedia)
 Project Link: [https://github.com/rimamedia/newsloom](https://github.com/rimamedia/newsloom)
 
 This README provides a basic guide to get started with NewLoom. For production deployment, additional configuration and security measures should be implemented based on specific requirements and environment.
+
+## Development Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/rimamedia/newsloom.git
+   cd newsloom
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Unix
+   venv\Scripts\activate     # Windows
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Install Playwright browsers:
+   ```bash
+   playwright install
+   ```
+
+5. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Update variables as needed
+   ```bash
+   cp .env.example .env
+   ```
+
+6. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
+
+7. Create a superuser:
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+8. Start development servers:
+   ```bash
+   # Terminal 1: Django server
+   python manage.py runserver
+
+   # Terminal 2: Luigi worker
+   python manage.py run_luigi_worker
+   ```
+
+9. Access the application:
+   - Admin interface: http://localhost:8000/admin
+   - Home page: http://localhost:8000
+
+For more detailed information, refer to:
+- [Django Documentation](https://docs.djangoproject.com/)
+- [Luigi Documentation](https://luigi.readthedocs.io/)
+- [Playwright Python Documentation](https://playwright.dev/python/)

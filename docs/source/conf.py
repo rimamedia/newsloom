@@ -26,6 +26,13 @@ html_theme_options = {
     'github_button': True,
     'github_type': 'star',
     'fixed_sidebar': True,
+    'extra_nav_links': {
+        'Django Documentation': 'https://docs.djangoproject.com/',
+        'Luigi Documentation': 'https://luigi.readthedocs.io/',
+        'Playwright Documentation': 'https://playwright.dev/python/',
+    },
+    'show_powered_by': False,
+    'show_related': True,
 }
 
 intersphinx_mapping = {
