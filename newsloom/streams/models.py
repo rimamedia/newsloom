@@ -21,6 +21,7 @@ class Stream(models.Model):
         ("web_article", "Web Article Scraper"),
         ("telegram_channel", "Telegram Channel Monitor"),
         ("telegram_publish", "Telegram Links Publisher"),
+        ("telegram_test", "Telegram Test Publisher"),
     ]
 
     FREQUENCY_CHOICES = [
