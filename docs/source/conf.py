@@ -28,7 +28,6 @@ html_theme_options = {
     'fixed_sidebar': True,
     'extra_nav_links': {
         'Django Documentation': 'https://docs.djangoproject.com/',
-        'Luigi Documentation': 'https://luigi.readthedocs.io/',
         'Playwright Documentation': 'https://playwright.dev/python/',
     },
     'show_powered_by': False,
@@ -38,5 +37,4 @@ html_theme_options = {
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'django': ('https://docs.djangoproject.com/en/stable/', 'https://docs.djangoproject.com/en/stable/_objects/'),
-    'luigi': ('https://luigi.readthedocs.io/en/stable/', None),
 }
