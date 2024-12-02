@@ -22,6 +22,7 @@ class Stream(models.Model):
         ("telegram_channel", "Telegram Channel Monitor"),
         ("telegram_publish", "Telegram Links Publisher"),
         ("telegram_test", "Telegram Test Publisher"),
+        ("article_searcher", "Article Content Searcher"),
     ]
 
     FREQUENCY_CHOICES = [
@@ -90,33 +91,50 @@ class Stream(models.Model):
                 raise ValidationError(_("Configuration cannot be empty"))
 
             # Parse and validate configuration
-            config = (
-                self.configuration
-                if isinstance(self.configuration, dict)
-                else json.loads(self.configuration)
-            )
-            validated_config = config_schema(**config)
+            if isinstance(self.configuration, str):
+                try:
+                    config = json.loads(self.configuration)
+                except json.JSONDecodeError:
+                    raise ValidationError(_("Invalid JSON configuration"))
+            else:
+                config = self.configuration
 
-            # Convert to dict and use primitive types
-            self.configuration = json.loads(validated_config.model_dump_json())
+            # Validate configuration without modifying it
+            try:
+                # Use parse_obj instead of model_validate
+                config_schema.parse_obj(config)
+            except PydanticValidationError as e:
+                errors = []
+                for error in e.errors():
+                    field = ".".join(str(x) for x in error["loc"])
+                    message = error["msg"]
+                    errors.append(f"{field}: {message}")
+                raise ValidationError(
+                    _(f"Configuration validation failed: {'; '.join(errors)}")
+                )
 
-        except json.JSONDecodeError:
-            raise ValidationError(_("Invalid JSON configuration"))
-        except PydanticValidationError as e:
-            # Convert Pydantic validation errors to Django validation errors
-            errors = []
-            for error in e.errors():
-                field = ".".join(str(x) for x in error["loc"])
-                message = error["msg"]
-                errors.append(f"{field}: {message}")
-            raise ValidationError(
-                _(f"Configuration validation failed: {'; '.join(errors)}")
-            )
+        except ValidationError:
+            raise
+        except Exception as e:
+            raise ValidationError(str(e))
 
     def save(self, *args, **kwargs):
-        self.clean()
+        """Save the stream instance."""
+        skip_validation = kwargs.pop("skip_validation", False)
+        update_fields = kwargs.get("update_fields")
+
+        # Skip validation if we're only updating specific fields or if skip_validation is True
+        if not skip_validation and not update_fields:
+            # Store current configuration
+            current_config = self.configuration
+            try:
+                self.clean()
+            except Exception as e:
+                # Restore original configuration if validation fails
+                self.configuration = current_config
+                raise e
+
         super().save(*args, **kwargs)
-        # Remove direct task scheduling from save
 
     def get_next_run_time(self):
         """Calculate the next run time based on frequency."""

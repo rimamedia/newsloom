@@ -1,5 +1,6 @@
 import json
 
+from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
 
@@ -8,8 +9,27 @@ from .schemas import STREAM_CONFIG_SCHEMAS
 from .tasks import TASK_CONFIG_EXAMPLES
 
 
+class StreamAdminForm(forms.ModelForm):
+    """Form class for Stream model in admin interface."""
+
+    class Meta:
+        """Metaclass defining model and fields for StreamAdminForm."""
+
+        model = Stream
+        fields = "__all__"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Skip validation if it's a new stream
+        if not self.instance.pk:
+            return cleaned_data
+        return cleaned_data
+
+
 @admin.register(Stream)
 class StreamAdmin(admin.ModelAdmin):
+    """Admin interface configuration for Stream model."""
+
     list_display = (
         "name",
         "stream_type",
@@ -53,6 +73,8 @@ class StreamAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    form = StreamAdminForm
 
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
@@ -129,6 +151,31 @@ class StreamAdmin(admin.ModelAdmin):
         if "_copy_stream" in request.POST:
             return self.copy_stream(request, obj.id)
         return super().response_change(request, obj)
+
+    def save_model(self, request, obj, form, change):
+        """Override save_model to handle validation differently."""
+        if not change:  # Only for new streams
+            # Get the schema
+            config_schema = STREAM_CONFIG_SCHEMAS.get(obj.stream_type)
+            if config_schema:
+                try:
+                    # Validate configuration directly
+                    if isinstance(obj.configuration, str):
+                        config = json.loads(obj.configuration)
+                    else:
+                        config = obj.configuration
+
+                    # Create schema instance without validation
+                    schema = config_schema.construct()
+                    # Validate the config
+                    schema.validate(config)
+
+                except Exception as e:
+                    from django.core.exceptions import ValidationError
+
+                    raise ValidationError(f"Configuration validation failed: {str(e)}")
+
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(StreamLog)

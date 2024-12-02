@@ -113,25 +113,47 @@ def save_links(links, stream):
     saved_count = 0
 
     try:
+        if not stream.source:
+            logger.error(f"No source found for stream {stream.id}")
+            return 0
+
+        logger.debug(f"Attempting to save {len(links)} links for stream {stream.id}")
+        logger.debug(f"Stream source: {stream.source}")
+
         with transaction.atomic():
             for link_data in links:
                 try:
-                    news, created = News.objects.get_or_create(
+                    if not link_data.get("url"):
+                        logger.warning("Skipping link with no URL")
+                        continue
+
+                    logger.debug(f"Attempting to save link: {link_data['url']}")
+
+                    # Check if the link already exists before trying to create it
+                    existing = News.objects.filter(
+                        source=stream.source, link=link_data["url"]
+                    ).exists()
+
+                    if existing:
+                        logger.debug(f"Link already exists: {link_data['url']}")
+                        continue
+
+                    # Truncate title to 255 characters
+                    title = link_data.get("title", "")[:255]
+
+                    News.objects.create(
                         source=stream.source,
                         link=link_data["url"],
-                        defaults={
-                            "title": link_data["title"],
-                            "published_at": timezone.now(),
-                        },
+                        title=title,
+                        published_at=timezone.now(),
                     )
-                    if created:
-                        saved_count += 1
-                        logger.info(f"Saved new link: {link_data['url']}")
-                    else:
-                        logger.debug(f"Link already exists: {link_data['url']}")
+                    saved_count += 1
+                    logger.info(f"Successfully saved new link: {link_data['url']}")
 
                 except Exception as e:
-                    logger.error(f"Error saving link {link_data['url']}: {e}")
+                    logger.error(
+                        f"Error saving link {link_data['url']}: {str(e)}", exc_info=True
+                    )
                     continue
 
             logger.info(

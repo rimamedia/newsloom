@@ -8,6 +8,10 @@ from .models import Stream
 @receiver(post_save, sender=Stream)
 def handle_stream_save(sender, instance, created, **kwargs):
     """Handle stream creation and updates."""
+    # Check if this is a recursive save operation
+    if kwargs.get("update_fields") == {"next_run"}:
+        return
+
     if created or instance.status == "active":
         # Set next_run time for new or active streams
         next_run = instance.get_next_run_time()
@@ -16,5 +20,4 @@ def handle_stream_save(sender, instance, created, **kwargs):
 
         # Only update if the next_run time has changed
         if instance.next_run != next_run:
-            instance.next_run = next_run
-            instance.save(update_fields=["next_run"])
+            Stream.objects.filter(id=instance.id).update(next_run=next_run)

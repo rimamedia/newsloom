@@ -1,11 +1,9 @@
-from typing import Annotated
-
 from pydantic import BaseModel, Field, HttpUrl
 
 
-class RSSFeedConfig(BaseModel):
-    feed_url: HttpUrl
-    max_entries: Annotated[int, Field(gt=0, le=500)] = 100
+class RSSConfig(BaseModel):
+    url: HttpUrl
+    max_items: int = Field(default=10)
 
     class Config:
         """Configuration for RSS Feed schema validation."""

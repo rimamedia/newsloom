@@ -1,5 +1,6 @@
 import logging
 
+from .article_searcher import search_articles
 from .playwright import extract_links
 from .rss import parse_rss_feed
 from .sitemap import parse_sitemap
@@ -18,6 +19,7 @@ TASK_MAPPING = {
     "telegram_channel": monitor_telegram_channel,
     "telegram_publish": publish_to_telegram,
     "telegram_test": test_telegram_channel,
+    "article_searcher": search_articles,
 }
 
 
@@ -82,6 +84,15 @@ TASK_CONFIG_EXAMPLES = {
     "telegram_test": {
         "channel_id": "-100123456789",
         "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+    },
+    "article_searcher": {
+        "url": "https://example.com",
+        "link_selector": "//*[@id='wtxt']/div[2]/ul/li[1]/a",
+        "link_selector_type": "xpath",
+        "article_selector": "div.article-content",
+        "article_selector_type": "css",
+        "search_text": "białoruś",
+        "max_links": 10,
     },
 }
 

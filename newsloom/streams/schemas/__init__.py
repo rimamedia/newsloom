@@ -1,17 +1,18 @@
+from .article_searcher import ArticleSearcherConfig
 from .playwright import PlaywrightConfig
-from .rss import RSSFeedConfig
+from .rss import RSSConfig
 from .sitemap import BaseSitemapConfig
 from .telegram import TelegramConfig, TelegramPublishConfig, TelegramTestConfig
 from .web_article import WebArticleConfig
 
-# Map stream types to their configuration schemas
 STREAM_CONFIG_SCHEMAS = {
-    "playwright_link_extractor": PlaywrightConfig,
     "sitemap_news": BaseSitemapConfig,
     "sitemap_blog": BaseSitemapConfig,
-    "rss_feed": RSSFeedConfig,
+    "playwright_link_extractor": PlaywrightConfig,
+    "rss_feed": RSSConfig,
     "web_article": WebArticleConfig,
     "telegram_channel": TelegramConfig,
     "telegram_publish": TelegramPublishConfig,
     "telegram_test": TelegramTestConfig,
+    "article_searcher": ArticleSearcherConfig,
 }
