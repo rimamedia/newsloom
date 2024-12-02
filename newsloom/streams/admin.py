@@ -3,9 +3,9 @@ import json
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import LuigiTaskLog, Stream, TelegramPublishLog
+from .models import Stream, StreamLog, TelegramPublishLog
 from .schemas import STREAM_CONFIG_SCHEMAS
-from .tasks import get_task_class
+from .tasks import TASK_CONFIG_EXAMPLES
 
 
 @admin.register(Stream)
@@ -14,7 +14,7 @@ class StreamAdmin(admin.ModelAdmin):
         "name",
         "stream_type",
         "source",
-        "frequency",
+        "media",
         "status",
         "last_run",
         "next_run",
@@ -73,8 +73,7 @@ class StreamAdmin(admin.ModelAdmin):
             if stream_type:
                 schema = STREAM_CONFIG_SCHEMAS.get(stream_type)
                 if schema:
-                    task_class = get_task_class(stream_type)
-                    example = task_class.get_config_example() if task_class else {}
+                    example = TASK_CONFIG_EXAMPLES.get(stream_type, {})
 
                     help_text = format_html(
                         "Example configuration for {}:<br><pre>{}</pre>",
@@ -132,12 +131,50 @@ class StreamAdmin(admin.ModelAdmin):
         return super().response_change(request, obj)
 
 
-@admin.register(LuigiTaskLog)
-class LuigiTaskLogAdmin(admin.ModelAdmin):
-    list_display = ["stream", "task_id", "status", "started_at", "completed_at"]
-    list_filter = ["status", "started_at", "completed_at"]
-    search_fields = ["stream__name", "task_id", "error_message"]
-    readonly_fields = ["started_at", "completed_at"]
+@admin.register(StreamLog)
+class StreamLogAdmin(admin.ModelAdmin):
+    list_display = [
+        "stream",
+        "status",
+        "started_at",
+        "completed_at",
+        "execution_time",
+        "has_errors",
+    ]
+    list_filter = ["status", "started_at", "stream__stream_type"]
+    search_fields = ["stream__name", "error_message"]
+    readonly_fields = [
+        "stream",
+        "status",
+        "started_at",
+        "completed_at",
+        "error_message",
+        "result",
+        "execution_time",
+    ]
+
+    def has_errors(self, obj):
+        return bool(obj.error_message)
+
+    has_errors.boolean = True
+    has_errors.short_description = "Has Errors"
+
+    def execution_time(self, obj):
+        if obj.completed_at and obj.started_at:
+            duration = obj.completed_at - obj.started_at
+            return f"{duration.total_seconds():.2f}s"
+        return "-"
+
+    execution_time.short_description = "Duration"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(TelegramPublishLog)
@@ -148,4 +185,4 @@ class TelegramPublishLogAdmin(admin.ModelAdmin):
     readonly_fields = ["published_at"]
 
     def has_add_permission(self, request):
-        return False  # Prevent manual creation of publish logs
+        return False

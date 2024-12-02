@@ -138,69 +138,51 @@ class Stream(models.Model):
             next_run = timezone.make_aware(next_run)
         return next_run
 
-    def schedule_luigi_task(self):
-        """Schedule or update the Luigi task based on the configuration."""
+    def execute_task(self):
+        """Execute the stream task directly."""
         import logging
 
-        from .tasks import get_task_class
+        from django.utils import timezone
+
+        from .tasks import get_task_function
 
         logger = logging.getLogger(__name__)
-
-        task_class = get_task_class(self.stream_type)
-        if not task_class:
-            logger.error(f"No task class found for stream_type: {self.stream_type}")
-            return
-
-        next_run = self.get_next_run_time()
-        if timezone.is_naive(next_run):
-            next_run = timezone.make_aware(next_run)
-
-        task_params = {
-            "stream_id": self.id,
-            "scheduled_time": next_run.isoformat(),
-        }
-
-        task_params.update(self.configuration)
-        logger.info(f"Scheduling task with params: {task_params}")
+        task_log = StreamLog.objects.create(stream=self)
 
         try:
-            # Create the task instance without building it
-            task_instance = task_class(**task_params)
+            task_function = get_task_function(self.stream_type)
+            if not task_function:
+                raise ValueError(f"No task function found for {self.stream_type}")
 
-            # Update stream status and next run time
-            Stream.objects.filter(id=self.id).update(status="active", next_run=next_run)
+            # Execute task
+            result = task_function(stream_id=self.id, **self.configuration)
 
-            return task_instance
+            # Update stream status
+            self.last_run = timezone.now()
+            self.next_run = self.get_next_run_time()
+            self.status = "active"
+            self.save(update_fields=["last_run", "next_run", "status"])
+
+            # Update log with success
+            task_log.status = "success"
+            task_log.completed_at = timezone.now()
+            task_log.result = result
+            task_log.save()
+
+            return result
 
         except Exception as e:
-            Stream.objects.filter(id=self.id).update(
-                status="failed", last_run=timezone.now()
-            )
-            raise e
+            logger.exception(f"Task execution failed for stream {self.id}")
+            self.status = "failed"
+            self.save(update_fields=["status"])
 
+            # Update log with failure
+            task_log.status = "failed"
+            task_log.completed_at = timezone.now()
+            task_log.error_message = str(e)
+            task_log.save()
 
-class LuigiTaskLog(models.Model):
-    STATUS_CHOICES = [
-        ("PENDING", "Pending"),
-        ("RUNNING", "Running"),
-        ("FAILED", "Failed"),
-        ("COMPLETED", "Completed"),
-    ]
-
-    stream = models.ForeignKey(
-        "Stream", on_delete=models.CASCADE, related_name="luigi_logs"
-    )
-    task_id = models.CharField(max_length=255)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
-    started_at = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    error_message = models.TextField(null=True, blank=True)
-    output_data = models.JSONField(null=True, blank=True)
-
-    class Meta:
-        """Meta configuration for LuigiTaskLog model."""
-
-        ordering = ["-started_at"]
+            raise
 
 
 class TelegramPublishLog(models.Model):
@@ -215,3 +197,34 @@ class TelegramPublishLog(models.Model):
 
         indexes = [models.Index(fields=["media", "published_at"])]
         unique_together = [("news", "media")]
+
+
+class StreamLog(models.Model):
+    """Logs for stream task executions."""
+
+    STATUS_CHOICES = [
+        ("success", "Success"),
+        ("failed", "Failed"),
+        ("running", "Running"),
+    ]
+
+    stream = models.ForeignKey(Stream, on_delete=models.CASCADE, related_name="logs")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="running")
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+    result = models.JSONField(
+        null=True, blank=True, help_text="Task execution results in JSON format"
+    )
+
+    class Meta:
+        """Meta configuration for StreamLog model."""
+
+        ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["stream", "status"]),
+            models.Index(fields=["started_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.stream.name} - {self.started_at}"

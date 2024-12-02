@@ -8,17 +8,13 @@ from .models import Stream
 @receiver(post_save, sender=Stream)
 def handle_stream_save(sender, instance, created, **kwargs):
     """Handle stream creation and updates."""
-    if created:
-        # New stream - just set the next_run time
+    if created or instance.status == "active":
+        # Set next_run time for new or active streams
         next_run = instance.get_next_run_time()
         if timezone.is_naive(next_run):
             next_run = timezone.make_aware(next_run)
-        instance.next_run = next_run
-        instance.save(update_fields=["next_run"])
-    else:
-        # Existing stream - only schedule if active
-        if instance.status == "active":
-            try:
-                instance.schedule_luigi_task()
-            except Exception as e:
-                print(f"Failed to update stream {instance.id} schedule: {e}")
+
+        # Only update if the next_run time has changed
+        if instance.next_run != next_run:
+            instance.next_run = next_run
+            instance.save(update_fields=["next_run"])

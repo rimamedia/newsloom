@@ -1,35 +1,42 @@
-import tempfile
-from datetime import datetime
+import logging
 
-import luigi
+from django.utils import timezone
+from streams.models import Stream
 
 
-class WebArticleScrapingTask(luigi.Task):
-    stream_id = luigi.IntParameter()
-    scheduled_time = luigi.DateTimeParameter()
+def scrape_web_article(stream_id, base_url, selectors, headers):
+    logger = logging.getLogger(__name__)
+    result = {
+        "scraped_count": 0,
+        "errors": [],
+        "timestamp": timezone.now().isoformat(),
+        "stream_id": stream_id,
+    }
 
-    @classmethod
-    def get_config_example(cls):
-        return {
-            "base_url": "https://example.com",
-            "selectors": {
-                "title": "h1.article-title",
-                "content": "div.article-content",
-                "date": "time.published-date",
-            },
-            "headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # noqa: E501
-            },
-        }
+    try:
+        # TODO: Implement web article scraping logic
+        # Use base_url, selectors, and headers to scrape the web article
+        # Update result["scraped_count"] and handle any errors
 
-    def run(self):
-        # TODO: Implement web article scraping
-        pass
+        # Example:
+        # response = requests.get(base_url, headers=headers)
+        # soup = BeautifulSoup(response.content, 'html.parser')
+        # title = soup.select_one(selectors['title']).get_text()
+        # content = soup.select_one(selectors['content']).get_text()
+        # date = soup.select_one(selectors['date']).get_text()
 
-    def output(self):
-        temp_file = tempfile.NamedTemporaryFile(
-            prefix=f"web_task_{self.stream_id}_",
-            suffix=f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
-            delete=False,
+        # Save scraped data to the database
+
+        stream = Stream.objects.get(id=stream_id)
+        stream.last_run = timezone.now()
+        stream.save(update_fields=["last_run"])
+
+    except Exception as e:
+        logger.error(f"Error scraping web article: {str(e)}", exc_info=True)
+        result["errors"].append(str(e))
+        Stream.objects.filter(id=stream_id).update(
+            status="failed", last_run=timezone.now()
         )
-        return luigi.LocalTarget(temp_file.name)
+        raise e
+
+    return result

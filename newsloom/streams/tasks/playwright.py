@@ -1,15 +1,14 @@
-import json
 import logging
 import random
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin, urlparse
 
-import luigi
 from django.db import connection, transaction
 from django.utils import timezone
 from playwright.sync_api import sync_playwright
 from playwright_stealth import stealth_sync
 from sources.models import News
+from streams.models import Stream
 
 # Add user agents list at the top
 USER_AGENTS = [
@@ -20,33 +19,104 @@ USER_AGENTS = [
 ]
 
 
-class PlaywrightLinkExtractorTask(luigi.Task):
-    """Task for extracting links from webpages using Playwright in stealth mode."""
+def extract_links(stream_id, url, link_selector, max_links=100):
+    logger = logging.getLogger(__name__)
+    result = {
+        "extracted_count": 0,
+        "saved_count": 0,
+        "links": [],
+        "timestamp": timezone.now().isoformat(),
+        "stream_id": stream_id,
+    }
 
-    # Task parameters
-    stream_id = luigi.IntParameter(description="ID of the Stream model instance")
-    url = luigi.Parameter(description="URL of the page to scrape")
-    link_selector = luigi.Parameter(description="CSS selector for finding links")
-    max_links = luigi.IntParameter(
-        default=100, description="Maximum number of links to process"
-    )
-    scheduled_time = luigi.Parameter(description="Scheduled execution time")
+    try:
+        # Get stream in a separate thread
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            stream_future = executor.submit(get_stream, stream_id)
+            stream = stream_future.result()
 
-    def get_stream(self):
-        """Retrieve the stream configuration and details from the database."""
-        from streams.models import Stream
+        links = []
 
-        try:
-            return Stream.objects.get(id=self.stream_id)
-        finally:
-            connection.close()
+        # Playwright operations
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent=random.choice(USER_AGENTS),
+                viewport={"width": 1920, "height": 1080},
+            )
+            page = context.new_page()
 
-    def save_links(self, links, stream):
-        """Save the extracted links to the database."""
-        try:
-            with transaction.atomic():
-                for link_data in links:
-                    News.objects.get_or_create(
+            try:
+                stealth_sync(page)
+                page.goto(url, timeout=60000)
+                page.wait_for_load_state("networkidle", timeout=60000)
+
+                # Get base URL for handling relative URLs
+                parsed_url = urlparse(url)
+                base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+                elements = page.query_selector_all(link_selector)
+
+                for element in elements[:max_links]:
+                    href = element.get_attribute("href")
+                    title = element.text_content()
+                    if href:
+                        # Convert relative URLs to absolute URLs
+                        full_url = urljoin(base_url, href)
+                        link_data = {
+                            "url": full_url,
+                            "title": title.strip() if title else None,
+                        }
+                        links.append(link_data)
+                        result["links"].append(link_data)
+                        result["extracted_count"] += 1
+            finally:
+                browser.close()
+
+        # Save links in a separate thread
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            save_future = executor.submit(save_links, links, stream)
+            save_future.result()  # Wait for save to complete
+            result["saved_count"] = len(links)
+
+        # Log success
+        logger.info(f"Successfully extracted and saved {len(links)} links.")
+
+        return result  # Return the result dictionary
+
+    except Exception as e:
+        logger.error(f"Error processing page: {str(e)}", exc_info=True)
+        result["error"] = str(e)
+
+        # Update stream status on failure
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(
+                update_stream_status,
+                stream_id,
+                status="failed",
+                last_run=timezone.now(),
+            )
+        raise e
+
+
+def get_stream(stream_id):
+    """Retrieve the stream configuration and details from the database."""
+    try:
+        return Stream.objects.get(id=stream_id)
+    finally:
+        connection.close()
+
+
+def save_links(links, stream):
+    """Save the extracted links to the database."""
+    logger = logging.getLogger(__name__)
+    saved_count = 0
+
+    try:
+        with transaction.atomic():
+            for link_data in links:
+                try:
+                    news, created = News.objects.get_or_create(
                         source=stream.source,
                         link=link_data["url"],
                         defaults={
@@ -54,118 +124,37 @@ class PlaywrightLinkExtractorTask(luigi.Task):
                             "published_at": timezone.now(),
                         },
                     )
-        finally:
-            connection.close()
+                    if created:
+                        saved_count += 1
+                        logger.info(f"Saved new link: {link_data['url']}")
+                    else:
+                        logger.debug(f"Link already exists: {link_data['url']}")
 
-    def update_stream_status(self, stream_id, status=None, last_run=None):
-        """Update the stream's status and last run time."""
-        from streams.models import Stream
+                except Exception as e:
+                    logger.error(f"Error saving link {link_data['url']}: {e}")
+                    continue
 
-        try:
-            update_fields = {}
-            if status:
-                update_fields["status"] = status
-            if last_run:
-                update_fields["last_run"] = last_run
+            logger.info(
+                f"Saved {saved_count} new links out of {len(links)} total links"
+            )
+            return saved_count
 
-            Stream.objects.filter(id=stream_id).update(**update_fields)
-        finally:
-            connection.close()
+    except Exception as e:
+        logger.exception(f"Transaction failed while saving links: {e}")
+        raise
+    finally:
+        connection.close()
 
-    def run(self):
-        """Execute the Playwright link extraction task."""
-        logger = logging.getLogger(__name__)
-        output_data = {
-            "extracted_count": 0,
-            "saved_count": 0,
-            "links": [],
-            "timestamp": timezone.now().isoformat(),
-            "stream_id": self.stream_id,
-        }
 
-        try:
-            # Get stream in a separate thread
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                stream_future = executor.submit(self.get_stream)
-                stream = stream_future.result()
+def update_stream_status(stream_id, status=None, last_run=None):
+    """Update the stream's status and last run time."""
+    try:
+        update_fields = {}
+        if status:
+            update_fields["status"] = status
+        if last_run:
+            update_fields["last_run"] = last_run
 
-            links = []
-
-            # Playwright operations
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context(
-                    user_agent=random.choice(USER_AGENTS),
-                    viewport={"width": 1920, "height": 1080},
-                )
-                page = context.new_page()
-
-                try:
-                    stealth_sync(page)
-                    page.goto(self.url, timeout=60000)
-                    page.wait_for_load_state("networkidle", timeout=60000)
-
-                    # Get base URL for handling relative URLs
-                    parsed_url = urlparse(self.url)
-                    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-
-                    elements = page.query_selector_all(self.link_selector)
-
-                    for element in elements[: self.max_links]:
-                        href = element.get_attribute("href")
-                        title = element.text_content()
-                        if href:
-                            # Convert relative URLs to absolute URLs
-                            full_url = urljoin(base_url, href)
-                            link_data = {
-                                "url": full_url,
-                                "title": title.strip() if title else None,
-                            }
-                            links.append(link_data)
-                            output_data["links"].append(link_data)
-                            output_data["extracted_count"] += 1
-                finally:
-                    browser.close()
-
-            # Save links in a separate thread
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                save_future = executor.submit(self.save_links, links, stream)
-                save_future.result()  # Wait for save to complete
-                output_data["saved_count"] = len(links)
-
-            # Write output to file
-            with self.output().open("w") as f:
-                json.dump(output_data, f)
-
-        except Exception as e:
-            logger.error(f"Error processing page: {str(e)}", exc_info=True)
-            output_data["error"] = str(e)
-
-            # Write error output to file
-            with self.output().open("w") as f:
-                json.dump(output_data, f)
-
-            # Update stream status on failure
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                executor.submit(
-                    self.update_stream_status,
-                    self.stream_id,
-                    status="failed",
-                    last_run=timezone.now(),
-                )
-            raise e
-
-    def output(self):
-        """Return a LocalTarget for the task output."""
-        return luigi.LocalTarget(
-            f"logs/playwright_extraction_{self.stream_id}_{self.scheduled_time}.txt"
-        )
-
-    @classmethod
-    def get_config_example(cls):
-        """Return an example configuration for this task."""
-        return {
-            "url": "https://example.com/news",
-            "link_selector": "a.article-link",
-            "max_links": 100,
-        }
+        Stream.objects.filter(id=stream_id).update(**update_fields)
+    finally:
+        connection.close()

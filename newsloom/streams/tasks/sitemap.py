@@ -1,158 +1,77 @@
-import json
 import logging
 from datetime import datetime
 
-import luigi
 import requests
 from defusedxml import ElementTree as ET
 from django.db import transaction
 from django.utils import timezone
 from sources.models import News
+from streams.models import Stream
 
 
-class BaseSitemapTask(luigi.Task):
-    """Base task for processing sitemaps with configurable parameters."""
+def parse_sitemap(stream_id, sitemap_url, max_links=100, follow_next=False):
+    logger = logging.getLogger(__name__)
+    result = {
+        "processed_count": 0,
+        "urls": [],
+        "errors": [],
+        "timestamp": timezone.now().isoformat(),
+        "stream_id": stream_id,
+    }
 
-    # Common parameters
-    stream_id = luigi.IntParameter(description="ID of the Stream model instance")
-    sitemap_url = luigi.Parameter(description="URL of the sitemap to parse")
-    max_links = luigi.IntParameter(
-        default=100, description="Maximum number of links to process"
-    )
-    scheduled_time = luigi.Parameter(description="Scheduled execution time")
-    follow_next = luigi.BoolParameter(
-        default=False, description="Whether to follow next page links in sitemaps"
-    )
+    try:
+        response = requests.get(sitemap_url, timeout=10)
+        response.raise_for_status()
 
-    @classmethod
-    def get_config_example(cls):
-        return {
-            "sitemap_url": "https://example.com/sitemap.xml",
-            "max_links": 100,
-            "follow_next": False,
-        }
+        root = ET.fromstring(response.content)
+        stream = Stream.objects.get(id=stream_id)
 
-    def run(self):
-        from streams.models import Stream
+        with transaction.atomic():
+            for url_element in root.findall(".//url")[:max_links]:
+                loc = url_element.find("loc")
+                lastmod = url_element.find("lastmod")
 
-        logger = logging.getLogger(__name__)
+                if loc is not None:
+                    process_url(stream, loc.text, lastmod)
+                    result["urls"].append(loc.text)
+                    result["processed_count"] += 1
 
-        output_data = {
-            "processed_count": 0,
-            "urls": [],
-            "timestamp": timezone.now().isoformat(),
-            "stream_id": self.stream_id,
-            "sitemap_url": self.sitemap_url,
-        }
+        stream.last_run = timezone.now()
+        stream.save(update_fields=["last_run"])
 
+    except requests.Timeout:
+        error_msg = f"Timeout while fetching sitemap from {sitemap_url}"
+        logger.error(error_msg)
+        result["errors"].append(error_msg)
+        Stream.objects.filter(id=stream_id).update(
+            status="failed", last_run=timezone.now()
+        )
+        raise
+    except Exception as e:
+        logger.error(f"Error processing sitemap: {str(e)}", exc_info=True)
+        result["errors"].append(str(e))
+        Stream.objects.filter(id=stream_id).update(
+            status="failed", last_run=timezone.now()
+        )
+        raise e
+
+    return result
+
+
+def process_url(stream, url, lastmod):
+    published_at = None
+    if lastmod is not None:
         try:
-            response = requests.get(self.sitemap_url, timeout=60)
-            response.raise_for_status()
-
-            logger.info(f"Fetched sitemap from {self.sitemap_url}")
-
-            root = ET.fromstring(response.content)
-            ns = {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
-            url_tag = "ns:url" if ns else "url"
-            loc_tag = "ns:loc" if ns else "loc"
-            lastmod_tag = "ns:lastmod" if ns else "lastmod"
-
-            stream = Stream.objects.get(id=self.stream_id)
-
-            processed_links = 0
-            with transaction.atomic():
-                for url_elem in root.findall(f".//{url_tag}", ns):
-                    if processed_links >= self.max_links:
-                        break
-
-                    loc = url_elem.find(f".//{loc_tag}", ns)
-                    lastmod = url_elem.find(f".//{lastmod_tag}", ns)
-
-                    if loc is not None:
-                        url = loc.text.strip()
-                        lastmod_text = (
-                            lastmod.text.strip() if lastmod is not None else None
-                        )
-
-                        self.process_url(stream, url, lastmod)
-                        processed_links += 1
-
-                        output_data["urls"].append(
-                            {"url": url, "lastmod": lastmod_text}
-                        )
-                        output_data["processed_count"] += 1
-
-            stream.last_run = timezone.now()
-            stream.save(update_fields=["last_run"])
-
-            # Write success output
-            with self.output().open("w") as f:
-                json.dump(output_data, f)
-
-        except Exception as e:
-            logger.error(f"Error processing sitemap: {str(e)}", exc_info=True)
-            output_data["error"] = str(e)
-
-            # Write error output
-            with self.output().open("w") as f:
-                json.dump(output_data, f)
-
-            Stream.objects.filter(id=self.stream_id).update(
-                status="failed", last_run=timezone.now()
+            published_at = datetime.fromisoformat(
+                lastmod.text.strip().replace("Z", "+00:00")
             )
-            raise e
+        except ValueError:
+            pass
 
-    def output(self):
-        """Return a LocalTarget for the task output."""
-        return luigi.LocalTarget(
-            f"logs/sitemap_task_{self.stream_id}_{self.scheduled_time}.txt"
-        )
-
-    def process_url(self, stream, url, lastmod):
-        """Process a single URL from the sitemap."""
-        raise NotImplementedError
-
-
-class SitemapNewsParsingTask(BaseSitemapTask):
-    """Task implementation for parsing news-specific sitemaps."""
-
-    def process_url(self, stream, url, lastmod):
-        published_at = None
-        if lastmod is not None:
-            try:
-                published_at = datetime.fromisoformat(
-                    lastmod.text.strip().replace("Z", "+00:00")
-                )
-            except ValueError:
-                pass
-
-        News.objects.get_or_create(
-            source=stream.source,
-            link=url,
-            defaults={
-                "published_at": published_at or timezone.now(),
-            },
-        )
-
-
-class SitemapBlogParsingTask(BaseSitemapTask):
-    """Task implementation for parsing blog-specific sitemaps."""
-
-    def process_url(self, stream, url, lastmod):
-        published_at = None
-        if lastmod is not None:
-            try:
-                published_at = datetime.fromisoformat(
-                    lastmod.text.strip().replace("Z", "+00:00")
-                )
-            except ValueError:
-                pass
-
-        # You might want to add additional blog-specific processing here
-        News.objects.get_or_create(
-            source=stream.source,
-            link=url,
-            defaults={
-                "published_at": published_at or timezone.now(),
-            },
-        )
+    News.objects.get_or_create(
+        source=stream.source,
+        link=url,
+        defaults={
+            "published_at": published_at or timezone.now(),
+        },
+    )
