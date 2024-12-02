@@ -61,8 +61,6 @@
     
     <li class="toctree-l1"><a href="https://docs.djangoproject.com/">Django Documentation</a></li>
     
-    <li class="toctree-l1"><a href="https://luigi.readthedocs.io/">Luigi Documentation</a></li>
-    
     <li class="toctree-l1"><a href="https://playwright.dev/python/">Playwright Documentation</a></li>
     
 </ul>
@@ -95,7 +93,7 @@
 <h2>Task Development Guide<a class="headerlink" href="#task-development-guide" title="Link to this heading">¶</a></h2>
 <p>To create a new task in NewLoom, you’ll need to:</p>
 <ol class="arabic simple">
-<li><p>Create a new task class</p></li>
+<li><p>Create a new task function</p></li>
 <li><p>Define the task schema</p></li>
 <li><p>Register the task</p></li>
 <li><p>Implement the task logic</p></li>
@@ -103,32 +101,17 @@
 </section>
 <section id="basic-task-structure">
 <h2>Basic Task Structure<a class="headerlink" href="#basic-task-structure" title="Link to this heading">¶</a></h2>
-<p>All NewLoom tasks should inherit from <code class="docutils literal notranslate"><span class="pre">luigi.Task</span></code> and follow this basic structure:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">luigi</span>
-<span class="kn">from</span> <span class="nn">django.utils</span> <span class="kn">import</span> <span class="n">timezone</span>
-
-<span class="k">class</span> <span class="nc">MyNewTask</span><span class="p">(</span><span class="n">luigi</span><span class="o">.</span><span class="n">Task</span><span class="p">):</span>
+<p>All NewLoom tasks should be defined as functions and follow this basic structure:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">my_new_task</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Task description&quot;&quot;&quot;</span>
 
-    <span class="c1"># Required parameters</span>
-    <span class="n">stream_id</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">IntParameter</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;ID of the Stream model instance&quot;</span><span class="p">)</span>
-    <span class="n">scheduled_time</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Scheduled execution time&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Custom parameters</span>
-    <span class="n">my_param</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Custom parameter&quot;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="c1"># Task implementation</span>
-            <span class="k">pass</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="c1"># Error handling</span>
-            <span class="k">raise</span> <span class="n">e</span>
-
-    <span class="k">def</span> <span class="nf">output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">luigi</span><span class="o">.</span><span class="n">LocalTarget</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s1">&#39;/tmp/my_task_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_id</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
-        <span class="p">)</span>
+    <span class="c1"># Task implementation</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Task logic</span>
+        <span class="k">pass</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># Error handling</span>
+        <span class="k">raise</span> <span class="n">e</span>
 </pre></div>
 </div>
 </section>
@@ -139,26 +122,16 @@
 <p>Every task must include these base parameters:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">stream_id</span></code>: Links the task to a Stream model instance</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">scheduled_time</span></code>: Defines when the task should run</p></li>
 </ul>
 </section>
-<section id="run-method">
-<h3>2. Run Method<a class="headerlink" href="#run-method" title="Link to this heading">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">run()</span></code> method should:</p>
+<section id="task-logic">
+<h3>2. Task Logic<a class="headerlink" href="#task-logic" title="Link to this heading">¶</a></h3>
+<p>The task function should:</p>
 <ul class="simple">
 <li><p>Implement the task’s core logic</p></li>
 <li><p>Handle exceptions appropriately</p></li>
 <li><p>Update stream status</p></li>
 <li><p>Log task progress</p></li>
-</ul>
-</section>
-<section id="output-method">
-<h3>3. Output Method<a class="headerlink" href="#output-method" title="Link to this heading">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">output()</span></code> method should:</p>
-<ul class="simple">
-<li><p>Return a <code class="docutils literal notranslate"><span class="pre">luigi.Target</span></code> instance</p></li>
-<li><p>Include unique identifiers (stream_id, timestamp)</p></li>
-<li><p>Use appropriate target type (LocalTarget, S3Target, etc.)</p></li>
 </ul>
 </section>
 </section>
@@ -167,7 +140,7 @@
 <p>After creating your task, register it in the task mapping:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># streams/tasks/__init__.py</span>
 <span class="n">TASK_MAPPING</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;my_new_task&#39;</span><span class="p">:</span> <span class="n">MyNewTask</span><span class="p">,</span>
+    <span class="s1">&#39;my_new_task&#39;</span><span class="p">:</span> <span class="n">my_new_task</span><span class="p">,</span>
     <span class="c1"># ... other tasks</span>
 <span class="p">}</span>
 </pre></div>
@@ -176,13 +149,13 @@
 <section id="error-handling">
 <h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading">¶</a></h2>
 <p>Implement proper error handling in your tasks:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">my_new_task</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="kn">from</span> <span class="nn">streams.models</span> <span class="kn">import</span> <span class="n">Stream</span>
     <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Task implementation</span>
-        <span class="n">stream</span> <span class="o">=</span> <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_id</span><span class="p">)</span>
+        <span class="n">stream</span> <span class="o">=</span> <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">stream_id</span><span class="p">)</span>
         <span class="c1"># ... task logic ...</span>
 
         <span class="c1"># Update success status</span>
@@ -191,7 +164,7 @@
 
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_id</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">stream_id</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
             <span class="n">status</span><span class="o">=</span><span class="s1">&#39;failed&#39;</span><span class="p">,</span>
             <span class="n">last_run</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
         <span class="p">)</span>

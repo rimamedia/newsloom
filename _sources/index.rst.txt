@@ -1,7 +1,7 @@
 NewLoom Documentation
 ===================
 
-NewLoom is a Django and Luigi-based platform designed for comprehensive news monitoring, content aggregation, and multi-channel publishing. It provides a robust framework for automating the entire news processing pipeline, from source monitoring to content distribution.
+NewLoom is a Django-based platform designed for comprehensive news monitoring, content aggregation, and multi-channel publishing. It provides a robust framework for automating the entire news processing pipeline, from source monitoring to content distribution.
 
 Getting Started
 -------------
@@ -39,11 +39,6 @@ Initial Setup
 6. Start the development server:
    ```bash
    python manage.py runserver
-   ```
-
-7. Start the Luigi worker:
-   ```bash
-   python manage.py run_luigi_worker
    ```
 
 Django Documentation References
@@ -84,12 +79,6 @@ Technical Architecture
     - Admin interface for configuration
     - API endpoints for integration
     - Authentication and permissions
-
-* **Luigi Task System**
-    - Reliable task scheduling
-    - Complex workflow management
-    - Task dependency handling
-    - Processing pipeline orchestration
 
 * **Integration Features**
     - Playwright for JavaScript rendering
