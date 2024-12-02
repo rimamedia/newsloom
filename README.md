@@ -6,36 +6,36 @@
 [![GitHub issues](https://img.shields.io/github/issues/rimamedia/newsloom)](https://github.com/rimamedia/newsloom/issues)
 [![GitHub stars](https://img.shields.io/github/stars/rimamedia/newsloom)](https://github.com/rimamedia/newsloom/stargazers)
 
-NewLoom is a comprehensive news monitoring, aggregation, and publishing platform built with Django and Luigi. It provides a robust system for:
+NewLoom is a comprehensive news monitoring, aggregation, and publishing platform built with Django. It provides a robust system for:
 
 - **News Monitoring**: Automated tracking of multiple news sources through various channels
 - **Content Aggregation**: Intelligent scraping and parsing of news content from diverse sources
 - **Content Processing**: Customizable processing pipelines for content transformation
 - **Multi-Channel Publishing**: Automated distribution of processed content to various platforms
 
-The system leverages Django's powerful ORM and admin interface for configuration management, while Luigi handles complex task scheduling and processing pipelines. This combination enables reliable handling of large-scale news monitoring and distribution workflows.
+The system leverages Django's powerful ORM and admin interface for configuration management, while a built-in scheduler handles task execution. This combination enables reliable handling of large-scale news monitoring and distribution workflows.
 
 ## Key Components
 
 - **Source Management**: Configure and manage multiple news sources (websites, RSS feeds, Telegram channels)
-- **Stream Processing**: Define custom processing workflows using Luigi tasks
+- **Stream Processing**: Define custom processing workflows using stream tasks
 - **Content Storage**: Efficient storage and indexing of news content using Django models
 - **Publishing System**: Automated content distribution to configured channels
 - **Monitoring Dashboard**: Track processing status and system health through Django admin
 
 ## Architecture
 
-NewLoom is built on three main pillars:
+NewLoom is built on two main pillars:
 
 1. **Django Backend**: Handles data models, API endpoints, and admin interface
-2. **Luigi Task System**: Manages task scheduling and processing pipelines
+2. **Stream Scheduler**: Manages task scheduling and execution
 3. **Playwright Integration**: Enables reliable scraping of JavaScript-heavy websites
 
 ## Features
 
 - Multiple source type support (Web, Telegram, RSS, etc.)
 - Configurable stream scheduling
-- Luigi-based task processing
+- Built-in task scheduling and execution
 - Playwright support for JavaScript-heavy websites
 - Automatic content extraction and storage
 
@@ -43,40 +43,68 @@ NewLoom is built on three main pillars:
 
 - Python 3.8+
 - Django 5.1.3
-- Luigi
 - Playwright
-- SQLite (default) or PostgreSQL
+- PostgreSQL
+- Redis (optional, for caching)
 
 ## Installation
 
 1. Clone the repository:
-   - Run: git clone https://github.com/rimamedia/newsloom.git
-   - Navigate to project: cd newsloom
+   ```bash
+   git clone https://github.com/rimamedia/newsloom.git
+   cd newsloom
+   ```
 
 2. Create and activate a virtual environment:
-   - Create: python -m venv venv
-   - Activate on Unix: source venv/bin/activate
-   - Activate on Windows: venv\Scripts\activate
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Unix
+   venv\Scripts\activate     # Windows
+   ```
 
 3. Install required packages:
-   - Run: `pip install -r requirements.txt`
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 4. Install Playwright browsers:
-   - Run: `playwright install`
+   ```bash
+   playwright install
+   ```
 
 5. Run migrations:
-   - Run: `python manage.py migrate`
+   ```bash
+   python manage.py migrate
+   ```
 
 6. Create a superuser:
-   - Run: `python manage.py createsuperuser`
+   ```bash
+   python manage.py createsuperuser
+   ```
 
 ## Running the Project
 
 1. Start the Django development server:
-   - Run: `python manage.py runserver`
+   ```bash
+   python manage.py runserver
+   ```
 
-2. Start the Luigi worker:
-   - Run: `python manage.py run_luigi_worker`
+2. Start the stream scheduler:
+   ```bash
+   python manage.py run_streams
+   ```
+
+## Docker Deployment
+
+1. Build and start containers:
+   ```bash
+   docker-compose up -d --build
+   ```
+
+2. Create superuser in container:
+   ```bash
+   docker-compose exec web python manage.py createsuperuser
+   ```
 
 ## Creating Content Sources and Streams
 
@@ -104,58 +132,54 @@ NewLoom is built on three main pillars:
 ### Stream Configuration Examples
 
 #### Sitemap News Parser Configuration
-    {
-        "sitemap_url": "https://example.com/sitemap.xml",
-        "max_links": 100,
-        "follow_next": false
-    }
+```json
+{
+    "sitemap_url": "https://example.com/sitemap.xml",
+    "max_links": 100,
+    "follow_next": false
+}
+```
 
 #### Playwright Link Extractor Configuration
-    {
-        "url": "https://example.com",
-        "link_selector": "article a.headline",
-        "max_links": 100
-    }
+```json
+{
+    "url": "https://example.com",
+    "link_selector": "article a.headline",
+    "max_links": 100
+}
+```
 
 #### RSS Feed Parser Configuration
-    {
-        "feed_url": "https://example.com/feed.xml",
-        "max_items": 50,
-        "include_summary": true
-    }
-
-## Project Structure
-
-- sources/: Manages content sources and news items
-- streams/: Handles stream configuration and task scheduling
-- mediamanager/: Media asset management
-- streams/tasks/: Luigi task implementations
-  - playwright.py: Browser automation tasks
-  - sitemap.py: Sitemap parsing tasks
+```json
+{
+    "feed_url": "https://example.com/feed.xml",
+    "max_entries": 100
+}
+```
 
 ## Monitoring
 
 - Stream status and logs can be viewed in the Django admin interface
-- Luigi task logs are stored in the LuigiTaskLog model
-- Check the console output of the run_luigi_worker command for real-time processing information
+- Stream execution logs are stored in the StreamLog model
+- Check the console output of the run_streams command for real-time processing information
 
 ## Error Handling
 
-- Failed tasks are automatically logged in the LuigiTaskLog model
+- Failed tasks are automatically logged in the StreamLog model
 - Streams with failed tasks are marked with 'failed' status
-- The scheduler will attempt to reschedule failed tasks based on the configured frequency
+- The scheduler will attempt to retry failed tasks based on configuration
 
 ## Development Notes
 
 1. Add new task types:
-   - Create a new task class in streams/tasks/
+   - Create a new task function in streams/tasks/
    - Add the task type to Stream.TYPE_CHOICES
-   - Create a configuration schema in streams/schemas.py
+   - Create a configuration schema in streams/schemas/
    - Register the task in TASK_MAPPING in streams/tasks/__init__.py
 
 2. Custom task implementation should include:
-   - Task parameters (stream_id, scheduled_time)
-   - Run method implementation
+   - Task parameters (stream_id, configuration)
+   - Task function implementation
    - Proper error handling
    - Task completion logging
 
@@ -279,8 +303,8 @@ This README provides a basic guide to get started with NewLoom. For production d
    # Terminal 1: Django server
    python manage.py runserver
 
-   # Terminal 2: Luigi worker
-   python manage.py run_luigi_worker
+   # Terminal 2: Stream scheduler
+   python manage.py run_streams
    ```
 
 9. Access the application:
@@ -289,5 +313,4 @@ This README provides a basic guide to get started with NewLoom. For production d
 
 For more detailed information, refer to:
 - [Django Documentation](https://docs.djangoproject.com/)
-- [Luigi Documentation](https://luigi.readthedocs.io/)
 - [Playwright Python Documentation](https://playwright.dev/python/)
