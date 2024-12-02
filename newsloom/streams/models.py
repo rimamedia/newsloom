@@ -23,6 +23,7 @@ class Stream(models.Model):
         ("telegram_publish", "Telegram Links Publisher"),
         ("telegram_test", "Telegram Test Publisher"),
         ("article_searcher", "Article Content Searcher"),
+        ("bing_search", "Bing Search"),
     ]
 
     FREQUENCY_CHOICES = [

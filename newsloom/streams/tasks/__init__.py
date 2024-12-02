@@ -1,6 +1,7 @@
 import logging
 
 from .article_searcher import search_articles
+from .bing_search import search_bing
 from .playwright import extract_links
 from .rss import parse_rss_feed
 from .sitemap import parse_sitemap
@@ -20,6 +21,7 @@ TASK_MAPPING = {
     "telegram_publish": publish_to_telegram,
     "telegram_test": test_telegram_channel,
     "article_searcher": search_articles,
+    "bing_search": search_bing,
 }
 
 
@@ -27,13 +29,14 @@ def get_task_function(stream_type):
     """Get the appropriate task function for a given stream type."""
     logger = logging.getLogger(__name__)
 
-    logger.debug(f"Looking for task function for stream_type: {stream_type}")
-    logger.debug(f"Available task mappings: {TASK_MAPPING}")
+    logger.debug(f"Looking for task function for stream_type: '{stream_type}'")
+    logger.debug(f"Available task mappings: {list(TASK_MAPPING.keys())}")
 
     task_function = TASK_MAPPING.get(stream_type)
 
     if task_function is None:
-        logger.error(f"No task function found for stream_type: {stream_type}")
+        logger.error(f"No task function found for stream_type: '{stream_type}'")
+        logger.error(f"Type of stream_type: {type(stream_type)}")
     else:
         logger.debug(f"Found task function: {task_function.__name__}")
 
@@ -93,6 +96,12 @@ TASK_CONFIG_EXAMPLES = {
         "article_selector_type": "css",
         "search_text": "białoruś",
         "max_links": 10,
+    },
+    "bing_search": {
+        "keywords": ["climate change", "renewable energy"],
+        "location": "United States",
+        "max_results_per_keyword": 5,
+        "search_type": "news",
     },
 }
 
