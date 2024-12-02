@@ -8,11 +8,12 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies and Nginx
+# Install system dependencies, Nginx, and netcat
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     supervisor \
     nginx \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directories for static and media files
@@ -42,8 +43,8 @@ RUN python manage.py collectstatic --noinput
 # Create log directory and files
 RUN mkdir -p /var/log && \
     touch /var/log/gunicorn.err.log /var/log/gunicorn.out.log \
-        /var/log/luigi_worker.err.log /var/log/luigi_worker.out.log \
-        /var/log/nginx.err.log /var/log/nginx.out.log
+        /var/log/nginx.err.log /var/log/nginx.out.log \
+        /var/log/stream_scheduler.err.log /var/log/stream_scheduler.out.log
 
 # Copy supervisor configuration
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -51,4 +52,8 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Expose Nginx port
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Create a startup script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

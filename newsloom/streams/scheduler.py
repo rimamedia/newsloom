@@ -1,31 +1,40 @@
+import logging
+
+from django.db import transaction
 from django.utils import timezone
 
 from .models import Stream
 
+logger = logging.getLogger(__name__)
+
 
 class StreamScheduler:
-    """Manages the scheduling of Stream tasks."""
+    """Manages the execution of Stream tasks."""
 
     @classmethod
-    def schedule_pending_tasks(cls):
-        """Schedule all pending tasks that are due to run."""
-        pending_streams = Stream.objects.filter(
-            status="active", next_run__lte=timezone.now()
-        )
+    def execute_due_tasks(cls):
+        """Execute all tasks that are due to run."""
+        with transaction.atomic():
+            due_streams = Stream.objects.filter(
+                status="active", next_run__lte=timezone.now()
+            ).select_for_update(skip_locked=True)
 
-        for stream in pending_streams:
-            try:
-                stream.schedule_luigi_task()
-            except Exception as e:
-                print(f"Failed to schedule stream {stream.id}: {e}")
+            for stream in due_streams:
+                try:
+                    stream.execute_task()
+                except Exception as e:
+                    logger.exception(f"Failed to execute stream {stream.id}: {e}")
 
     @classmethod
-    def reschedule_failed_tasks(cls):
-        """Attempt to reschedule failed tasks."""
-        failed_streams = Stream.objects.filter(status="failed")
+    def retry_failed_tasks(cls):
+        """Retry failed tasks."""
+        with transaction.atomic():
+            failed_streams = Stream.objects.filter(status="failed").select_for_update(
+                skip_locked=True
+            )
 
-        for stream in failed_streams:
-            try:
-                stream.schedule_luigi_task()
-            except Exception as e:
-                print(f"Failed to reschedule stream {stream.id}: {e}")
+            for stream in failed_streams:
+                try:
+                    stream.execute_task()
+                except Exception as e:
+                    logger.exception(f"Failed to retry stream {stream.id}: {e}")

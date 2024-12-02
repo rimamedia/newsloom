@@ -14,7 +14,8 @@ repos:
                 .*\.(md|rst|conf)$|
                 .*/migrations/.*\.py$|
                 ^\.github/.*$|
-                .*/logs/.*$
+                .*/logs/.*$|
+                docker-entrypoint\.sh$
             )
     -   id: check-yaml
     -   id: check-added-large-files

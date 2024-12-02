@@ -20,8 +20,14 @@ services:
       - ./newsloom:/app/newsloom
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
+      - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
     depends_on:
       - db
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   db:
     image: postgres:15
