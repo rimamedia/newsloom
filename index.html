@@ -94,33 +94,39 @@
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">¶</a></h2>
 <section id="initial-setup">
 <h3>Initial Setup<a class="headerlink" href="#initial-setup" title="Link to this heading">¶</a></h3>
-<ol class="arabic simple">
-<li><p>Create and activate a virtual environment:
-<code class="docutils literal notranslate"><span class="pre">`bash</span>
-<span class="pre">python</span> <span class="pre">-m</span> <span class="pre">venv</span> <span class="pre">venv</span>
-<span class="pre">source</span> <span class="pre">venv/bin/activate</span>&#160; <span class="pre">#</span> <span class="pre">Unix</span>
-<span class="pre">venv\Scripts\activate</span>&#160;&#160;&#160;&#160; <span class="pre">#</span> <span class="pre">Windows</span>
-<span class="pre">`</span></code></p></li>
-<li><p>Install dependencies:
-<code class="docutils literal notranslate"><span class="pre">`bash</span>
-<span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-r</span> <span class="pre">requirements.txt</span>
-<span class="pre">`</span></code></p></li>
-<li><p>Install Playwright browsers:
-<code class="docutils literal notranslate"><span class="pre">`bash</span>
-<span class="pre">playwright</span> <span class="pre">install</span>
-<span class="pre">`</span></code></p></li>
-<li><p>Run database migrations:
-<code class="docutils literal notranslate"><span class="pre">`bash</span>
-<span class="pre">python</span> <span class="pre">manage.py</span> <span class="pre">migrate</span>
-<span class="pre">`</span></code></p></li>
-<li><p>Create a superuser:
-<code class="docutils literal notranslate"><span class="pre">`bash</span>
-<span class="pre">python</span> <span class="pre">manage.py</span> <span class="pre">createsuperuser</span>
-<span class="pre">`</span></code></p></li>
-<li><p>Start the development server:
-<code class="docutils literal notranslate"><span class="pre">`bash</span>
-<span class="pre">python</span> <span class="pre">manage.py</span> <span class="pre">runserver</span>
-<span class="pre">`</span></code></p></li>
+<ol class="arabic">
+<li><p>Create and activate a virtual environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">venv</span> <span class="n">venv</span>
+<span class="n">source</span> <span class="n">venv</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>  <span class="c1"># Unix</span>
+<span class="n">venv</span>\<span class="n">Scripts</span>\<span class="n">activate</span>     <span class="c1"># Windows</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install dependencies:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install Playwright browsers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">playwright</span> <span class="n">install</span>
+</pre></div>
+</div>
+</li>
+<li><p>Run database migrations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">migrate</span>
+</pre></div>
+</div>
+</li>
+<li><p>Create a superuser:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">createsuperuser</span>
+</pre></div>
+</div>
+</li>
+<li><p>Start the development server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">runserver</span>
+</pre></div>
+</div>
+</li>
 </ol>
 </section>
 <section id="django-documentation-references">

@@ -9,37 +9,32 @@ Getting Started
 Initial Setup
 ~~~~~~~~~~~~
 
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Unix
-   venv\Scripts\activate     # Windows
-   ```
+1. Create and activate a virtual environment::
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+    python -m venv venv
+    source venv/bin/activate  # Unix
+    venv\Scripts\activate     # Windows
 
-3. Install Playwright browsers:
-   ```bash
-   playwright install
-   ```
+2. Install dependencies::
 
-4. Run database migrations:
-   ```bash
-   python manage.py migrate
-   ```
+    pip install -r requirements.txt
 
-5. Create a superuser:
-   ```bash
-   python manage.py createsuperuser
-   ```
+3. Install Playwright browsers::
 
-6. Start the development server:
-   ```bash
-   python manage.py runserver
-   ```
+    playwright install
+
+4. Run database migrations::
+
+    python manage.py migrate
+
+5. Create a superuser::
+
+    python manage.py createsuperuser 
+
+6. Start the development server::
+
+    python manage.py runserver
+
 
 Django Documentation References
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
