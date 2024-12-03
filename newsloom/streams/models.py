@@ -22,6 +22,9 @@ class Stream(models.Model):
         ("telegram_channel", "Telegram Channel Monitor"),
         ("telegram_publish", "Telegram Links Publisher"),
         ("telegram_test", "Telegram Test Publisher"),
+        ("article_searcher", "Article Content Searcher"),
+        ("bing_search", "Bing Search"),
+        ("telegram_bulk_parser", "Telegram Bulk Parser"),
     ]
 
     FREQUENCY_CHOICES = [
@@ -67,15 +70,13 @@ class Stream(models.Model):
         verbose_name = "Stream"
         verbose_name_plural = "Streams"
         indexes = [
-            models.Index(fields=["stream_type"]),  # Changed from task_type
+            models.Index(fields=["stream_type"]),
             models.Index(fields=["status"]),
             models.Index(fields=["next_run"]),
         ]
 
     def __str__(self):
-        return (
-            f"{self.name} ({self.get_stream_type_display()})"  # Changed from task_type
-        )
+        return f"{self.name} ({self.get_stream_type_display()})"
 
     def clean(self):
         """Validate the stream configuration against its schema."""
@@ -90,33 +91,50 @@ class Stream(models.Model):
                 raise ValidationError(_("Configuration cannot be empty"))
 
             # Parse and validate configuration
-            config = (
-                self.configuration
-                if isinstance(self.configuration, dict)
-                else json.loads(self.configuration)
-            )
-            validated_config = config_schema(**config)
+            if isinstance(self.configuration, str):
+                try:
+                    config = json.loads(self.configuration)
+                except json.JSONDecodeError:
+                    raise ValidationError(_("Invalid JSON configuration"))
+            else:
+                config = self.configuration
 
-            # Convert to dict and use primitive types
-            self.configuration = json.loads(validated_config.model_dump_json())
+            # Validate configuration without modifying it
+            try:
+                # Use parse_obj instead of model_validate
+                config_schema.parse_obj(config)
+            except PydanticValidationError as e:
+                errors = []
+                for error in e.errors():
+                    field = ".".join(str(x) for x in error["loc"])
+                    message = error["msg"]
+                    errors.append(f"{field}: {message}")
+                raise ValidationError(
+                    _(f"Configuration validation failed: {'; '.join(errors)}")
+                )
 
-        except json.JSONDecodeError:
-            raise ValidationError(_("Invalid JSON configuration"))
-        except PydanticValidationError as e:
-            # Convert Pydantic validation errors to Django validation errors
-            errors = []
-            for error in e.errors():
-                field = ".".join(str(x) for x in error["loc"])
-                message = error["msg"]
-                errors.append(f"{field}: {message}")
-            raise ValidationError(
-                _(f"Configuration validation failed: {'; '.join(errors)}")
-            )
+        except ValidationError:
+            raise
+        except Exception as e:
+            raise ValidationError(str(e))
 
     def save(self, *args, **kwargs):
-        self.clean()
+        """Save the stream instance."""
+        skip_validation = kwargs.pop("skip_validation", False)
+        update_fields = kwargs.get("update_fields")
+
+        # Skip validation if we're only updating specific fields or if skip_validation is True
+        if not skip_validation and not update_fields:
+            # Store current configuration
+            current_config = self.configuration
+            try:
+                self.clean()
+            except Exception as e:
+                # Restore original configuration if validation fails
+                self.configuration = current_config
+                raise e
+
         super().save(*args, **kwargs)
-        # Remove direct task scheduling from save
 
     def get_next_run_time(self):
         """Calculate the next run time based on frequency."""
@@ -142,45 +160,57 @@ class Stream(models.Model):
         """Execute the stream task directly."""
         import logging
 
+        from django.db import transaction
         from django.utils import timezone
 
         from .tasks import get_task_function
 
         logger = logging.getLogger(__name__)
-        task_log = StreamLog.objects.create(stream=self)
 
         try:
-            task_function = get_task_function(self.stream_type)
-            if not task_function:
-                raise ValueError(f"No task function found for {self.stream_type}")
+            with transaction.atomic():
+                # Refresh from database to ensure we have the latest state
+                self.refresh_from_db()
 
-            # Execute task
-            result = task_function(stream_id=self.id, **self.configuration)
+                task_log = StreamLog.objects.create(stream=self)
 
-            # Update stream status
-            self.last_run = timezone.now()
-            self.next_run = self.get_next_run_time()
-            self.status = "active"
-            self.save(update_fields=["last_run", "next_run", "status"])
+                task_function = get_task_function(self.stream_type)
+                if not task_function:
+                    raise ValueError(f"No task function found for {self.stream_type}")
 
-            # Update log with success
-            task_log.status = "success"
-            task_log.completed_at = timezone.now()
-            task_log.result = result
-            task_log.save()
+                # Execute task
+                result = task_function(stream_id=self.id, **self.configuration)
 
-            return result
+                # Update stream status and log within the same transaction
+                Stream.objects.filter(id=self.id).update(
+                    last_run=timezone.now(),
+                    next_run=self.get_next_run_time(),
+                    status="active",
+                )
+
+                # Update log with success
+                task_log.status = "success"
+                task_log.completed_at = timezone.now()
+                task_log.result = result
+                task_log.save()
+
+                return result
 
         except Exception as e:
             logger.exception(f"Task execution failed for stream {self.id}")
-            self.status = "failed"
-            self.save(update_fields=["status"])
 
-            # Update log with failure
-            task_log.status = "failed"
-            task_log.completed_at = timezone.now()
-            task_log.error_message = str(e)
-            task_log.save()
+            try:
+                # Handle failure in a new transaction
+                with transaction.atomic():
+                    Stream.objects.filter(id=self.id).update(status="failed")
+
+                    if "task_log" in locals():
+                        task_log.status = "failed"
+                        task_log.completed_at = timezone.now()
+                        task_log.error_message = str(e)
+                        task_log.save()
+            except Exception as inner_e:
+                logger.error(f"Failed to update error status: {inner_e}")
 
             raise
 
