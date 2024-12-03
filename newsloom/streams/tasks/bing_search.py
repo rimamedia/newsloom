@@ -48,6 +48,7 @@ def search_bing(
             stream_future = executor.submit(get_stream, stream_id)
             stream = stream_future.result()
 
+        # TODO: fix that stream source not necessary
         if not stream or not stream.source:
             raise ValueError("Stream or stream source not found")
 
