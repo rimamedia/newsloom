@@ -1,12 +1,13 @@
+import asyncio
 import logging
-import time
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 import pytz
+from asgiref.sync import sync_to_async
 from django.utils import timezone
-from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
+from playwright.async_api import async_playwright
+from playwright_stealth import stealth_async
 from sources.models import News, Source
 
 logger = logging.getLogger(__name__)
@@ -31,38 +32,38 @@ def standardize_url(url):
     return f"{scheme}://{netloc}{standardized_path}"
 
 
-def extract_message_details(message_element):
+async def extract_message_details(message_element):
     """Extract text, timestamp and link from a message element."""
     try:
-        # Extract message link
-        link_element = message_element.query_selector("a.tgme_widget_message_date")
+        link_element = await message_element.query_selector(
+            "a.tgme_widget_message_date"
+        )
         if not link_element:
             return None, None, None
 
-        message_link = link_element.get_attribute("href")
+        message_link = await link_element.get_attribute("href")
         if not message_link:
             return None, None, None
 
-        # Extract message text
         possible_text_classes = [
             "tgme_widget_message_text",
             "tgme_widget_message_content",
         ]
         message_text = None
         for class_name in possible_text_classes:
-            text_element = message_element.query_selector(f"div.{class_name}")
+            text_element = await message_element.query_selector(f"div.{class_name}")
             if text_element:
-                message_text = text_element.inner_text().strip()
+                message_text = await text_element.inner_text()
+                message_text = message_text.strip()
                 if message_text:
                     break
 
         if not message_text:
             return None, None, None
 
-        # Extract timestamp
-        time_element = message_element.query_selector("time")
+        time_element = await message_element.query_selector("time")
         if time_element:
-            datetime_str = time_element.get_attribute("datetime")
+            datetime_str = await time_element.get_attribute("datetime")
             if datetime_str:
                 message_time = datetime.fromisoformat(
                     datetime_str.replace("Z", "+00:00")
@@ -77,7 +78,7 @@ def extract_message_details(message_element):
         return None, None, None
 
 
-def parse_telegram_channels(
+async def parse_telegram_channels(
     stream_id, time_window_minutes=60, max_scrolls=20, wait_time=10
 ):
     """Parse all Telegram sources and collect recent posts."""
@@ -90,17 +91,17 @@ def parse_telegram_channels(
     }
 
     try:
-        # Get all Telegram sources
-        sources = Source.objects.filter(type="telegram")
-        if not sources.exists():
+        # Get all Telegram sources - wrap in sync_to_async
+        sources = await sync_to_async(list)(Source.objects.filter(type="telegram"))
+        if not sources:
             logger.warning("No Telegram sources found")
             return result
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context()
-            page = context.new_page()
-            stealth_sync(page)
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
+            await stealth_async(page)
 
             for source in sources:
                 try:
@@ -108,8 +109,8 @@ def parse_telegram_channels(
                     logger.info(f"Processing channel: {url}")
 
                     # Navigate to channel
-                    page.goto(url, timeout=60000)
-                    page.wait_for_selector(
+                    await page.goto(url, timeout=60000)
+                    await page.wait_for_selector(
                         "div.tgme_widget_message_wrap", timeout=wait_time * 1000
                     )
 
@@ -120,17 +121,17 @@ def parse_telegram_channels(
 
                     # Scroll and collect posts
                     posts_found = 0
-                    seen_links = set()  # Track seen message links
+                    seen_links = set()
 
                     for _ in range(max_scrolls):
-                        messages = page.query_selector_all(
+                        messages = await page.query_selector_all(
                             "div.tgme_widget_message_wrap"
                         )
                         new_messages_found = False
 
                         for msg_elem in messages:
-                            text, timestamp, message_link = extract_message_details(
-                                msg_elem
+                            text, timestamp, message_link = (
+                                await extract_message_details(msg_elem)
                             )
 
                             if (
@@ -142,8 +143,10 @@ def parse_telegram_channels(
                             seen_links.add(message_link)
 
                             if timestamp >= time_threshold:
-                                # Create news entry if it doesn't exist
-                                _, created = News.objects.get_or_create(
+                                # Create news entry if it doesn't exist - wrap in sync_to_async
+                                _, created = await sync_to_async(
+                                    News.objects.get_or_create
+                                )(
                                     source=source,
                                     link=message_link,
                                     defaults={
@@ -157,10 +160,11 @@ def parse_telegram_channels(
                                     new_messages_found = True
 
                         # Scroll down
-                        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                        time.sleep(2)
+                        await page.evaluate(
+                            "window.scrollTo(0, document.body.scrollHeight)"
+                        )
+                        await page.wait_for_timeout(2000)  # Changed from time.sleep
 
-                        # If no new messages were found in this scroll, we can stop
                         if not new_messages_found:
                             break
 
@@ -174,10 +178,15 @@ def parse_telegram_channels(
                     result["failed_channels"] += 1
                     result["errors"].append(error_msg)
 
-            browser.close()
+            await browser.close()
 
         return result
 
     except Exception as e:
         logger.error(f"Bulk parsing failed: {str(e)}")
         raise
+
+
+def run_telegram_parser(stream_id, **kwargs):
+    """Run synchronous wrapper for the async parser."""
+    return asyncio.run(parse_telegram_channels(stream_id, **kwargs))

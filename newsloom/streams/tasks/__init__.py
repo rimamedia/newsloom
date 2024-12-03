@@ -6,6 +6,7 @@ from .playwright import extract_links
 from .rss import parse_rss_feed
 from .sitemap import parse_sitemap
 from .telegram import monitor_telegram_channel
+from .telegram_bulk_parser import run_telegram_parser
 from .telegram_publisher import publish_to_telegram
 from .telegram_test import test_telegram_channel
 from .web import scrape_web_article
@@ -22,6 +23,7 @@ TASK_MAPPING = {
     "telegram_test": test_telegram_channel,
     "article_searcher": search_articles,
     "bing_search": search_bing,
+    "telegram_bulk_parser": run_telegram_parser,
 }
 
 
