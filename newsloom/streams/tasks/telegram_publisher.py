@@ -43,7 +43,9 @@ def publish_to_telegram(
                     result["published_count"] += 1
                     result["published_news_ids"].append(news.id)
 
-                    TelegramPublishLog.objects.create(news=news, media=stream.media)
+                    await sync_to_async(TelegramPublishLog.objects.create)(
+                        news=news, media=stream.media
+                    )
 
                 except Exception as e:
                     logger.error(f"Failed to publish news {news.id}: {str(e)}")
@@ -51,25 +53,15 @@ def publish_to_telegram(
                     result["failed_news_ids"].append(news.id)
                     result["errors"].append(str(e))
 
-        loop = asyncio.get_event_loop()
+            await bot.close()
+
+        # Create a new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            # Run the async function in the loop
             loop.run_until_complete(publish_messages())
         finally:
-            try:
-                # Clean up pending tasks
-                pending = asyncio.all_tasks(loop)
-                for task in pending:
-                    task.cancel()
-                loop.run_until_complete(
-                    asyncio.gather(*pending, return_exceptions=True)
-                )
-
-                # Close the loop
-                loop.close()
-            except Exception as e:
-                logger.error(f"Error during cleanup: {str(e)}")
-                result["errors"].append(str(e))
+            loop.close()
 
         # Update stream status
         stream.last_run = timezone.now()
