@@ -1,5 +1,6 @@
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -15,21 +16,19 @@ class Command(BaseCommand):
         self.stdout.write("Starting stream scheduler...")
         logger.info("Stream scheduler started")
 
-        while True:
-            try:
-                # Execute due tasks
-                StreamScheduler.execute_due_tasks()
+        # Create a thread pool
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            while True:
+                try:
+                    # Execute due tasks in parallel
+                    executor.submit(StreamScheduler.execute_due_tasks)
 
-                # Retry failed tasks
-                StreamScheduler.retry_failed_tasks()
+                    # Retry failed tasks in parallel
+                    executor.submit(StreamScheduler.retry_failed_tasks)
 
-                # Log heartbeat
-                logger.debug(f"Scheduler heartbeat at {timezone.now()}")
+                    logger.debug(f"Scheduler heartbeat at {timezone.now()}")
+                    time.sleep(30)
 
-                # Sleep for a short interval (e.g., 30 seconds)
-                time.sleep(30)
-
-            except Exception as e:
-                logger.exception(f"Error in stream scheduler: {e}")
-                # Sleep for a short while before retrying
-                time.sleep(5)
+                except Exception as e:
+                    logger.exception(f"Error in stream scheduler: {e}")
+                    time.sleep(5)
