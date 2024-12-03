@@ -160,45 +160,57 @@ class Stream(models.Model):
         """Execute the stream task directly."""
         import logging
 
+        from django.db import transaction
         from django.utils import timezone
 
         from .tasks import get_task_function
 
         logger = logging.getLogger(__name__)
-        task_log = StreamLog.objects.create(stream=self)
 
         try:
-            task_function = get_task_function(self.stream_type)
-            if not task_function:
-                raise ValueError(f"No task function found for {self.stream_type}")
+            with transaction.atomic():
+                # Refresh from database to ensure we have the latest state
+                self.refresh_from_db()
 
-            # Execute task
-            result = task_function(stream_id=self.id, **self.configuration)
+                task_log = StreamLog.objects.create(stream=self)
 
-            # Update stream status
-            self.last_run = timezone.now()
-            self.next_run = self.get_next_run_time()
-            self.status = "active"
-            self.save(update_fields=["last_run", "next_run", "status"])
+                task_function = get_task_function(self.stream_type)
+                if not task_function:
+                    raise ValueError(f"No task function found for {self.stream_type}")
 
-            # Update log with success
-            task_log.status = "success"
-            task_log.completed_at = timezone.now()
-            task_log.result = result
-            task_log.save()
+                # Execute task
+                result = task_function(stream_id=self.id, **self.configuration)
 
-            return result
+                # Update stream status and log within the same transaction
+                Stream.objects.filter(id=self.id).update(
+                    last_run=timezone.now(),
+                    next_run=self.get_next_run_time(),
+                    status="active",
+                )
+
+                # Update log with success
+                task_log.status = "success"
+                task_log.completed_at = timezone.now()
+                task_log.result = result
+                task_log.save()
+
+                return result
 
         except Exception as e:
             logger.exception(f"Task execution failed for stream {self.id}")
-            self.status = "failed"
-            self.save(update_fields=["status"])
 
-            # Update log with failure
-            task_log.status = "failed"
-            task_log.completed_at = timezone.now()
-            task_log.error_message = str(e)
-            task_log.save()
+            try:
+                # Handle failure in a new transaction
+                with transaction.atomic():
+                    Stream.objects.filter(id=self.id).update(status="failed")
+
+                    if "task_log" in locals():
+                        task_log.status = "failed"
+                        task_log.completed_at = timezone.now()
+                        task_log.error_message = str(e)
+                        task_log.save()
+            except Exception as inner_e:
+                logger.error(f"Failed to update error status: {inner_e}")
 
             raise
 

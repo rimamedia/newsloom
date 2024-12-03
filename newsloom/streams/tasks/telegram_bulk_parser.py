@@ -45,6 +45,7 @@ async def extract_message_details(message_element):
         if not message_link:
             return None, None, None
 
+        # TODO: fix text extraction
         possible_text_classes = [
             "tgme_widget_message_text",
             "tgme_widget_message_content",

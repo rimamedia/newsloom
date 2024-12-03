@@ -19,9 +19,9 @@ BING_NEWS_URL = "https://www.bing.com/news/search"
 def search_bing(
     stream_id: int,
     keywords: List[str],
-    location: str = None,
     max_results_per_keyword: int = 5,
     search_type: str = "news",
+    debug: bool = False,
 ) -> Dict:
     """
     Search Bing for articles matching the given keywords.
@@ -29,9 +29,10 @@ def search_bing(
     Args:
         stream_id: ID of the stream
         keywords: List of keywords to search for
-        location: Optional location to target
         max_results_per_keyword: Maximum number of results per keyword
         search_type: Type of search ('news' or 'web')
+        debug: Debug mode flag
+        # TODO: add location
     """
     result = {
         "extracted_count": 0,
@@ -53,9 +54,10 @@ def search_bing(
         all_links = []
 
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(headless=not debug)
+            selected_user_agent = random.choice(USER_AGENTS)
             context = browser.new_context(
-                user_agent=random.choice(USER_AGENTS),
+                user_agent=selected_user_agent,
                 viewport={"width": 1920, "height": 1080},
             )
             page = context.new_page()
@@ -64,10 +66,13 @@ def search_bing(
                 stealth_sync(page)
 
                 for keyword in keywords:
+                    # Add debug logging
+                    if debug:
+                        logger.info(f"Searching for keyword: {keyword}")
+                        logger.info(f"Using user agent: {selected_user_agent}")
+
                     # Construct search query
                     query = quote(keyword)
-                    if location:
-                        query = f"{query} location:{location}"
 
                     # Choose appropriate URL and selectors based on search type
                     base_url = (
@@ -102,6 +107,11 @@ def search_bing(
                             logger.info(
                                 f"Found article for keyword '{keyword}': {href}"
                             )
+
+                    # Add debug pause if needed
+                    if debug:
+                        logger.info("Waiting for manual inspection (30 seconds)...")
+                        page.wait_for_timeout(30000)  # 30 second pause for debugging
 
             finally:
                 browser.close()

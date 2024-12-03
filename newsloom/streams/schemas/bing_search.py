@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -11,10 +11,6 @@ class BingSearchConfig(BaseModel):
         description="List of keywords to search for",
         example=["climate change", "renewable energy"],
     )
-    location: Optional[str] = Field(
-        None,
-        description="Location to target in search results",
-    )
     max_results_per_keyword: int = Field(
         default=5,
         description="Maximum number of results to fetch per keyword",
@@ -25,4 +21,8 @@ class BingSearchConfig(BaseModel):
         default="news",
         description="Type of search to perform",
         enum=["news", "web"],
+    )
+    debug: bool = Field(
+        default=False,
+        description="Enable debug mode with visible browser and additional logging",
     )

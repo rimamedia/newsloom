@@ -12,6 +12,7 @@ from .telegram_test import test_telegram_channel
 from .web import scrape_web_article
 
 # Map stream types to their corresponding task functions
+# TODO: add llm rewrite task
 TASK_MAPPING = {
     "sitemap_news": parse_sitemap,
     "sitemap_blog": parse_sitemap,
@@ -101,9 +102,9 @@ TASK_CONFIG_EXAMPLES = {
     },
     "bing_search": {
         "keywords": ["climate change", "renewable energy"],
-        "location": "United States",
         "max_results_per_keyword": 5,
         "search_type": "news",
+        "debug": False,
     },
 }
 
