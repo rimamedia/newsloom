@@ -24,6 +24,7 @@ class Stream(models.Model):
         ("telegram_test", "Telegram Test Publisher"),
         ("article_searcher", "Article Content Searcher"),
         ("bing_search", "Bing Search"),
+        ("telegram_bulk_parser", "Telegram Bulk Parser"),
     ]
 
     FREQUENCY_CHOICES = [
@@ -69,15 +70,13 @@ class Stream(models.Model):
         verbose_name = "Stream"
         verbose_name_plural = "Streams"
         indexes = [
-            models.Index(fields=["stream_type"]),  # Changed from task_type
+            models.Index(fields=["stream_type"]),
             models.Index(fields=["status"]),
             models.Index(fields=["next_run"]),
         ]
 
     def __str__(self):
-        return (
-            f"{self.name} ({self.get_stream_type_display()})"  # Changed from task_type
-        )
+        return f"{self.name} ({self.get_stream_type_display()})"
 
     def clean(self):
         """Validate the stream configuration against its schema."""

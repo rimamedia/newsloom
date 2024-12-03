@@ -8,12 +8,12 @@ from .models import Stream
 @receiver(post_save, sender=Stream)
 def handle_stream_save(sender, instance, created, **kwargs):
     """Handle stream creation and updates."""
-    # Check if this is a recursive save operation
-    if kwargs.get("update_fields") == {"next_run"}:
+    # Only skip if this is a recursive update of next_run field
+    if not created and kwargs.get("update_fields") == {"next_run"}:
         return
 
+    # Calculate next run for new streams or active streams
     if created or instance.status == "active":
-        # Set next_run time for new or active streams
         next_run = instance.get_next_run_time()
         if timezone.is_naive(next_run):
             next_run = timezone.make_aware(next_run)

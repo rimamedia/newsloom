@@ -60,3 +60,16 @@ class TelegramTestConfig(BaseModel):
         """Configuration for schema validation."""
 
         extra = "forbid"
+
+
+class TelegramBulkParserConfig(BaseModel):
+    """Configuration schema for bulk Telegram channel parsing."""
+
+    time_window_minutes: Annotated[int, Field(gt=0, le=1440)] = 60  # max 24 hours
+    max_scrolls: Annotated[int, Field(gt=0, le=100)] = 20
+    wait_time: Annotated[int, Field(gt=0, le=30)] = 10
+
+    class Config:
+        """Configuration for schema validation."""
+
+        extra = "forbid"

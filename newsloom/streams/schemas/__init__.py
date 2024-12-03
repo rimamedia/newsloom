@@ -3,7 +3,12 @@ from .bing_search import BingSearchConfig
 from .playwright import PlaywrightConfig
 from .rss import RSSConfig
 from .sitemap import BaseSitemapConfig
-from .telegram import TelegramConfig, TelegramPublishConfig, TelegramTestConfig
+from .telegram import (
+    TelegramBulkParserConfig,
+    TelegramConfig,
+    TelegramPublishConfig,
+    TelegramTestConfig,
+)
 from .web_article import WebArticleConfig
 
 STREAM_CONFIG_SCHEMAS = {
@@ -15,6 +20,7 @@ STREAM_CONFIG_SCHEMAS = {
     "telegram_channel": TelegramConfig,
     "telegram_publish": TelegramPublishConfig,
     "telegram_test": TelegramTestConfig,
+    "telegram_bulk_parser": TelegramBulkParserConfig,
     "article_searcher": ArticleSearcherConfig,
     "bing_search": BingSearchConfig,
 }
