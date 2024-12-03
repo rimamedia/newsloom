@@ -55,10 +55,11 @@ def test_telegram_channel(stream_id, channel_id, bot_token):
                 result["errors"].append(error_msg)
                 raise e
             finally:
-                if bot:
-                    await bot.close()
+                await bot.close()
 
-        loop = asyncio.get_event_loop()
+        # Create a new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(send_test_message())
         finally:
