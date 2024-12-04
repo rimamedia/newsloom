@@ -164,6 +164,7 @@ class Stream(models.Model):
         from django.utils import timezone
 
         from .tasks import get_task_function
+        from .tasks.bing_search import _local
 
         logger = logging.getLogger(__name__)
 
@@ -171,6 +172,10 @@ class Stream(models.Model):
             with transaction.atomic():
                 # Refresh from database to ensure we have the latest state
                 self.refresh_from_db()
+
+                # Cancel any existing task for this stream
+                if hasattr(_local, "cancelled"):
+                    _local.cancelled = True
 
                 task_log = StreamLog.objects.create(stream=self)
 

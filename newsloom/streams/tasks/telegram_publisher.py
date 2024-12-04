@@ -24,14 +24,21 @@ def publish_to_telegram(
 
     try:
         stream = Stream.objects.get(id=stream_id)
+        if not stream.media:
+            raise ValueError("Stream must have an associated media")
+
         bot = Bot(token=bot_token)
 
         async def publish_messages(
             bot, stream, channel_id, time_threshold, batch_size, result
         ):
+            # Get all sources associated with the media
+            media_sources = await sync_to_async(list)(stream.media.sources.all())
+
+            # Get news from all media sources within time window
             news_items = await sync_to_async(list)(
                 News.objects.filter(
-                    source=stream.source,
+                    source__in=media_sources,
                     link__isnull=False,
                     created_at__gte=time_threshold,
                 ).order_by("created_at")[:batch_size]
@@ -39,11 +46,17 @@ def publish_to_telegram(
 
             for news in news_items:
                 try:
-                    message = f"{news.text}\n\nSource: {news.link}"
+                    # Build message with title and optional text
+                    message = f"{news.title}"
+                    if news.text:
+                        message += f"\n\n{news.text[:250]}..."  # Truncate long text
+                    message += f"\n\n{news.link}"
+
                     await bot.send_message(chat_id=channel_id, text=message)
                     result["published_count"] += 1
                     result["published_news_ids"].append(news.id)
 
+                    # Create publish log
                     await sync_to_async(TelegramPublishLog.objects.create)(
                         news=news, media=stream.media
                     )

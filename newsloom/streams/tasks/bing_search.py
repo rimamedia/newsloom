@@ -1,6 +1,8 @@
 import logging
 import random
+import threading
 from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
 from typing import Dict, List
 from urllib.parse import quote
 
@@ -15,7 +17,31 @@ logger = logging.getLogger(__name__)
 BING_SEARCH_URL = "https://www.bing.com/search"
 BING_NEWS_URL = "https://www.bing.com/news/search"
 
+# Add a thread-local storage for task cancellation
+_local = threading.local()
 
+
+def cancellable_task(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Initialize cancellation flag
+        _local.cancelled = False
+        try:
+            return func(*args, **kwargs)
+        finally:
+            # Clean up
+            if hasattr(_local, "cancelled"):
+                del _local.cancelled
+
+    return wrapper
+
+
+def check_cancelled():
+    """Check if the current task has been cancelled."""
+    return getattr(_local, "cancelled", False)
+
+
+@cancellable_task
 def search_bing(
     stream_id: int,
     keywords: List[str],
@@ -48,10 +74,6 @@ def search_bing(
             stream_future = executor.submit(get_stream, stream_id)
             stream = stream_future.result()
 
-        # TODO: fix that stream source not necessary
-        if not stream or not stream.source:
-            raise ValueError("Stream or stream source not found")
-
         all_links = []
 
         with sync_playwright() as p:
@@ -67,6 +89,11 @@ def search_bing(
                 stealth_sync(page)
 
                 for keyword in keywords:
+                    # Check if task has been cancelled
+                    if check_cancelled():
+                        logger.info("Task cancelled, stopping execution")
+                        break
+
                     # Add debug logging
                     if debug:
                         logger.info(f"Searching for keyword: {keyword}")
@@ -117,15 +144,16 @@ def search_bing(
             finally:
                 browser.close()
 
-        # Save links
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            save_future = executor.submit(save_links, all_links, stream)
-            result["saved_count"] = save_future.result()
+        # Save links only if task wasn't cancelled
+        if not check_cancelled():
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                save_future = executor.submit(save_links, all_links, stream)
+                result["saved_count"] = save_future.result()
 
-        logger.info(
-            f"Successfully extracted {result['extracted_count']} links "
-            f"and saved {result['saved_count']} new links."
-        )
+            logger.info(
+                f"Successfully extracted {result['extracted_count']} links "
+                f"and saved {result['saved_count']} new links."
+            )
 
         return result
 
