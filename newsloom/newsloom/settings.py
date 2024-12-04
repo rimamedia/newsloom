@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", False)
 
 ALLOWED_HOSTS = ["*"]
 
@@ -98,11 +98,14 @@ if all(
             "PASSWORD": os.environ.get("DB_PASSWORD"),
             "HOST": os.environ.get("DB_HOST"),
             "PORT": os.environ.get("DB_PORT"),
-            "OPTIONS": {
-                "sslmode": os.environ.get("DJANGO_DB_SSLMODE", "require"),
-            },
         }
     }
+
+    # Only add SSL options if not running locally
+    if os.environ.get("DB_HOST") not in ("localhost", "127.0.0.1"):
+        DATABASES["default"]["OPTIONS"] = {
+            "sslmode": os.environ.get("DJANGO_DB_SSLMODE", "require"),
+        }
 else:
     DATABASES = {
         "default": {
