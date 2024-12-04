@@ -26,20 +26,21 @@ def publish_to_telegram(
         stream = Stream.objects.get(id=stream_id)
         bot = Bot(token=bot_token)
 
-        async def publish_messages():
-            nonlocal result
-            now = timezone.now()
-            time_threshold = now - timezone.timedelta(minutes=time_window_minutes)
-
+        async def publish_messages(
+            bot, stream, channel_id, time_threshold, batch_size, result
+        ):
             news_items = await sync_to_async(list)(
                 News.objects.filter(
-                    source=stream.source, published_at__gte=time_threshold
-                ).order_by("published_at")[:batch_size]
+                    source=stream.source,
+                    link__isnull=False,
+                    created_at__gte=time_threshold,
+                ).order_by("created_at")[:batch_size]
             )
 
             for news in news_items:
                 try:
-                    await bot.send_message(chat_id=channel_id, text=news.text)
+                    message = f"{news.text}\n\nSource: {news.link}"
+                    await bot.send_message(chat_id=channel_id, text=message)
                     result["published_count"] += 1
                     result["published_news_ids"].append(news.id)
 
@@ -53,13 +54,18 @@ def publish_to_telegram(
                     result["failed_news_ids"].append(news.id)
                     result["errors"].append(str(e))
 
-            await bot.close()
-
         # Create a new event loop for this thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(publish_messages())
+            time_threshold = timezone.now() - timezone.timedelta(
+                minutes=time_window_minutes
+            )
+            loop.run_until_complete(
+                publish_messages(
+                    bot, stream, channel_id, time_threshold, batch_size, result
+                )
+            )
         finally:
             loop.close()
 
