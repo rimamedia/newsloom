@@ -108,16 +108,27 @@ def search_bing(
                     )
                     search_url = f"{base_url}?q={query}"
 
-                    # Different selectors for news and web search
-                    link_selector = (
-                        "a.news-card-title" if search_type == "news" else "h2 > a"
-                    )
+                    # Add additional wait for news content
+                    if search_type == "news":
+                        page.wait_for_timeout(
+                            5000
+                        )  # Wait 5 seconds for dynamic content
+
+                    # Update selector for news articles
+                    if search_type == "news":
+                        link_selector = "div.news-card a.title"
+                    else:
+                        link_selector = "h2 > a"
 
                     page.goto(search_url, timeout=60000)
                     page.wait_for_load_state("networkidle", timeout=60000)
 
-                    # Extract links
                     elements = page.query_selector_all(link_selector)
+
+                    if debug:
+                        logger.info(f"Total elements found: {len(elements)}")
+                        # Log the page HTML for debugging
+                        logger.info(f"Page HTML: {page.content()}")
 
                     for element in elements[:max_results_per_keyword]:
                         href = element.get_attribute("href")
