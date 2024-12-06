@@ -8,12 +8,16 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies, Nginx, and netcat
+# Install system dependencies, Nginx, netcat, and CloudWatch agent
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     supervisor \
     nginx \
     netcat-traditional \
+    curl \
+    && curl -O https://s3.amazonaws.com/amazoncloudwatch-agent/debian/amd64/latest/amazon-cloudwatch-agent.deb \
+    && dpkg -i amazon-cloudwatch-agent.deb \
+    && rm amazon-cloudwatch-agent.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directories for static and media files

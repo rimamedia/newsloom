@@ -60,6 +60,16 @@ jobs:
           DB_PORT=${{ secrets.DB_PORT }}
           DEBUG=False
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+        log-configuration: |
+          {
+            "logDriver": "awslogs",
+            "options": {
+              "awslogs-group": "/ecs/${{ secrets.ECS_TASK_DEFINITION }}",
+              "awslogs-region": "${{ secrets.AWS_REGION }}",
+              "awslogs-stream-prefix": "ecs",
+              "awslogs-create-group": "true"
+            }
+          }
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
