@@ -14,27 +14,29 @@ logger = logging.getLogger(__name__)
 
 
 def standardize_url(url):
-    """Standardize the Telegram channel URL."""
+    """Standardize the Telegram channel URL to t.me/s format."""
     parsed = urlparse(url)
-    scheme = "https"
-    netloc = parsed.netloc
-    path = parsed.path.rstrip("/")
+    path = parsed.path.rstrip("/")  # Remove trailing slash
     path_parts = path.split("/")
 
+    # Extract channel name from path
+    channel_name = None
     if len(path_parts) > 1 and path_parts[1] == "s":
-        standardized_path = path
+        channel_name = path_parts[2] if len(path_parts) > 2 else None
     else:
-        if len(path_parts) > 1:
-            standardized_path = f"/s/{path_parts[1]}"
-        else:
-            standardized_path = path
+        channel_name = path_parts[1] if len(path_parts) > 1 else None
 
-    return f"{scheme}://{netloc}{standardized_path}"
+    if not channel_name:
+        raise ValueError("Could not extract channel name from URL")
+
+    # Always use t.me/s format
+    return f"https://t.me/s/{channel_name}"
 
 
 async def extract_message_details(message_element):
     """Extract text, timestamp and link from a message element."""
     try:
+        # Get message link from the date element
         link_element = await message_element.query_selector(
             "a.tgme_widget_message_date"
         )
@@ -45,23 +47,28 @@ async def extract_message_details(message_element):
         if not message_link:
             return None, None, None
 
-        # TODO: fix text extraction
-        possible_text_classes = [
-            "tgme_widget_message_text",
-            "tgme_widget_message_content",
-        ]
+        # Extract text from message content
         message_text = None
-        for class_name in possible_text_classes:
-            text_element = await message_element.query_selector(f"div.{class_name}")
-            if text_element:
-                message_text = await text_element.inner_text()
+        text_element = await message_element.query_selector(
+            "div.tgme_widget_message_text"
+        )
+        if text_element:
+            message_text = await text_element.inner_text()
+            message_text = message_text.strip()
+
+        if not message_text:
+            # Fallback to message bubble content if text div not found
+            bubble_element = await message_element.query_selector(
+                "div.tgme_widget_message_bubble"
+            )
+            if bubble_element:
+                message_text = await bubble_element.inner_text()
                 message_text = message_text.strip()
-                if message_text:
-                    break
 
         if not message_text:
             return None, None, None
 
+        # Get timestamp from time element
         time_element = await message_element.query_selector("time")
         if time_element:
             datetime_str = await time_element.get_attribute("datetime")
@@ -92,7 +99,6 @@ async def parse_telegram_channels(
     }
 
     try:
-        # Get all Telegram sources - wrap in sync_to_async
         sources = await sync_to_async(list)(Source.objects.filter(type="telegram"))
         if not sources:
             logger.warning("No Telegram sources found")
