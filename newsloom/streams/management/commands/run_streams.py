@@ -17,7 +17,7 @@ class Command(BaseCommand):
         logger.info("Stream scheduler started")
 
         # Create a thread pool
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor:
             while True:
                 try:
                     # Execute due tasks in parallel
