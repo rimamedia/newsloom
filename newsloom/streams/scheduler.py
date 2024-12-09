@@ -20,12 +20,15 @@ class StreamScheduler:
                     status="active", next_run__lte=timezone.now()
                 ).select_for_update(skip_locked=True)
 
+                logger.debug(f"Found {due_streams.count()} due streams to execute.")
+
                 for stream in due_streams:
+                    logger.debug(f"Attempting to execute stream {stream.id}")
                     try:
                         stream.execute_task()
+                        logger.debug(f"Successfully executed stream {stream.id}")
                     except Exception as e:
                         logger.exception(f"Failed to execute stream {stream.id}: {e}")
-                        # Continue with next stream even if one fails
                         continue
 
         except Exception as e:

@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -41,6 +42,7 @@ class Stream(models.Model):
         ("active", "Active"),
         ("paused", "Paused"),
         ("failed", "Failed"),
+        ("processing", "Processing"),
     ]
 
     name = models.CharField(max_length=255)
@@ -164,60 +166,70 @@ class Stream(models.Model):
         from django.utils import timezone
 
         from .tasks import get_task_function
-        from .tasks.bing_search import _local
 
         logger = logging.getLogger(__name__)
 
+        stream_log = StreamLog.objects.create(stream=self, status="running")
+
+        lock_key = f"stream_lock_{self.id}"
+        if not cache.add(lock_key, "1", timeout=300):
+            logger.warning(f"Stream {self.id} is locked")
+            stream_log.status = "failed"
+            stream_log.error_message = "Stream is locked"
+            stream_log.completed_at = timezone.now()
+            stream_log.save()
+            return
+
         try:
-            with transaction.atomic():
-                # Refresh from database to ensure we have the latest state
-                self.refresh_from_db()
-
-                # Cancel any existing task for this stream
-                if hasattr(_local, "cancelled"):
-                    _local.cancelled = True
-
-                task_log = StreamLog.objects.create(stream=self)
-
-                task_function = get_task_function(self.stream_type)
-                if not task_function:
-                    raise ValueError(f"No task function found for {self.stream_type}")
-
-                # Execute task
-                result = task_function(stream_id=self.id, **self.configuration)
-
-                # Update stream status and log within the same transaction
-                Stream.objects.filter(id=self.id).update(
-                    last_run=timezone.now(),
-                    next_run=self.get_next_run_time(),
-                    status="active",
+            task_function = get_task_function(self.stream_type)
+            if not task_function:
+                error_msg = (
+                    f"No task function found for stream type: {self.stream_type}"
                 )
+                logger.error(error_msg)
+                stream_log.status = "failed"
+                stream_log.error_message = error_msg
+                stream_log.completed_at = timezone.now()
+                stream_log.save()
+                return
 
-                # Update log with success
-                task_log.status = "success"
-                task_log.completed_at = timezone.now()
-                task_log.result = result
-                task_log.save()
+            # Execute the task function
+            result = task_function(stream_id=self.id, **self.configuration)
+            logger.debug(f"Task executed with result: {result}")
 
-                return result
+            # Update stream log with success
+            stream_log.status = "success"
+            stream_log.result = result
+            stream_log.completed_at = timezone.now()
+            stream_log.save()
+
+            # Update stream status and timing in a single transaction
+            with transaction.atomic():
+                now = timezone.now()
+                self.last_run = now
+                self.next_run = self.get_next_run_time()
+                self.save(update_fields=["last_run", "next_run"])
+                logger.debug(f"Updated stream {self.id} next_run to {self.next_run}")
 
         except Exception as e:
-            logger.exception(f"Task execution failed for stream {self.id}")
+            error_msg = f"Error executing task for stream {self.id}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
 
-            try:
-                # Handle failure in a new transaction
-                with transaction.atomic():
-                    Stream.objects.filter(id=self.id).update(status="failed")
+            stream_log.status = "failed"
+            stream_log.error_message = str(e)
+            stream_log.completed_at = timezone.now()
+            stream_log.save()
 
-                    if "task_log" in locals():
-                        task_log.status = "failed"
-                        task_log.completed_at = timezone.now()
-                        task_log.error_message = str(e)
-                        task_log.save()
-            except Exception as inner_e:
-                logger.error(f"Failed to update error status: {inner_e}")
+            Stream.objects.filter(id=self.id).update(
+                status="failed", last_run=timezone.now()
+            )
+            raise e
 
-            raise
+        finally:
+            cache.delete(lock_key)
+            logger.debug(f"Lock released for stream {self.id}")
+
+        return result
 
 
 class TelegramPublishLog(models.Model):
