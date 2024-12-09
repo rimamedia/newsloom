@@ -8,17 +8,28 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies, Nginx, netcat, and CloudWatch agent
+# Install system dependencies, Nginx, and netcat
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     supervisor \
     nginx \
     netcat-traditional \
     curl \
-    && curl -O https://s3.amazonaws.com/amazoncloudwatch-agent/debian/amd64/latest/amazon-cloudwatch-agent.deb \
-    && dpkg -i amazon-cloudwatch-agent.deb \
-    && rm amazon-cloudwatch-agent.deb \
     && rm -rf /var/lib/apt/lists/*
+
+# Install CloudWatch agent based on architecture
+RUN arch=$(dpkg --print-architecture) && \
+    if [ "$arch" = "amd64" ]; then \
+        curl -O https://s3.amazonaws.com/amazoncloudwatch-agent/debian/amd64/latest/amazon-cloudwatch-agent.deb && \
+        dpkg -i amazon-cloudwatch-agent.deb && \
+        rm amazon-cloudwatch-agent.deb; \
+    elif [ "$arch" = "arm64" ]; then \
+        curl -O https://s3.amazonaws.com/amazoncloudwatch-agent/debian/arm64/latest/amazon-cloudwatch-agent.deb && \
+        dpkg -i amazon-cloudwatch-agent.deb && \
+        rm amazon-cloudwatch-agent.deb; \
+    else \
+        echo "Unsupported architecture: $arch"; \
+    fi
 
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/mediafiles
