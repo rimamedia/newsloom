@@ -1,5 +1,6 @@
 from .article_searcher import ArticleSearcherConfig
 from .bing_search import BingSearchConfig
+from .doc_publisher import DocPublisherConfig
 from .news_stream import NewsStreamConfig
 from .playwright import PlaywrightConfig
 from .rss import RSSConfig
@@ -25,4 +26,5 @@ STREAM_CONFIG_SCHEMAS = {
     "article_searcher": ArticleSearcherConfig,
     "bing_search": BingSearchConfig,
     "news_stream": NewsStreamConfig,
+    "doc_publisher": DocPublisherConfig,
 }
