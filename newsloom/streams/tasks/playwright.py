@@ -18,18 +18,19 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",  # noqa: E501
 ]
 
-# Browser launch options optimized for memory usage
+# Browser launch options optimized for containerized environment
 BROWSER_LAUNCH_OPTIONS = {
     "headless": True,
-    # Disable GPU hardware acceleration
     "args": [
         "--disable-gpu",
-        "--disable-dev-shm-usage",
+        "--disable-dev-shm-usage",  # Disable /dev/shm usage
         "--disable-setuid-sandbox",
-        "--no-sandbox",
-        # Limit memory usage
-        "--js-flags=--max-old-space-size=512",
-        # Disable features that consume memory
+        "--no-sandbox",  # Required for running in container
+        "--single-process",  # Run browser in single process
+        "--no-zygote",  # Disable zygote process
+        # Memory optimizations
+        "--js-flags=--max-old-space-size=2048",
+        # Disable unnecessary features
         "--disable-extensions",
         "--disable-component-extensions-with-background-pages",
         "--disable-default-apps",
@@ -52,9 +53,9 @@ BROWSER_LAUNCH_OPTIONS = {
 
 # Context options optimized for memory usage
 CONTEXT_OPTIONS = {
-    "viewport": {"width": 1280, "height": 720},  # Reduced from 1920x1080
-    "java_script_enabled": True,  # Enable JS but with reduced memory
-    "bypass_csp": False,  # Disable CSP bypass to save memory
+    "viewport": {"width": 1280, "height": 720},  # Reduced viewport size
+    "java_script_enabled": True,
+    "bypass_csp": False,
     "offline": False,
 }
 
@@ -84,47 +85,54 @@ def extract_links(stream_id, url, link_selector, max_links=100):
                 **CONTEXT_OPTIONS,
                 "user_agent": random.choice(USER_AGENTS),
             }
-            context = browser.new_context(**context_options)
-            page = context.new_page()
 
             try:
-                stealth_sync(page)
-                # Reduced timeout and added waitUntil option
-                page.goto(url, timeout=30000, wait_until="domcontentloaded")
-                # Reduced timeout for network idle
-                page.wait_for_load_state("networkidle", timeout=30000)
-
-                # Get base URL for handling relative URLs
-                parsed_url = urlparse(url)
-                base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-
-                # Use evaluate instead of query_selector_all for better memory management
-                elements = page.query_selector_all(link_selector)
-
-                for element in elements[:max_links]:
+                context = browser.new_context(**context_options)
+                try:
+                    page = context.new_page()
                     try:
-                        href = element.get_attribute("href")
-                        # Get text content with a timeout
-                        title = element.evaluate("el => el.textContent", timeout=1000)
-                        if href:
-                            # Convert relative URLs to absolute URLs
-                            full_url = urljoin(base_url, href)
-                            link_data = {
-                                "url": full_url,
-                                "title": title.strip() if title else None,
-                            }
-                            links.append(link_data)
-                            result["links"].append(link_data)
-                            result["extracted_count"] += 1
-                    except Exception as e:
-                        logger.warning(f"Error processing element: {str(e)}")
-                        continue
+                        stealth_sync(page)
+                        # Reduced timeout and added waitUntil option
+                        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+                        # Reduced timeout for network idle
+                        page.wait_for_load_state("networkidle", timeout=30000)
 
+                        # Get base URL for handling relative URLs
+                        parsed_url = urlparse(url)
+                        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+                        # Use evaluate instead of query_selector_all for better memory management
+                        elements = page.query_selector_all(link_selector)
+
+                        for element in elements[:max_links]:
+                            try:
+                                href = element.get_attribute("href")
+                                # Get text content with a timeout
+                                title = element.evaluate(
+                                    "el => el.textContent", timeout=1000
+                                )
+                                if href:
+                                    # Convert relative URLs to absolute URLs
+                                    full_url = urljoin(base_url, href)
+                                    link_data = {
+                                        "url": full_url,
+                                        "title": title.strip() if title else None,
+                                    }
+                                    links.append(link_data)
+                                    result["links"].append(link_data)
+                                    result["extracted_count"] += 1
+                            except Exception as e:
+                                logger.warning(f"Error processing element: {str(e)}")
+                                continue
+                    finally:
+                        if page:
+                            page.close()
+                finally:
+                    if context:
+                        context.close()
             finally:
-                # Explicit cleanup
-                page.close()
-                context.close()
-                browser.close()
+                if browser:
+                    browser.close()
 
         # Save links in a separate thread
         with ThreadPoolExecutor(max_workers=1) as executor:

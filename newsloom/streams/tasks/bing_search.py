@@ -10,7 +10,14 @@ from django.utils import timezone
 from playwright.sync_api import sync_playwright
 from playwright_stealth import stealth_sync
 
-from .playwright import USER_AGENTS, get_stream, save_links, update_stream_status
+from .playwright import (
+    BROWSER_LAUNCH_OPTIONS,
+    CONTEXT_OPTIONS,
+    USER_AGENTS,
+    get_stream,
+    save_links,
+    update_stream_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +65,6 @@ def search_bing(
         max_results_per_keyword: Maximum number of results per keyword
         search_type: Type of search ('news' or 'web')
         debug: Debug mode flag
-        # TODO: add location
     """
     result = {
         "extracted_count": 0,
@@ -77,83 +83,111 @@ def search_bing(
         all_links = []
 
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=not debug)
-            selected_user_agent = random.choice(USER_AGENTS)
-            context = browser.new_context(
-                user_agent=selected_user_agent,
-                viewport={"width": 1920, "height": 1080},
+            # Use optimized browser launch options
+            browser = p.chromium.launch(
+                **{**BROWSER_LAUNCH_OPTIONS, "headless": not debug}
             )
-            page = context.new_page()
 
             try:
-                stealth_sync(page)
+                # Use optimized context options
+                context_options = {
+                    **CONTEXT_OPTIONS,
+                    "user_agent": random.choice(USER_AGENTS),
+                }
+                context = browser.new_context(**context_options)
 
-                for keyword in keywords:
-                    # Check if task has been cancelled
-                    if check_cancelled():
-                        logger.info("Task cancelled, stopping execution")
-                        break
+                try:
+                    page = context.new_page()
+                    try:
+                        stealth_sync(page)
 
-                    # Add debug logging
-                    if debug:
-                        logger.info(f"Searching for keyword: {keyword}")
-                        logger.info(f"Using user agent: {selected_user_agent}")
+                        for keyword in keywords:
+                            # Check if task has been cancelled
+                            if check_cancelled():
+                                logger.info("Task cancelled, stopping execution")
+                                break
 
-                    # Construct search query
-                    query = quote(keyword)
+                            # Add debug logging
+                            if debug:
+                                logger.info(f"Searching for keyword: {keyword}")
+                                logger.info(
+                                    f"Using user agent: {context_options['user_agent']}"
+                                )
 
-                    # Choose appropriate URL and selectors based on search type
-                    base_url = (
-                        BING_NEWS_URL if search_type == "news" else BING_SEARCH_URL
-                    )
-                    search_url = f"{base_url}?q={query}"
+                            # Construct search query
+                            query = quote(keyword)
 
-                    # Add additional wait for news content
-                    if search_type == "news":
-                        page.wait_for_timeout(
-                            5000
-                        )  # Wait 5 seconds for dynamic content
-
-                    # Update selector for news articles
-                    if search_type == "news":
-                        link_selector = "div.news-card a.title"
-                    else:
-                        link_selector = "h2 > a"
-
-                    page.goto(search_url, timeout=60000)
-                    page.wait_for_load_state("networkidle", timeout=60000)
-
-                    elements = page.query_selector_all(link_selector)
-
-                    if debug:
-                        logger.info(f"Total elements found: {len(elements)}")
-                        # Log the page HTML for debugging
-                        logger.info(f"Page HTML: {page.content()}")
-
-                    for element in elements[:max_results_per_keyword]:
-                        href = element.get_attribute("href")
-                        title = element.text_content()
-
-                        if href and not href.startswith("/"):
-                            link_data = {
-                                "url": href,
-                                "title": title.strip() if title else None,
-                                "keyword": keyword,
-                            }
-                            all_links.append(link_data)
-                            result["links"].append(link_data)
-                            result["extracted_count"] += 1
-                            logger.info(
-                                f"Found article for keyword '{keyword}': {href}"
+                            # Choose appropriate URL and selectors based on search type
+                            base_url = (
+                                BING_NEWS_URL
+                                if search_type == "news"
+                                else BING_SEARCH_URL
                             )
+                            search_url = f"{base_url}?q={query}"
 
-                    # Add debug pause if needed
-                    if debug:
-                        logger.info("Waiting for manual inspection (30 seconds)...")
-                        page.wait_for_timeout(30000)  # 30 second pause for debugging
+                            # Reduced wait times for containerized environment
+                            if search_type == "news":
+                                page.wait_for_timeout(2000)  # Reduced from 5000ms
 
+                            # Update selector for news articles
+                            if search_type == "news":
+                                link_selector = "div.news-card a.title"
+                            else:
+                                link_selector = "h2 > a"
+
+                            # Reduced timeouts and added wait_until option
+                            page.goto(
+                                search_url, timeout=30000, wait_until="domcontentloaded"
+                            )
+                            page.wait_for_load_state("networkidle", timeout=30000)
+
+                            elements = page.query_selector_all(link_selector)
+
+                            if debug:
+                                logger.info(f"Total elements found: {len(elements)}")
+                                logger.info(f"Page HTML: {page.content()}")
+
+                            for element in elements[:max_results_per_keyword]:
+                                try:
+                                    href = element.get_attribute("href")
+                                    # Get text content with a timeout
+                                    title = element.evaluate(
+                                        "el => el.textContent", timeout=1000
+                                    )
+
+                                    if href and not href.startswith("/"):
+                                        link_data = {
+                                            "url": href,
+                                            "title": title.strip() if title else None,
+                                            "keyword": keyword,
+                                        }
+                                        all_links.append(link_data)
+                                        result["links"].append(link_data)
+                                        result["extracted_count"] += 1
+                                        logger.info(
+                                            f"Found article for keyword '{keyword}': {href}"
+                                        )
+                                except Exception as e:
+                                    logger.warning(
+                                        f"Error processing element: {str(e)}"
+                                    )
+                                    continue
+
+                            # Reduced debug pause
+                            if debug:
+                                logger.info(
+                                    "Waiting for manual inspection (10 seconds)..."
+                                )
+                                page.wait_for_timeout(10000)  # Reduced from 30s
+                    finally:
+                        if page:
+                            page.close()
+                finally:
+                    if context:
+                        context.close()
             finally:
-                browser.close()
+                if browser:
+                    browser.close()
 
         # Save links only if task wasn't cancelled
         if not check_cancelled():
