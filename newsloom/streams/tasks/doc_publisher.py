@@ -23,7 +23,7 @@ def publish_docs(
         stream_id (int): ID of the stream
         channel_id (str): Telegram channel ID
         bot_token (str): Telegram bot token
-        time_window_minutes (int): Time window in minutes to look back for docs
+        time_window_minutes (int): Time window in minutes to look back for docs in query
         batch_size (int): Maximum number of docs to process
 
     Returns:
@@ -102,6 +102,7 @@ def publish_docs(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
+            # Use time_window_minutes only for querying docs
             time_threshold = timezone.now() - timedelta(minutes=time_window_minutes)
             loop.run_until_complete(
                 publish_messages(
@@ -111,9 +112,13 @@ def publish_docs(
         finally:
             loop.close()
 
-        # Update stream status
-        stream.last_run = timezone.now()
-        stream.save(update_fields=["last_run"])
+        # Update stream status and timing
+        now = timezone.now()
+        stream.last_run = now
+        stream.next_run = (
+            stream.get_next_run_time()
+        )  # Use stream's frequency for next run
+        stream.save(update_fields=["last_run", "next_run"])
 
         logger.info(
             f"Published {result['published_count']} docs, "
