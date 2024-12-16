@@ -2,6 +2,7 @@ import logging
 
 from .article_searcher import search_articles
 from .bing_search import search_bing
+from .doc_publisher import publish_docs
 from .news_stream import process_news_stream
 from .playwright import extract_links
 from .rss import parse_rss_feed
@@ -27,6 +28,7 @@ TASK_MAPPING = {
     "bing_search": search_bing,
     "telegram_bulk_parser": run_telegram_parser,
     "news_stream": process_news_stream,
+    "doc_publisher": publish_docs,
 }
 
 
@@ -118,6 +120,12 @@ TASK_CONFIG_EXAMPLES = {
         "time_window_minutes": 60,  # Look back 1 hour
         "max_items": 100,  # Process up to 100 news items
         "save_to_docs": True,  # Save processed output to docs
+    },
+    "doc_publisher": {
+        "channel_id": "-100123456789",  # Telegram channel ID
+        "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",  # Telegram bot token
+        "time_window_minutes": 60,  # Look back 1 hour
+        "batch_size": 10,  # Process up to 10 docs at a time
     },
 }
 

@@ -27,6 +27,7 @@ class Stream(models.Model):
         ("bing_search", "Bing Search"),
         ("telegram_bulk_parser", "Telegram Bulk Parser"),
         ("news_stream", "News Stream Processor"),
+        ("doc_publisher", "Doc Publisher"),
     ]
 
     FREQUENCY_CHOICES = [
@@ -245,6 +246,20 @@ class TelegramPublishLog(models.Model):
 
         indexes = [models.Index(fields=["media", "published_at"])]
         unique_together = [("news", "media")]
+
+
+class TelegramDocPublishLog(models.Model):
+    """Tracks which docs have been published to which Telegram channels."""
+
+    doc = models.ForeignKey("sources.Doc", on_delete=models.CASCADE)
+    media = models.ForeignKey("mediamanager.Media", on_delete=models.CASCADE)
+    published_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        """Meta configuration for TelegramDocPublishLog model."""
+
+        indexes = [models.Index(fields=["media", "published_at"])]
+        unique_together = [("doc", "media")]
 
 
 class StreamLog(models.Model):
