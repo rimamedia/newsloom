@@ -26,6 +26,7 @@ class Stream(models.Model):
         ("article_searcher", "Article Content Searcher"),
         ("bing_search", "Bing Search"),
         ("telegram_bulk_parser", "Telegram Bulk Parser"),
+        ("news_stream", "News Stream Processor"),
     ]
 
     FREQUENCY_CHOICES = [

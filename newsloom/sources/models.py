@@ -51,3 +51,36 @@ class News(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Doc(models.Model):
+    STATUS_CHOICES = [
+        ("new", "New"),
+        ("edit", "Edit"),
+        ("publish", "Publish"),
+    ]
+
+    media = models.ForeignKey(
+        "mediamanager.Media", on_delete=models.CASCADE, related_name="docs"
+    )
+    link = models.URLField(unique=True)
+    title = models.CharField(max_length=255, blank=True, null=True)
+    text = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="new")
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta configuration for Doc model."""
+
+        ordering = ["-published_at"]
+        verbose_name = "Doc"
+        verbose_name_plural = "Docs"
+        indexes = [
+            models.Index(fields=["-published_at"]),
+            models.Index(fields=["link"]),
+        ]
+
+    def __str__(self):
+        return self.title

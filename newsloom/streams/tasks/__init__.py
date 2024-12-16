@@ -2,6 +2,7 @@ import logging
 
 from .article_searcher import search_articles
 from .bing_search import search_bing
+from .news_stream import process_news_stream
 from .playwright import extract_links
 from .rss import parse_rss_feed
 from .sitemap import parse_sitemap
@@ -25,6 +26,7 @@ TASK_MAPPING = {
     "article_searcher": search_articles,
     "bing_search": search_bing,
     "telegram_bulk_parser": run_telegram_parser,
+    "news_stream": process_news_stream,
 }
 
 
@@ -105,6 +107,17 @@ TASK_CONFIG_EXAMPLES = {
         "max_results_per_keyword": 5,
         "search_type": "news",
         "debug": False,
+    },
+    "telegram_bulk_parser": {
+        "time_window_minutes": 120,  # 2 hours window
+        "max_scrolls": 50,  # Scroll up to 50 times
+        "wait_time": 5,  # Wait 5 seconds between scrolls
+    },
+    "news_stream": {
+        "agent_id": 1,  # ID of the agent to use
+        "time_window_minutes": 60,  # Look back 1 hour
+        "max_items": 100,  # Process up to 100 news items
+        "save_to_docs": True,  # Save processed output to docs
     },
 }
 
