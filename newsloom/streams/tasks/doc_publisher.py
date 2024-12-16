@@ -7,6 +7,7 @@ from django.utils import timezone
 from sources.models import Doc
 from streams.models import Stream, TelegramPublishLog
 from telegram import Bot
+from telegram.constants import ParseMode
 
 
 def publish_docs(
@@ -63,14 +64,22 @@ def publish_docs(
             for doc in docs:
                 try:
                     # Build message with title and text
-                    message = f"{doc.title}"
+                    # Title in bold
+                    message = f"<b>{doc.title}</b>"
                     if doc.text:
-                        message += f"\n\n{doc.text[:250]}..."  # Truncate long text
+                        # Add text with proper line breaks
+                        truncated_text = (
+                            doc.text[:250] + "..." if len(doc.text) > 250 else doc.text
+                        )
+                        message += f"\n\n{truncated_text}"
                     if doc.link:
+                        # Add link on new line
                         message += f"\n\n{doc.link}"
 
-                    # Send message to Telegram
-                    await bot.send_message(chat_id=channel_id, text=message)
+                    # Send message to Telegram with HTML parsing
+                    await bot.send_message(
+                        chat_id=channel_id, text=message, parse_mode=ParseMode.HTML
+                    )
                     result["published_count"] += 1
                     result["published_doc_ids"].append(doc.id)
 
