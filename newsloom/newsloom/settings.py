@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "mediamanager",
     "sources",
     "streams",
+    "agents",  # Added the agents app
 ]
 
 MIDDLEWARE = [
@@ -98,14 +99,17 @@ if all(
             "PASSWORD": os.environ.get("DB_PASSWORD"),
             "HOST": os.environ.get("DB_HOST"),
             "PORT": os.environ.get("DB_PORT"),
+            "OPTIONS": {"options": "-c timezone=UTC"},
         }
     }
 
     # Only add SSL options if not running locally
     if os.environ.get("DB_HOST") not in ("localhost", "127.0.0.1"):
-        DATABASES["default"]["OPTIONS"] = {
-            "sslmode": os.environ.get("DJANGO_DB_SSLMODE", "require"),
-        }
+        DATABASES["default"]["OPTIONS"].update(
+            {
+                "sslmode": os.environ.get("DJANGO_DB_SSLMODE", "require"),
+            }
+        )
 else:
     DATABASES = {
         "default": {

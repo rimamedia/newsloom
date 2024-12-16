@@ -1,5 +1,6 @@
 from .article_searcher import ArticleSearcherConfig
 from .bing_search import BingSearchConfig
+from .news_stream import NewsStreamConfig
 from .playwright import PlaywrightConfig
 from .rss import RSSConfig
 from .sitemap import BaseSitemapConfig
@@ -23,4 +24,5 @@ STREAM_CONFIG_SCHEMAS = {
     "telegram_bulk_parser": TelegramBulkParserConfig,
     "article_searcher": ArticleSearcherConfig,
     "bing_search": BingSearchConfig,
+    "news_stream": NewsStreamConfig,
 }
