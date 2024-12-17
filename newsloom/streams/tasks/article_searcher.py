@@ -45,7 +45,7 @@ def search_articles(
             browser = p.chromium.launch(headless=True)
             context = browser.new_context(
                 user_agent=random.choice(USER_AGENTS),
-                viewport={"width": 1920, "height": 1080},
+                viewport={"width": 1280, "height": 720},
             )
             page = context.new_page()
 
@@ -66,17 +66,22 @@ def search_articles(
                 initial_links = []
 
                 for element in elements[:max_links]:
-                    href = element.get_attribute("href")
-                    title = element.text_content()
-                    if href:
-                        full_url = urljoin(base_url, href)
-                        initial_links.append(
-                            {
-                                "url": full_url,
-                                "title": title.strip() if title else None,
-                            }
-                        )
-                        result["extracted_count"] += 1
+                    try:
+                        href = element.get_attribute("href")
+                        # Remove timeout parameter from evaluate
+                        title = element.evaluate("el => el.textContent")
+                        if href:
+                            full_url = urljoin(base_url, href)
+                            initial_links.append(
+                                {
+                                    "url": full_url,
+                                    "title": title.strip() if title else None,
+                                }
+                            )
+                            result["extracted_count"] += 1
+                    except Exception as e:
+                        logger.warning(f"Error extracting link: {str(e)}")
+                        continue
 
                 # Visit each link and search for the text
                 for link_data in initial_links:
