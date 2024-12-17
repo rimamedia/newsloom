@@ -10,12 +10,50 @@ from playwright_stealth import stealth_sync
 from sources.models import News
 from streams.models import Stream
 
-# Add user agents list at the top
+# Browser launch options optimized for container environment
+BROWSER_OPTIONS = {
+    "headless": True,  # Always use headless mode in container
+    "args": [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+        "--no-zygote",
+        "--js-flags=--max-old-space-size=2048",
+        "--disable-extensions",
+        "--disable-component-extensions-with-background-pages",
+        "--disable-default-apps",
+        "--mute-audio",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-breakpad",
+        "--disable-client-side-phishing-detection",
+        "--disable-component-update",
+        "--disable-features=TranslateUI,BlinkGenPropertyTrees",
+        "--disable-ipc-flooding-protection",
+        "--disable-prompt-on-repost",
+        "--disable-renderer-backgrounding",
+        "--force-color-profile=srgb",
+        "--metrics-recording-only",
+        "--no-first-run",
+    ],
+}
+
+# Context options optimized for memory usage
+CONTEXT_OPTIONS = {
+    "viewport": {"width": 1280, "height": 720},
+    "java_script_enabled": True,
+    "bypass_csp": False,
+    "offline": False,
+}
+
+# User agents list
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",  # noqa: E501
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:113.0) Gecko/20100101 Firefox/113.0",  # noqa: E501
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.0.0",  # noqa: E501
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",  # noqa: E501
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",  # noqa E501
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:113.0) Gecko/20100101 Firefox/113.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.0.0",  # noqa E501
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",  # noqa E501
 ]
 
 
@@ -37,41 +75,57 @@ def extract_links(stream_id, url, link_selector, max_links=100):
 
         links = []
 
-        # Playwright operations
+        # Playwright operations with optimized settings
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent=random.choice(USER_AGENTS),
-                viewport={"width": 1920, "height": 1080},
-            )
-            page = context.new_page()
-
+            browser = p.chromium.launch(**BROWSER_OPTIONS)
             try:
-                stealth_sync(page)
-                page.goto(url, timeout=60000)
-                page.wait_for_load_state("networkidle", timeout=60000)
+                context_options = {
+                    **CONTEXT_OPTIONS,
+                    "user_agent": random.choice(USER_AGENTS),
+                }
+                context = browser.new_context(**context_options)
+                try:
+                    page = context.new_page()
+                    try:
+                        stealth_sync(page)
+                        # Reduced timeout and added waitUntil option
+                        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+                        # Reduced timeout for network idle
+                        page.wait_for_load_state("networkidle", timeout=30000)
 
-                # Get base URL for handling relative URLs
-                parsed_url = urlparse(url)
-                base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+                        # Get base URL for handling relative URLs
+                        parsed_url = urlparse(url)
+                        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
-                elements = page.query_selector_all(link_selector)
+                        elements = page.query_selector_all(link_selector)
 
-                for element in elements[:max_links]:
-                    href = element.get_attribute("href")
-                    title = element.text_content()
-                    if href:
-                        # Convert relative URLs to absolute URLs
-                        full_url = urljoin(base_url, href)
-                        link_data = {
-                            "url": full_url,
-                            "title": title.strip() if title else None,
-                        }
-                        links.append(link_data)
-                        result["links"].append(link_data)
-                        result["extracted_count"] += 1
+                        for element in elements[:max_links]:
+                            try:
+                                href = element.get_attribute("href")
+                                # Get text content without timeout
+                                title = element.evaluate("el => el.textContent")
+                                if href:
+                                    # Convert relative URLs to absolute URLs
+                                    full_url = urljoin(base_url, href)
+                                    link_data = {
+                                        "url": full_url,
+                                        "title": title.strip() if title else None,
+                                    }
+                                    links.append(link_data)
+                                    result["links"].append(link_data)
+                                    result["extracted_count"] += 1
+                            except Exception as e:
+                                logger.warning(f"Error processing element: {str(e)}")
+                                continue
+                    finally:
+                        if page:
+                            page.close()
+                finally:
+                    if context:
+                        context.close()
             finally:
-                browser.close()
+                if browser:
+                    browser.close()
 
         # Save links in a separate thread
         with ThreadPoolExecutor(max_workers=1) as executor:
@@ -82,7 +136,7 @@ def extract_links(stream_id, url, link_selector, max_links=100):
         # Log success
         logger.info(f"Successfully extracted and saved {len(links)} links.")
 
-        return result  # Return the result dictionary
+        return result
 
     except Exception as e:
         logger.error(f"Error processing page: {str(e)}", exc_info=True)
