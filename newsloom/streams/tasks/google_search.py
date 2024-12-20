@@ -131,18 +131,28 @@ def search_google(
                             # Add reduced wait for content
                             page.wait_for_timeout(2000)
 
-                            # Update selector based on search type
+                            # Update selector and extraction logic based on search type
                             if search_type == "news":
-                                link_selector = "article a[href*='articles']"
+                                # Target article headlines in Google News
+                                link_selector = "article h3 > a[href]"
+
+                                # Navigate and wait for articles to load
+                                page.goto(search_url, timeout=30000)
+                                # Wait specifically for article elements
+                                page.wait_for_selector("article", timeout=30000)
+                                page.wait_for_load_state("networkidle", timeout=30000)
                             else:
-                                link_selector = "div.g a[href^='http']"
+                                link_selector = (
+                                    "div.g a[href^='http']"  # Regular search results
+                                )
+                                page.goto(
+                                    search_url,
+                                    timeout=30000,
+                                    wait_until="domcontentloaded",
+                                )
+                                page.wait_for_load_state("networkidle", timeout=30000)
 
-                            # Reduced timeouts and added wait_until option
-                            page.goto(
-                                search_url, timeout=30000, wait_until="domcontentloaded"
-                            )
-                            page.wait_for_load_state("networkidle", timeout=30000)
-
+                            # Get all matching elements
                             elements = page.query_selector_all(link_selector)
 
                             if debug:
@@ -152,9 +162,50 @@ def search_google(
                                 try:
                                     href = element.get_attribute("href")
                                     # Get text content without timeout
-                                    title = element.evaluate("el => el.textContent")
+                                    # Get title from the element itself for news articles
+                                    if search_type == "news":
+                                        title = element.inner_text()
+                                    else:
+                                        title = element.evaluate("el => el.textContent")
 
-                                    if href and not href.startswith("/"):
+                                    if href:
+                                        # Handle Google News article URLs
+                                        if search_type == "news":
+                                            if href.startswith("./"):
+                                                # Remove ./ prefix
+                                                href = href[2:]
+                                            if href.startswith("/"):
+                                                # Remove leading slash
+                                                href = href[1:]
+                                            # Ensure proper URL construction
+                                            if not href.startswith(
+                                                ("http://", "https://")
+                                            ):
+                                                href = f"https://news.google.com/{href}"
+                                        elif href.startswith("//"):
+                                            href = f"https:{href}"
+
+                                        if not href.startswith(("http://", "https://")):
+                                            logger.warning(
+                                                f"Skipping invalid URL: {href}"
+                                            )
+                                            continue
+
+                                        # Clean up Google News redirect URLs
+                                        if "news.google.com/articles" in href:
+                                            try:
+                                                article_url = href.split("?url=")[
+                                                    -1
+                                                ].split("&")[0]
+                                                from urllib.parse import unquote
+
+                                                href = unquote(article_url)
+                                            except Exception as e:
+                                                logger.warning(
+                                                    f"Failed to extract article URL: {e}"
+                                                )
+                                                continue
+
                                         link_data = {
                                             "url": href,
                                             "title": title.strip() if title else None,
