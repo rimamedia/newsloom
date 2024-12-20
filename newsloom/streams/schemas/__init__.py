@@ -1,6 +1,7 @@
 from .article_searcher import ArticleSearcherConfig
 from .bing_search import BingSearchConfig
 from .doc_publisher import DocPublisherConfig
+from .google_search import GoogleSearchConfig
 from .news_stream import NewsStreamConfig
 from .playwright import PlaywrightConfig
 from .rss import RSSConfig
@@ -25,6 +26,7 @@ STREAM_CONFIG_SCHEMAS = {
     "telegram_bulk_parser": TelegramBulkParserConfig,
     "article_searcher": ArticleSearcherConfig,
     "bing_search": BingSearchConfig,
+    "google_search": GoogleSearchConfig,
     "news_stream": NewsStreamConfig,
     "doc_publisher": DocPublisherConfig,
 }

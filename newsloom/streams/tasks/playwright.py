@@ -167,46 +167,68 @@ def save_links(links, stream):
     saved_count = 0
 
     try:
+        # Validate stream and source
+        if not stream:
+            logger.error("Stream object is None")
+            return 0
+
         if not stream.source:
             logger.error(f"No source found for stream {stream.id}")
             return 0
 
-        logger.debug(f"Attempting to save {len(links)} links for stream {stream.id}")
-        logger.debug(f"Stream source: {stream.source}")
+        logger.info(f"Attempting to save {len(links)} links for stream {stream.id}")
+        logger.info(f"Stream source: {stream.source.name}")
 
         with transaction.atomic():
             for link_data in links:
                 try:
-                    if not link_data.get("url"):
+                    # Validate link data
+                    if not isinstance(link_data, dict):
+                        logger.warning(f"Invalid link data format: {link_data}")
+                        continue
+
+                    url = link_data.get("url")
+                    if not url:
                         logger.warning("Skipping link with no URL")
                         continue
 
-                    logger.debug(f"Attempting to save link: {link_data['url']}")
+                    if not url.startswith(("http://", "https://")):
+                        logger.warning(f"Skipping invalid URL format: {url}")
+                        continue
 
-                    # Check if the link already exists before trying to create it
+                    logger.debug(f"Processing link: {url}")
+
+                    # Check for existing link
                     existing = News.objects.filter(
-                        source=stream.source, link=link_data["url"]
+                        source=stream.source, link=url
                     ).exists()
 
                     if existing:
-                        logger.debug(f"Link already exists: {link_data['url']}")
+                        logger.debug(f"Link already exists: {url}")
                         continue
 
-                    # Truncate title to 255 characters
-                    title = link_data.get("title", "")[:255]
+                    # Prepare title
+                    title = link_data.get("title", "").strip()
+                    if not title:
+                        title = "Untitled"
+                    title = title[:255]  # Truncate to max length
 
-                    News.objects.create(
+                    # Create news entry
+                    news = News.objects.create(
                         source=stream.source,
-                        link=link_data["url"],
+                        link=url,
                         title=title,
                         published_at=timezone.now(),
                     )
                     saved_count += 1
-                    logger.info(f"Successfully saved new link: {link_data['url']}")
+                    logger.info(
+                        f"Successfully saved news entry {news.id} with URL: {url}"
+                    )
 
                 except Exception as e:
                     logger.error(
-                        f"Error saving link {link_data['url']}: {str(e)}", exc_info=True
+                        f"Error saving link {link_data.get('url')}: {str(e)}",
+                        exc_info=True,
                     )
                     continue
 
