@@ -3,99 +3,197 @@ Task Examples
 
 This guide provides examples of different task implementations in NewLoom.
 
-Sitemap Parser Task
------------------
+Article Search Task
+----------------
 
-Example implementation of a sitemap parsing task:
+Example implementation of an article search task:
 
 .. code-block:: python
 
-    import luigi
-    import requests
-    from xml.etree import ElementTree as ET
-    from datetime import datetime
-    
-    class SitemapParserTask(luigi.Task):
-        stream_id = luigi.IntParameter()
-        sitemap_url = luigi.Parameter()
-        max_links = luigi.IntParameter(default=100)
-        scheduled_time = luigi.Parameter()
-        
-        def run(self):
+    def search_articles(stream_id, url, link_selector, search_text, article_selector,
+                       link_selector_type="css", article_selector_type="css", max_links=10):
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(user_agent=random.choice(USER_AGENTS))
+            page = context.new_page()
+            
             try:
-                response = requests.get(self.sitemap_url)
-                root = ET.fromstring(response.content)
-                
-                # Process sitemap
-                for url in root.findall('.//{*}url')[:self.max_links]:
-                    loc = url.find('.//{*}loc')
-                    if loc is not None:
-                        # Process URL
-                        self.process_url(loc.text)
-                        
-            except Exception as e:
-                self.handle_error(e)
-                
-        def process_url(self, url):
-            # URL processing logic
-            pass
+                stealth_sync(page)
+                page.goto(url, timeout=60000)
+                page.wait_for_load_state("networkidle", timeout=60000)
 
-Playwright Task
+                # Get base URL for handling relative URLs
+                parsed_url = urlparse(url)
+                base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+                # Get links using appropriate selector method
+                elements = (page.query_selector_all(link_selector) 
+                          if link_selector_type == "css"
+                          else page.locator(f"xpath={link_selector}").all())
+
+                matching_links = []
+                for element in elements[:max_links]:
+                    href = element.get_attribute("href")
+                    title = element.evaluate("el => el.textContent")
+                    
+                    if href:
+                        full_url = urljoin(base_url, href)
+                        # Visit each link and search for text
+                        page.goto(full_url, timeout=60000)
+                        article_content = (page.query_selector(article_selector)
+                                        if article_selector_type == "css"
+                                        else page.locator(f"xpath={article_selector}").first)
+                        
+                        if article_content and search_text.lower() in article_content.text_content().lower():
+                            matching_links.append({
+                                "url": full_url,
+                                "title": title.strip() if title else None
+                            })
+                            
+            finally:
+                browser.close()
+
+        return matching_links
+
+News Stream Task
 -------------
 
-Example of a Playwright-based task:
+Example of a news stream processing task using AI:
 
 .. code-block:: python
 
-    from playwright.sync_api import sync_playwright
-    
-    class PlaywrightTask(luigi.Task):
-        stream_id = luigi.IntParameter()
-        url = luigi.Parameter()
-        selector = luigi.Parameter()
-        scheduled_time = luigi.Parameter()
-        
-        def run(self):
-            with sync_playwright() as p:
-                browser = p.chromium.launch()
-                page = browser.new_page()
-                
-                try:
-                    page.goto(self.url)
-                    elements = page.query_selector_all(self.selector)
-                    
-                    for element in elements:
-                        # Process elements
-                        pass
-                        
-                finally:
-                    browser.close()
+    def process_news_stream(stream_id, agent_id, time_window_minutes=60, 
+                          max_items=100, save_to_docs=True):
+        # Get the stream and agent
+        stream = Stream.objects.get(id=stream_id)
+        agent = Agent.objects.get(id=agent_id)
 
-Telegram Publisher Task
---------------------
+        # Get recent news items
+        time_threshold = timezone.now() - timedelta(minutes=time_window_minutes)
+        news_items = News.objects.filter(
+            source__in=stream.media.sources.all(),
+            created_at__gte=time_threshold
+        ).order_by("-created_at")[:max_items]
 
-Example of a Telegram publishing task:
+        # Get examples for the media
+        examples = Examples.objects.filter(media=stream.media)
+        examples_text = "\n\n".join(example.text for example in examples)
 
-.. code-block:: python
+        # Join news items
+        news_content = "\n\n---\n\n".join(
+            f"Title: {news.title}\n\nContent: {news.text}\n\nURL: {news.link}"
+            for news in news_items
+        )
 
-    from telethon import TelegramClient
-    
-    class TelegramPublisherTask(luigi.Task):
-        stream_id = luigi.IntParameter()
-        channel_name = luigi.Parameter()
-        scheduled_time = luigi.Parameter()
-        
-        def run(self):
-            client = TelegramClient(
-                'session_name',
-                api_id,
-                api_hash
+        # Process with AI
+        response = invoke_bedrock_anthropic(
+            system_prompt=agent.system_prompt.format(
+                news=news_content,
+                examples=examples_text,
+                now=timezone.now().strftime("%Y-%m-%d %H:%M:%S")
+            ),
+            user_prompt=agent.user_prompt_template.format(
+                news=news_content,
+                examples=examples_text,
+                now=timezone.now().strftime("%Y-%m-%d %H:%M:%S")
             )
-            
-            async def publish():
-                async with client:
-                    # Publishing logic
-                    pass
-            
-            import asyncio
-            asyncio.run(publish()) 
+        )
+
+        # Save results
+        if save_to_docs:
+            result = json.loads(response["completion"])
+            for post in result.get("posts", []):
+                Doc.objects.create(
+                    media=stream.media,
+                    link=post.get("url", ""),
+                    title=result.get("topic", "Untitled"),
+                    text=post.get("text", ""),
+                    status="new"
+                )
+
+Telegram Task
+-----------
+
+Example of a Telegram channel monitoring task:
+
+.. code-block:: python
+
+    def monitor_telegram_channel(stream_id, posts_limit=20):
+        stream = Stream.objects.get(id=stream_id)
+        source = stream.source
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+
+            try:
+                stealth_sync(page)
+                page.goto(source.url, timeout=60000)
+                page.wait_for_load_state("networkidle", timeout=60000)
+
+                posts = []
+                while len(posts) < posts_limit:
+                    message_elements = page.query_selector_all(
+                        "div.tgme_widget_message_wrap"
+                    )
+
+                    for message_element in message_elements:
+                        # Extract message details
+                        text_element = message_element.query_selector(
+                            "div.tgme_widget_message_text"
+                        )
+                        link_element = message_element.query_selector(
+                            "a.tgme_widget_message_date"
+                        )
+                        time_element = message_element.query_selector("time")
+
+                        if all([text_element, link_element, time_element]):
+                            message_text = text_element.inner_text().strip()
+                            message_link = link_element.get_attribute("href")
+                            datetime_str = time_element.get_attribute("datetime")
+                            message_time = datetime.fromisoformat(
+                                datetime_str.replace("Z", "+00:00")
+                            )
+
+                            # Save to database
+                            News.objects.get_or_create(
+                                source=source,
+                                link=message_link,
+                                defaults={
+                                    "text": message_text,
+                                    "published_at": message_time
+                                }
+                            )
+                            posts.append({
+                                "text": message_text,
+                                "link": message_link,
+                                "timestamp": message_time
+                            })
+
+                    # Scroll for more posts if needed
+                    if len(posts) < posts_limit:
+                        page.evaluate(
+                            "window.scrollTo(0, document.body.scrollHeight);"
+                        )
+                        page.wait_for_timeout(2000)
+
+            finally:
+                browser.close()
+
+        return posts
+
+These examples demonstrate the current implementation patterns used in NewLoom, including:
+
+* Playwright for web automation and scraping
+* Django ORM for database operations
+* Async/await patterns for Telegram operations
+* Integration with AI services (Amazon Bedrock)
+* Error handling and logging
+* Resource cleanup
+
+The tasks follow a consistent pattern of:
+1. Getting configuration from the stream
+2. Performing the main task operation
+3. Saving results to the database
+4. Proper error handling and cleanup

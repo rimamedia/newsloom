@@ -87,6 +87,7 @@ Technical Architecture
 
    tasks/index
    schemas/index
+   agents/index
 
 Quick Links
 ----------
@@ -101,4 +102,4 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search` 
+* :ref:`search`

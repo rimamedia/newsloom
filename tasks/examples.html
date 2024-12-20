@@ -14,6 +14,8 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Agents" href="../agents/index.html" />
+    <link rel="prev" title="Creating New Tasks" href="creating_tasks.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -54,6 +56,16 @@
     </div>
 </search>
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tasks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="available_tasks.html">Available Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="creating_tasks.html">Creating New Tasks</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Task Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../agents/index.html">Agents</a></li>
+</ul>
 
 
 <hr />
@@ -68,6 +80,10 @@
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Tasks</a><ul>
+      <li>Previous: <a href="creating_tasks.html" title="previous chapter">Creating New Tasks</a></li>
+      <li>Next: <a href="../agents/index.html" title="next chapter">Agents</a></li>
+  </ul></li>
   </ul></li>
 </ul>
 </div>
@@ -90,96 +106,193 @@
   <section id="task-examples">
 <h1>Task Examples<a class="headerlink" href="#task-examples" title="Link to this heading">¶</a></h1>
 <p>This guide provides examples of different task implementations in NewLoom.</p>
-<section id="sitemap-parser-task">
-<h2>Sitemap Parser Task<a class="headerlink" href="#sitemap-parser-task" title="Link to this heading">¶</a></h2>
-<p>Example implementation of a sitemap parsing task:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">luigi</span>
-<span class="kn">import</span> <span class="nn">requests</span>
-<span class="kn">from</span> <span class="nn">xml.etree</span> <span class="kn">import</span> <span class="n">ElementTree</span> <span class="k">as</span> <span class="n">ET</span>
-<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<section id="article-search-task">
+<h2>Article Search Task<a class="headerlink" href="#article-search-task" title="Link to this heading">¶</a></h2>
+<p>Example implementation of an article search task:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">search_articles</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">link_selector</span><span class="p">,</span> <span class="n">search_text</span><span class="p">,</span> <span class="n">article_selector</span><span class="p">,</span>
+                   <span class="n">link_selector_type</span><span class="o">=</span><span class="s2">&quot;css&quot;</span><span class="p">,</span> <span class="n">article_selector_type</span><span class="o">=</span><span class="s2">&quot;css&quot;</span><span class="p">,</span> <span class="n">max_links</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">sync_playwright</span><span class="p">()</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">browser</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">chromium</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">browser</span><span class="o">.</span><span class="n">new_context</span><span class="p">(</span><span class="n">user_agent</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">USER_AGENTS</span><span class="p">))</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">new_page</span><span class="p">()</span>
 
-<span class="k">class</span> <span class="nc">SitemapParserTask</span><span class="p">(</span><span class="n">luigi</span><span class="o">.</span><span class="n">Task</span><span class="p">):</span>
-    <span class="n">stream_id</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">IntParameter</span><span class="p">()</span>
-    <span class="n">sitemap_url</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">()</span>
-    <span class="n">max_links</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">IntParameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-    <span class="n">scheduled_time</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sitemap_url</span><span class="p">)</span>
-            <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+            <span class="n">stealth_sync</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60000</span><span class="p">)</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">wait_for_load_state</span><span class="p">(</span><span class="s2">&quot;networkidle&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60000</span><span class="p">)</span>
 
-            <span class="c1"># Process sitemap</span>
-            <span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;.//{*}url&#39;</span><span class="p">)[:</span><span class="bp">self</span><span class="o">.</span><span class="n">max_links</span><span class="p">]:</span>
-                <span class="n">loc</span> <span class="o">=</span> <span class="n">url</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;.//{*}loc&#39;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">loc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="c1"># Process URL</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">process_url</span><span class="p">(</span><span class="n">loc</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="c1"># Get base URL for handling relative URLs</span>
+            <span class="n">parsed_url</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+            <span class="n">base_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">parsed_url</span><span class="o">.</span><span class="n">scheme</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">parsed_url</span><span class="o">.</span><span class="n">netloc</span><span class="si">}</span><span class="s2">&quot;</span>
 
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">handle_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="c1"># Get links using appropriate selector method</span>
+            <span class="n">elements</span> <span class="o">=</span> <span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">query_selector_all</span><span class="p">(</span><span class="n">link_selector</span><span class="p">)</span>
+                      <span class="k">if</span> <span class="n">link_selector_type</span> <span class="o">==</span> <span class="s2">&quot;css&quot;</span>
+                      <span class="k">else</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;xpath=</span><span class="si">{</span><span class="n">link_selector</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
 
-    <span class="k">def</span> <span class="nf">process_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">):</span>
-        <span class="c1"># URL processing logic</span>
-        <span class="k">pass</span>
+            <span class="n">matching_links</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">[:</span><span class="n">max_links</span><span class="p">]:</span>
+                <span class="n">href</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s2">&quot;href&quot;</span><span class="p">)</span>
+                <span class="n">title</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="s2">&quot;el =&gt; el.textContent&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">href</span><span class="p">:</span>
+                    <span class="n">full_url</span> <span class="o">=</span> <span class="n">urljoin</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">href</span><span class="p">)</span>
+                    <span class="c1"># Visit each link and search for text</span>
+                    <span class="n">page</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">full_url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60000</span><span class="p">)</span>
+                    <span class="n">article_content</span> <span class="o">=</span> <span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">query_selector</span><span class="p">(</span><span class="n">article_selector</span><span class="p">)</span>
+                                    <span class="k">if</span> <span class="n">article_selector_type</span> <span class="o">==</span> <span class="s2">&quot;css&quot;</span>
+                                    <span class="k">else</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;xpath=</span><span class="si">{</span><span class="n">article_selector</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">article_content</span> <span class="ow">and</span> <span class="n">search_text</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">article_content</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                        <span class="n">matching_links</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                            <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="n">full_url</span><span class="p">,</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">title</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="kc">None</span>
+                        <span class="p">})</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">browser</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">matching_links</span>
 </pre></div>
 </div>
 </section>
-<section id="playwright-task">
-<h2>Playwright Task<a class="headerlink" href="#playwright-task" title="Link to this heading">¶</a></h2>
-<p>Example of a Playwright-based task:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">playwright.sync_api</span> <span class="kn">import</span> <span class="n">sync_playwright</span>
+<section id="news-stream-task">
+<h2>News Stream Task<a class="headerlink" href="#news-stream-task" title="Link to this heading">¶</a></h2>
+<p>Example of a news stream processing task using AI:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">process_news_stream</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">time_window_minutes</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+                      <span class="n">max_items</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">save_to_docs</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="c1"># Get the stream and agent</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">stream_id</span><span class="p">)</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">)</span>
 
-<span class="k">class</span> <span class="nc">PlaywrightTask</span><span class="p">(</span><span class="n">luigi</span><span class="o">.</span><span class="n">Task</span><span class="p">):</span>
-    <span class="n">stream_id</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">IntParameter</span><span class="p">()</span>
-    <span class="n">url</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">()</span>
-    <span class="n">selector</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">()</span>
-    <span class="n">scheduled_time</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">()</span>
+    <span class="c1"># Get recent news items</span>
+    <span class="n">time_threshold</span> <span class="o">=</span> <span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">time_window_minutes</span><span class="p">)</span>
+    <span class="n">news_items</span> <span class="o">=</span> <span class="n">News</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+        <span class="n">source__in</span><span class="o">=</span><span class="n">stream</span><span class="o">.</span><span class="n">media</span><span class="o">.</span><span class="n">sources</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span>
+        <span class="n">created_at__gte</span><span class="o">=</span><span class="n">time_threshold</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s2">&quot;-created_at&quot;</span><span class="p">)[:</span><span class="n">max_items</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">with</span> <span class="n">sync_playwright</span><span class="p">()</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
-            <span class="n">browser</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">chromium</span><span class="o">.</span><span class="n">launch</span><span class="p">()</span>
-            <span class="n">page</span> <span class="o">=</span> <span class="n">browser</span><span class="o">.</span><span class="n">new_page</span><span class="p">()</span>
+    <span class="c1"># Get examples for the media</span>
+    <span class="n">examples</span> <span class="o">=</span> <span class="n">Examples</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">media</span><span class="o">=</span><span class="n">stream</span><span class="o">.</span><span class="n">media</span><span class="p">)</span>
+    <span class="n">examples_text</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">example</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">)</span>
 
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">page</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
-                <span class="n">elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">query_selector_all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span>
+    <span class="c1"># Join news items</span>
+    <span class="n">news_content</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">---</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Title: </span><span class="si">{</span><span class="n">news</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">Content: </span><span class="si">{</span><span class="n">news</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">URL: </span><span class="si">{</span><span class="n">news</span><span class="o">.</span><span class="n">link</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">for</span> <span class="n">news</span> <span class="ow">in</span> <span class="n">news_items</span>
+    <span class="p">)</span>
 
-                <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
-                    <span class="c1"># Process elements</span>
-                    <span class="k">pass</span>
-
-            <span class="k">finally</span><span class="p">:</span>
-                <span class="n">browser</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</pre></div>
-</div>
-</section>
-<section id="telegram-publisher-task">
-<h2>Telegram Publisher Task<a class="headerlink" href="#telegram-publisher-task" title="Link to this heading">¶</a></h2>
-<p>Example of a Telegram publishing task:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">telethon</span> <span class="kn">import</span> <span class="n">TelegramClient</span>
-
-<span class="k">class</span> <span class="nc">TelegramPublisherTask</span><span class="p">(</span><span class="n">luigi</span><span class="o">.</span><span class="n">Task</span><span class="p">):</span>
-    <span class="n">stream_id</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">IntParameter</span><span class="p">()</span>
-    <span class="n">channel_name</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">()</span>
-    <span class="n">scheduled_time</span> <span class="o">=</span> <span class="n">luigi</span><span class="o">.</span><span class="n">Parameter</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="n">TelegramClient</span><span class="p">(</span>
-            <span class="s1">&#39;session_name&#39;</span><span class="p">,</span>
-            <span class="n">api_id</span><span class="p">,</span>
-            <span class="n">api_hash</span>
+    <span class="c1"># Process with AI</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">invoke_bedrock_anthropic</span><span class="p">(</span>
+        <span class="n">system_prompt</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">system_prompt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">news</span><span class="o">=</span><span class="n">news_content</span><span class="p">,</span>
+            <span class="n">examples</span><span class="o">=</span><span class="n">examples_text</span><span class="p">,</span>
+            <span class="n">now</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+        <span class="p">),</span>
+        <span class="n">user_prompt</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">user_prompt_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">news</span><span class="o">=</span><span class="n">news_content</span><span class="p">,</span>
+            <span class="n">examples</span><span class="o">=</span><span class="n">examples_text</span><span class="p">,</span>
+            <span class="n">now</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
         <span class="p">)</span>
+    <span class="p">)</span>
 
-        <span class="k">async</span> <span class="k">def</span> <span class="nf">publish</span><span class="p">():</span>
-            <span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="p">:</span>
-                <span class="c1"># Publishing logic</span>
-                <span class="k">pass</span>
-
-        <span class="kn">import</span> <span class="nn">asyncio</span>
-        <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">publish</span><span class="p">())</span>
+    <span class="c1"># Save results</span>
+    <span class="k">if</span> <span class="n">save_to_docs</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;completion&quot;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;posts&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="n">Doc</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+                <span class="n">media</span><span class="o">=</span><span class="n">stream</span><span class="o">.</span><span class="n">media</span><span class="p">,</span>
+                <span class="n">link</span><span class="o">=</span><span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;url&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;topic&quot;</span><span class="p">,</span> <span class="s2">&quot;Untitled&quot;</span><span class="p">),</span>
+                <span class="n">text</span><span class="o">=</span><span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                <span class="n">status</span><span class="o">=</span><span class="s2">&quot;new&quot;</span>
+            <span class="p">)</span>
 </pre></div>
 </div>
+</section>
+<section id="telegram-task">
+<h2>Telegram Task<a class="headerlink" href="#telegram-task" title="Link to this heading">¶</a></h2>
+<p>Example of a Telegram channel monitoring task:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">monitor_telegram_channel</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">posts_limit</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">stream_id</span><span class="p">)</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">source</span>
+
+    <span class="k">with</span> <span class="n">sync_playwright</span><span class="p">()</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">browser</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">chromium</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">browser</span><span class="o">.</span><span class="n">new_context</span><span class="p">()</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">new_page</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stealth_sync</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60000</span><span class="p">)</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">wait_for_load_state</span><span class="p">(</span><span class="s2">&quot;networkidle&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60000</span><span class="p">)</span>
+
+            <span class="n">posts</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">posts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">posts_limit</span><span class="p">:</span>
+                <span class="n">message_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">query_selector_all</span><span class="p">(</span>
+                    <span class="s2">&quot;div.tgme_widget_message_wrap&quot;</span>
+                <span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">message_element</span> <span class="ow">in</span> <span class="n">message_elements</span><span class="p">:</span>
+                    <span class="c1"># Extract message details</span>
+                    <span class="n">text_element</span> <span class="o">=</span> <span class="n">message_element</span><span class="o">.</span><span class="n">query_selector</span><span class="p">(</span>
+                        <span class="s2">&quot;div.tgme_widget_message_text&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">link_element</span> <span class="o">=</span> <span class="n">message_element</span><span class="o">.</span><span class="n">query_selector</span><span class="p">(</span>
+                        <span class="s2">&quot;a.tgme_widget_message_date&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">time_element</span> <span class="o">=</span> <span class="n">message_element</span><span class="o">.</span><span class="n">query_selector</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="n">text_element</span><span class="p">,</span> <span class="n">link_element</span><span class="p">,</span> <span class="n">time_element</span><span class="p">]):</span>
+                        <span class="n">message_text</span> <span class="o">=</span> <span class="n">text_element</span><span class="o">.</span><span class="n">inner_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="n">message_link</span> <span class="o">=</span> <span class="n">link_element</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s2">&quot;href&quot;</span><span class="p">)</span>
+                        <span class="n">datetime_str</span> <span class="o">=</span> <span class="n">time_element</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s2">&quot;datetime&quot;</span><span class="p">)</span>
+                        <span class="n">message_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span>
+                            <span class="n">datetime_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;Z&quot;</span><span class="p">,</span> <span class="s2">&quot;+00:00&quot;</span><span class="p">)</span>
+                        <span class="p">)</span>
+
+                        <span class="c1"># Save to database</span>
+                        <span class="n">News</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get_or_create</span><span class="p">(</span>
+                            <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+                            <span class="n">link</span><span class="o">=</span><span class="n">message_link</span><span class="p">,</span>
+                            <span class="n">defaults</span><span class="o">=</span><span class="p">{</span>
+                                <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">message_text</span><span class="p">,</span>
+                                <span class="s2">&quot;published_at&quot;</span><span class="p">:</span> <span class="n">message_time</span>
+                            <span class="p">}</span>
+                        <span class="p">)</span>
+                        <span class="n">posts</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                            <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">message_text</span><span class="p">,</span>
+                            <span class="s2">&quot;link&quot;</span><span class="p">:</span> <span class="n">message_link</span><span class="p">,</span>
+                            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">message_time</span>
+                        <span class="p">})</span>
+
+                <span class="c1"># Scroll for more posts if needed</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">posts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">posts_limit</span><span class="p">:</span>
+                    <span class="n">page</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span>
+                        <span class="s2">&quot;window.scrollTo(0, document.body.scrollHeight);&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">page</span><span class="o">.</span><span class="n">wait_for_timeout</span><span class="p">(</span><span class="mi">2000</span><span class="p">)</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">browser</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">posts</span>
+</pre></div>
+</div>
+<p>These examples demonstrate the current implementation patterns used in NewLoom, including:</p>
+<ul class="simple">
+<li><p>Playwright for web automation and scraping</p></li>
+<li><p>Django ORM for database operations</p></li>
+<li><p>Async/await patterns for Telegram operations</p></li>
+<li><p>Integration with AI services (Amazon Bedrock)</p></li>
+<li><p>Error handling and logging</p></li>
+<li><p>Resource cleanup</p></li>
+</ul>
+<p>The tasks follow a consistent pattern of:
+1. Getting configuration from the stream
+2. Performing the main task operation
+3. Saving results to the database
+4. Proper error handling and cleanup</p>
 </section>
 </section>
 

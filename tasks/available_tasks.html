@@ -14,6 +14,8 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Creating New Tasks" href="creating_tasks.html" />
+    <link rel="prev" title="Tasks" href="index.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -54,6 +56,16 @@
     </div>
 </search>
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tasks</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Available Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="creating_tasks.html">Creating New Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html">Task Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../agents/index.html">Agents</a></li>
+</ul>
 
 
 <hr />
@@ -68,6 +80,10 @@
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Tasks</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Tasks</a></li>
+      <li>Next: <a href="creating_tasks.html" title="next chapter">Creating New Tasks</a></li>
+  </ul></li>
   </ul></li>
 </ul>
 </div>
@@ -89,247 +105,309 @@
             
   <section id="available-tasks">
 <h1>Available Tasks<a class="headerlink" href="#available-tasks" title="Link to this heading">¶</a></h1>
-<p>This guide provides a comprehensive list of all available tasks in NewLoom.</p>
-<section id="content-collection-tasks">
-<h2>Content Collection Tasks<a class="headerlink" href="#content-collection-tasks" title="Link to this heading">¶</a></h2>
-<section id="sitemap-parser">
-<h3>Sitemap Parser<a class="headerlink" href="#sitemap-parser" title="Link to this heading">¶</a></h3>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
 <ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">sitemap_news</span></code>, <code class="docutils literal notranslate"><span class="pre">sitemap_blog</span></code></p></li>
-<li><p>Description: Parses XML sitemaps to extract URLs for news articles or blog posts</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Configurable max links</p></li>
-<li><p>Support for next page following</p></li>
-<li><p>Automatic URL validation</p></li>
+<li><p><a class="reference internal" href="#article-search-tasks" id="id1">Article Search Tasks</a></p>
+<ul>
+<li><p><a class="reference internal" href="#article-searcher" id="id2">article_searcher</a></p></li>
 </ul>
-</dd>
-</dl>
+</li>
+<li><p><a class="reference internal" href="#search-engine-tasks" id="id3">Search Engine Tasks</a></p>
+<ul>
+<li><p><a class="reference internal" href="#bing-search" id="id4">bing_search</a></p></li>
+<li><p><a class="reference internal" href="#google-search" id="id5">google_search</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#content-publishing-tasks" id="id6">Content Publishing Tasks</a></p>
+<ul>
+<li><p><a class="reference internal" href="#doc-publisher" id="id7">doc_publisher</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#news-processing-tasks" id="id8">News Processing Tasks</a></p>
+<ul>
+<li><p><a class="reference internal" href="#news-stream" id="id9">news_stream</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#web-scraping-tasks" id="id10">Web Scraping Tasks</a></p>
+<ul>
+<li><p><a class="reference internal" href="#playwright" id="id11">playwright</a></p></li>
+<li><p><a class="reference internal" href="#rss" id="id12">rss</a></p></li>
+<li><p><a class="reference internal" href="#sitemap" id="id13">sitemap</a></p></li>
+<li><p><a class="reference internal" href="#web" id="id14">web</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#telegram-tasks" id="id15">Telegram Tasks</a></p>
+<ul>
+<li><p><a class="reference internal" href="#telegram" id="id16">telegram</a></p></li>
+<li><p><a class="reference internal" href="#telegram-bulk-parser" id="id17">telegram_bulk_parser</a></p></li>
+<li><p><a class="reference internal" href="#telegram-publisher" id="id18">telegram_publisher</a></p></li>
+<li><p><a class="reference internal" href="#telegram-test" id="id19">telegram_test</a></p></li>
+</ul>
 </li>
 </ul>
-</section>
-<section id="rss-feed-parser">
-<h3>RSS Feed Parser<a class="headerlink" href="#rss-feed-parser" title="Link to this heading">¶</a></h3>
+</nav>
+<p>This section describes all available tasks in the Newsloom system and their specific use cases.</p>
+<section id="article-search-tasks">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Article Search Tasks</a><a class="headerlink" href="#article-search-tasks" title="Link to this heading">¶</a></h2>
+<section id="article-searcher">
+<h3><a class="toc-backref" href="#id2" role="doc-backlink">article_searcher</a><a class="headerlink" href="#article-searcher" title="Link to this heading">¶</a></h3>
+<p>A task for searching articles on web pages based on specific text content. It uses Playwright to:</p>
 <ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">rss_feed</span></code></p></li>
-<li><p>Description: Extracts content from RSS/Atom feeds</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Support for multiple feed formats</p></li>
-<li><p>Entry limit configuration</p></li>
-<li><p>Automatic feed validation</p></li>
+<li><p>Extract links from a webpage using CSS or XPath selectors</p></li>
+<li><p>Visit each link and search for specific text in the article content</p></li>
+<li><p>Save matching articles to the database</p></li>
 </ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-<section id="web-article-scraper">
-<h3>Web Article Scraper<a class="headerlink" href="#web-article-scraper" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">web_article</span></code></p></li>
-<li><p>Description: Scrapes content from web articles using configurable selectors</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Custom CSS/XPath selectors</p></li>
-<li><p>Header customization</p></li>
-<li><p>Content extraction rules</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-<section id="playwright-link-extractor">
-<h3>Playwright Link Extractor<a class="headerlink" href="#playwright-link-extractor" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">playwright_link_extractor</span></code></p></li>
-<li><p>Description: Uses Playwright for JavaScript-rendered content extraction</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Support for dynamic content</p></li>
-<li><p>Custom link selectors</p></li>
-<li><p>Browser automation</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-<section id="article-content-searcher">
-<h3>Article Content Searcher<a class="headerlink" href="#article-content-searcher" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">article_searcher</span></code></p></li>
-<li><p>Description: Searches article content for specific text or patterns</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Text pattern matching</p></li>
-<li><p>Multiple selector types</p></li>
-<li><p>Configurable search depth</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-<section id="bing-search">
-<h3>Bing Search<a class="headerlink" href="#bing-search" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">bing_search</span></code></p></li>
-<li><p>Description: Performs searches using Bing’s search engine</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Multiple keyword support</p></li>
-<li><p>News/web search options</p></li>
-<li><p>Result limit configuration</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-<section id="google-search">
-<h3>Google Search<a class="headerlink" href="#google-search" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">google_search</span></code></p></li>
-<li><p>Description: Performs searches using Google’s search engine</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Multiple keyword support</p></li>
-<li><p>News/web search options</p></li>
-<li><p>Time-based filtering (last X days)</p></li>
-<li><p>Result limit configuration</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-</section>
-<section id="content-processing-tasks">
-<h2>Content Processing Tasks<a class="headerlink" href="#content-processing-tasks" title="Link to this heading">¶</a></h2>
-<section id="news-stream-processor">
-<h3>News Stream Processor<a class="headerlink" href="#news-stream-processor" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">news_stream</span></code></p></li>
-<li><p>Description: Processes news items using AI agents</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>AI-powered content analysis</p></li>
-<li><p>Batch processing</p></li>
-<li><p>Automatic doc creation</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-</section>
-<section id="publishing-tasks">
-<h2>Publishing Tasks<a class="headerlink" href="#publishing-tasks" title="Link to this heading">¶</a></h2>
-<section id="telegram-publisher">
-<h3>Telegram Publisher<a class="headerlink" href="#telegram-publisher" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">telegram_publish</span></code></p></li>
-<li><p>Description: Publishes news items to Telegram channels</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Batch publishing</p></li>
-<li><p>Time window filtering</p></li>
-<li><p>Publishing logs</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-<section id="doc-publisher">
-<h3>Doc Publisher<a class="headerlink" href="#doc-publisher" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">doc_publisher</span></code></p></li>
-<li><p>Description: Publishes processed docs to Telegram channels</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Status tracking (new -&gt; published/failed)</p></li>
-<li><p>Batch processing</p></li>
-<li><p>Configurable time window</p></li>
-<li><p>Publishing logs</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-</section>
-<section id="monitoring-tasks">
-<h2>Monitoring Tasks<a class="headerlink" href="#monitoring-tasks" title="Link to this heading">¶</a></h2>
-<section id="telegram-channel-monitor">
-<h3>Telegram Channel Monitor<a class="headerlink" href="#telegram-channel-monitor" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">telegram_channel</span></code></p></li>
-<li><p>Description: Monitors Telegram channels for new content</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Post limit configuration</p></li>
-<li><p>Automatic content extraction</p></li>
-<li><p>Channel monitoring</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-<section id="telegram-bulk-parser">
-<h3>Telegram Bulk Parser<a class="headerlink" href="#telegram-bulk-parser" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">telegram_bulk_parser</span></code></p></li>
-<li><p>Description: Bulk parses multiple Telegram channels</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Multiple channel support</p></li>
-<li><p>Configurable scroll depth</p></li>
-<li><p>Time window filtering</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-</section>
-<section id="testing-tasks">
-<h2>Testing Tasks<a class="headerlink" href="#testing-tasks" title="Link to this heading">¶</a></h2>
-<section id="telegram-test-publisher">
-<h3>Telegram Test Publisher<a class="headerlink" href="#telegram-test-publisher" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Type: <code class="docutils literal notranslate"><span class="pre">telegram_test</span></code></p></li>
-<li><p>Description: Tests Telegram channel connectivity and permissions</p></li>
-<li><dl class="simple">
-<dt>Key Features:</dt><dd><ul>
-<li><p>Channel access verification</p></li>
-<li><p>Bot token validation</p></li>
-<li><p>Test message sending</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</section>
-</section>
-<section id="configuration-examples">
-<h2>Configuration Examples<a class="headerlink" href="#configuration-examples" title="Link to this heading">¶</a></h2>
-<p>For configuration examples of each task type, refer to the <code class="docutils literal notranslate"><span class="pre">TASK_CONFIG_EXAMPLES</span></code> in the task initialization file:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TASK_CONFIG_EXAMPLES</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;doc_publisher&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;channel_id&quot;</span><span class="p">:</span> <span class="s2">&quot;-100123456789&quot;</span><span class="p">,</span>  <span class="c1"># Telegram channel ID</span>
-        <span class="s2">&quot;bot_token&quot;</span><span class="p">:</span> <span class="s2">&quot;1234567890:ABCdefGHIjklMNOpqrsTUVwxyz&quot;</span><span class="p">,</span>  <span class="c1"># Bot token</span>
-        <span class="s2">&quot;time_window_minutes&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span>  <span class="c1"># Look back 1 hour</span>
-        <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>  <span class="c1"># Process up to 10 docs at a time</span>
-    <span class="p">},</span>
-    <span class="c1"># ... other task configurations</span>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;link_selector&quot;</span><span class="p">:</span> <span class="s2">&quot;//*[@id=&#39;wtxt&#39;]/div[2]/ul/li[1]/a&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;link_selector_type&quot;</span><span class="p">:</span> <span class="s2">&quot;xpath&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;article_selector&quot;</span><span class="p">:</span> <span class="s2">&quot;div.article-content&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;article_selector_type&quot;</span><span class="p">:</span> <span class="s2">&quot;css&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;search_text&quot;</span><span class="p">:</span> <span class="s2">&quot;białoruś&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;max_links&quot;</span><span class="p">:</span> <span class="mi">10</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>For detailed implementation examples, see <a class="reference internal" href="examples.html"><span class="doc">Task Examples</span></a>.</p>
+</section>
+</section>
+<section id="search-engine-tasks">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Search Engine Tasks</a><a class="headerlink" href="#search-engine-tasks" title="Link to this heading">¶</a></h2>
+<section id="bing-search">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">bing_search</a><a class="headerlink" href="#bing-search" title="Link to this heading">¶</a></h3>
+<p>A task for searching articles using Bing’s search engine. Features:</p>
+<ul class="simple">
+<li><p>Supports both news and web search types</p></li>
+<li><p>Configurable results per keyword</p></li>
+<li><p>Stealth browser automation to avoid detection</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;climate change&quot;</span><span class="p">,</span> <span class="s2">&quot;renewable energy&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;max_results_per_keyword&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s2">&quot;search_type&quot;</span><span class="p">:</span> <span class="s2">&quot;news&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;debug&quot;</span><span class="p">:</span> <span class="kc">False</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="google-search">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">google_search</a><a class="headerlink" href="#google-search" title="Link to this heading">¶</a></h3>
+<p>A task for searching articles using Google’s search engine. Features:</p>
+<ul class="simple">
+<li><p>Supports both news and web search types</p></li>
+<li><p>Time-based filtering (days ago)</p></li>
+<li><p>Multiple keyword support</p></li>
+<li><p>Stealth browser automation</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;climate change&quot;</span><span class="p">,</span> <span class="s2">&quot;renewable energy&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;max_results_per_keyword&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s2">&quot;days_ago&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="s2">&quot;search_type&quot;</span><span class="p">:</span> <span class="s2">&quot;news&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;debug&quot;</span><span class="p">:</span> <span class="kc">False</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="content-publishing-tasks">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Content Publishing Tasks</a><a class="headerlink" href="#content-publishing-tasks" title="Link to this heading">¶</a></h2>
+<section id="doc-publisher">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">doc_publisher</a><a class="headerlink" href="#doc-publisher" title="Link to this heading">¶</a></h3>
+<p>A task for publishing documents to Telegram channels. Features:</p>
+<ul class="simple">
+<li><p>Batch processing of documents</p></li>
+<li><p>Time window filtering</p></li>
+<li><p>HTML formatting support</p></li>
+<li><p>Error handling and logging</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;channel_id&quot;</span><span class="p">:</span> <span class="s2">&quot;-100123456789&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;bot_token&quot;</span><span class="p">:</span> <span class="s2">&quot;1234567890:ABCdefGHIjklMNOpqrsTUVwxyz&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;time_window_minutes&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span>
+    <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">10</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="news-processing-tasks">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">News Processing Tasks</a><a class="headerlink" href="#news-processing-tasks" title="Link to this heading">¶</a></h2>
+<section id="news-stream">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">news_stream</a><a class="headerlink" href="#news-stream" title="Link to this heading">¶</a></h3>
+<p>A task for processing news streams using AI agents. Features:</p>
+<ul class="simple">
+<li><p>Integration with Amazon Bedrock</p></li>
+<li><p>Customizable prompt templates</p></li>
+<li><p>Batch processing</p></li>
+<li><p>Support for saving to docs</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;agent_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;time_window_minutes&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span>
+    <span class="s2">&quot;max_items&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="s2">&quot;save_to_docs&quot;</span><span class="p">:</span> <span class="kc">True</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="web-scraping-tasks">
+<h2><a class="toc-backref" href="#id10" role="doc-backlink">Web Scraping Tasks</a><a class="headerlink" href="#web-scraping-tasks" title="Link to this heading">¶</a></h2>
+<section id="playwright">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">playwright</a><a class="headerlink" href="#playwright" title="Link to this heading">¶</a></h3>
+<p>A task for extracting links from web pages using Playwright. Features:</p>
+<ul class="simple">
+<li><p>Configurable link selectors</p></li>
+<li><p>Stealth browser automation</p></li>
+<li><p>Automatic URL normalization</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;link_selector&quot;</span><span class="p">:</span> <span class="s2">&quot;a.article-link&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;max_links&quot;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="rss">
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">rss</a><a class="headerlink" href="#rss" title="Link to this heading">¶</a></h3>
+<p>A task for parsing RSS feeds. Features:</p>
+<ul class="simple">
+<li><p>Feed URL processing</p></li>
+<li><p>Entry limit configuration</p></li>
+<li><p>Automatic date parsing</p></li>
+<li><p>Duplicate handling</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;feed_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://example.com/feed.xml&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;max_entries&quot;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="sitemap">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">sitemap</a><a class="headerlink" href="#sitemap" title="Link to this heading">¶</a></h3>
+<p>A task for parsing XML sitemaps. Features:</p>
+<ul class="simple">
+<li><p>Support for sitemap index files</p></li>
+<li><p>Link limit configuration</p></li>
+<li><p>Last modification date handling</p></li>
+<li><p>Error handling for timeouts</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;sitemap_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://example.com/sitemap.xml&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;max_links&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="s2">&quot;follow_next&quot;</span><span class="p">:</span> <span class="kc">False</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="web">
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">web</a><a class="headerlink" href="#web" title="Link to this heading">¶</a></h3>
+<p>A task for scraping web articles using configurable selectors. Features:</p>
+<ul class="simple">
+<li><p>Custom header support</p></li>
+<li><p>Flexible selector configuration</p></li>
+<li><p>Error handling</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;base_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;selectors&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;h1.article-title&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;div.article-content&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="s2">&quot;time.published-date&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;headers&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;User-Agent&quot;</span><span class="p">:</span> <span class="s2">&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="telegram-tasks">
+<h2><a class="toc-backref" href="#id15" role="doc-backlink">Telegram Tasks</a><a class="headerlink" href="#telegram-tasks" title="Link to this heading">¶</a></h2>
+<section id="telegram">
+<h3><a class="toc-backref" href="#id16" role="doc-backlink">telegram</a><a class="headerlink" href="#telegram" title="Link to this heading">¶</a></h3>
+<p>A task for monitoring Telegram channels. Features:</p>
+<ul class="simple">
+<li><p>Post limit configuration</p></li>
+<li><p>Automatic scrolling</p></li>
+<li><p>Message extraction</p></li>
+<li><p>Timestamp handling</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;posts_limit&quot;</span><span class="p">:</span> <span class="mi">20</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="telegram-bulk-parser">
+<h3><a class="toc-backref" href="#id17" role="doc-backlink">telegram_bulk_parser</a><a class="headerlink" href="#telegram-bulk-parser" title="Link to this heading">¶</a></h3>
+<p>A task for bulk parsing multiple Telegram channels. Features:</p>
+<ul class="simple">
+<li><p>Time window filtering</p></li>
+<li><p>Configurable scroll behavior</p></li>
+<li><p>Async processing</p></li>
+<li><p>Error handling per channel</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;time_window_minutes&quot;</span><span class="p">:</span> <span class="mi">120</span><span class="p">,</span>
+    <span class="s2">&quot;max_scrolls&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s2">&quot;wait_time&quot;</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="telegram-publisher">
+<h3><a class="toc-backref" href="#id18" role="doc-backlink">telegram_publisher</a><a class="headerlink" href="#telegram-publisher" title="Link to this heading">¶</a></h3>
+<p>A task for publishing content to Telegram channels. Features:</p>
+<ul class="simple">
+<li><p>Batch processing</p></li>
+<li><p>Time window filtering</p></li>
+<li><p>Source type filtering</p></li>
+<li><p>Error handling per message</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;channel_id&quot;</span><span class="p">:</span> <span class="s2">&quot;-100123456789&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;bot_token&quot;</span><span class="p">:</span> <span class="s2">&quot;1234567890:ABCdefGHIjklMNOpqrsTUVwxyz&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s2">&quot;time_window_minutes&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s2">&quot;source_types&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;web&quot;</span><span class="p">,</span> <span class="s2">&quot;telegram&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="telegram-test">
+<h3><a class="toc-backref" href="#id19" role="doc-backlink">telegram_test</a><a class="headerlink" href="#telegram-test" title="Link to this heading">¶</a></h3>
+<p>A task for testing Telegram channel connectivity. Features:</p>
+<ul class="simple">
+<li><p>Channel access verification</p></li>
+<li><p>Message sending test</p></li>
+<li><p>Detailed test results</p></li>
+<li><p>Random test messages</p></li>
+</ul>
+<p>Configuration example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;channel_id&quot;</span><span class="p">:</span> <span class="s2">&quot;-100123456789&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;bot_token&quot;</span><span class="p">:</span> <span class="s2">&quot;1234567890:ABCdefGHIjklMNOpqrsTUVwxyz&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
 </section>
 </section>
 
