@@ -8,9 +8,7 @@ from streams.models import Stream, TelegramPublishLog
 from telegram import Bot
 
 
-def publish_to_telegram(
-    stream_id, channel_id, bot_token, batch_size=10, time_window_minutes=10
-):
+def publish_to_telegram(stream_id, **config):
     logger = logging.getLogger(__name__)
     result = {
         "published_count": 0,
@@ -27,6 +25,12 @@ def publish_to_telegram(
         if not stream.media:
             raise ValueError("Stream must have an associated media")
 
+        # Extract config values with defaults
+        channel_id = config["channel_id"]
+        bot_token = config["bot_token"]
+        batch_size = config.get("batch_size", 10)
+        time_window_minutes = config.get("time_window_minutes", 10)
+
         bot = Bot(token=bot_token)
 
         async def publish_messages(
@@ -35,13 +39,25 @@ def publish_to_telegram(
             # Get all sources associated with the media
             media_sources = await sync_to_async(list)(stream.media.sources.all())
 
-            # Get news from all media sources within time window
+            # Build base query
+            query = News.objects.filter(
+                source__in=media_sources,
+                link__isnull=False,
+                created_at__gte=time_threshold,
+            )
+
+            # Apply source type filter if specified
+            if (
+                "source_types" in stream.configuration
+                and stream.configuration["source_types"]
+            ):
+                query = query.filter(
+                    source__type__in=stream.configuration["source_types"]
+                )
+
+            # Get filtered news items
             news_items = await sync_to_async(list)(
-                News.objects.filter(
-                    source__in=media_sources,
-                    link__isnull=False,
-                    created_at__gte=time_threshold,
-                ).order_by("created_at")[:batch_size]
+                query.order_by("created_at")[:batch_size]
             )
 
             for news in news_items:
