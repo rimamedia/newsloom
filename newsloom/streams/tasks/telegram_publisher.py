@@ -8,9 +8,7 @@ from streams.models import Stream, TelegramPublishLog
 from telegram import Bot
 
 
-def publish_to_telegram(
-    stream_id, channel_id, bot_token, batch_size=10, time_window_minutes=10
-):
+def publish_to_telegram(stream_id, **config):
     logger = logging.getLogger(__name__)
     result = {
         "published_count": 0,
@@ -26,6 +24,12 @@ def publish_to_telegram(
         stream = Stream.objects.get(id=stream_id)
         if not stream.media:
             raise ValueError("Stream must have an associated media")
+
+        # Extract config values with defaults
+        channel_id = config["channel_id"]
+        bot_token = config["bot_token"]
+        batch_size = config.get("batch_size", 10)
+        time_window_minutes = config.get("time_window_minutes", 10)
 
         bot = Bot(token=bot_token)
 
