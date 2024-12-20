@@ -1,157 +1,282 @@
 Available Tasks
-=============
+==============
 
-This guide provides a comprehensive list of all available tasks in NewLoom.
+.. contents:: Table of Contents
+   :local:
+   :depth: 2
 
-Content Collection Tasks
----------------------
+This section describes all available tasks in the Newsloom system and their specific use cases.
 
-Sitemap Parser
-~~~~~~~~~~~~
-- Type: ``sitemap_news``, ``sitemap_blog``
-- Description: Parses XML sitemaps to extract URLs for news articles or blog posts
-- Key Features:
-    * Configurable max links
-    * Support for next page following
-    * Automatic URL validation
-
-RSS Feed Parser
-~~~~~~~~~~~~
-- Type: ``rss_feed``
-- Description: Extracts content from RSS/Atom feeds
-- Key Features:
-    * Support for multiple feed formats
-    * Entry limit configuration
-    * Automatic feed validation
-
-Web Article Scraper
-~~~~~~~~~~~~~~~~
-- Type: ``web_article``
-- Description: Scrapes content from web articles using configurable selectors
-- Key Features:
-    * Custom CSS/XPath selectors
-    * Header customization
-    * Content extraction rules
-
-Playwright Link Extractor
-~~~~~~~~~~~~~~~~~~~~~~
-- Type: ``playwright_link_extractor``
-- Description: Uses Playwright for JavaScript-rendered content extraction
-- Key Features:
-    * Support for dynamic content
-    * Custom link selectors
-    * Browser automation
-
-Article Content Searcher
-~~~~~~~~~~~~~~~~~~~~
-- Type: ``article_searcher``
-- Description: Searches article content for specific text or patterns
-- Key Features:
-    * Text pattern matching
-    * Multiple selector types
-    * Configurable search depth
-
-Bing Search
-~~~~~~~~~
-- Type: ``bing_search``
-- Description: Performs searches using Bing's search engine
-- Key Features:
-    * Multiple keyword support
-    * News/web search options
-    * Result limit configuration
-
-Google Search
-~~~~~~~~~~
-- Type: ``google_search``
-- Description: Performs searches using Google's search engine
-- Key Features:
-    * Multiple keyword support
-    * News/web search options
-    * Time-based filtering (last X days)
-    * Result limit configuration
-
-Content Processing Tasks
----------------------
-
-News Stream Processor
-~~~~~~~~~~~~~~~~~
-- Type: ``news_stream``
-- Description: Processes news items using AI agents
-- Key Features:
-    * AI-powered content analysis
-    * Batch processing
-    * Automatic doc creation
-
-Publishing Tasks
--------------
-
-Telegram Publisher
-~~~~~~~~~~~~~~
-- Type: ``telegram_publish``
-- Description: Publishes news items to Telegram channels
-- Key Features:
-    * Batch publishing
-    * Time window filtering
-    * Publishing logs
-
-Doc Publisher
-~~~~~~~~~~
-- Type: ``doc_publisher``
-- Description: Publishes processed docs to Telegram channels
-- Key Features:
-    * Status tracking (new -> published/failed)
-    * Batch processing
-    * Configurable time window
-    * Publishing logs
-
-Monitoring Tasks
--------------
-
-Telegram Channel Monitor
-~~~~~~~~~~~~~~~~~~~~
-- Type: ``telegram_channel``
-- Description: Monitors Telegram channels for new content
-- Key Features:
-    * Post limit configuration
-    * Automatic content extraction
-    * Channel monitoring
-
-Telegram Bulk Parser
-~~~~~~~~~~~~~~~~~
-- Type: ``telegram_bulk_parser``
-- Description: Bulk parses multiple Telegram channels
-- Key Features:
-    * Multiple channel support
-    * Configurable scroll depth
-    * Time window filtering
-
-Testing Tasks
-----------
-
-Telegram Test Publisher
-~~~~~~~~~~~~~~~~~~~
-- Type: ``telegram_test``
-- Description: Tests Telegram channel connectivity and permissions
-- Key Features:
-    * Channel access verification
-    * Bot token validation
-    * Test message sending
-
-Configuration Examples
+Article Search Tasks
 ------------------
 
-For configuration examples of each task type, refer to the ``TASK_CONFIG_EXAMPLES`` in the task initialization file:
+article_searcher
+~~~~~~~~~~~~~~
+A task for searching articles on web pages based on specific text content. It uses Playwright to:
+
+* Extract links from a webpage using CSS or XPath selectors
+* Visit each link and search for specific text in the article content
+* Save matching articles to the database
+
+Configuration example:
 
 .. code-block:: python
 
-    TASK_CONFIG_EXAMPLES = {
-        "doc_publisher": {
-            "channel_id": "-100123456789",  # Telegram channel ID
-            "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",  # Bot token
-            "time_window_minutes": 60,  # Look back 1 hour
-            "batch_size": 10,  # Process up to 10 docs at a time
-        },
-        # ... other task configurations
+    {
+        "url": "https://example.com",
+        "link_selector": "//*[@id='wtxt']/div[2]/ul/li[1]/a",
+        "link_selector_type": "xpath",
+        "article_selector": "div.article-content",
+        "article_selector_type": "css",
+        "search_text": "białoruś",
+        "max_links": 10
     }
 
-For detailed implementation examples, see :doc:`examples`.
+Search Engine Tasks
+-----------------
+
+bing_search
+~~~~~~~~~~
+A task for searching articles using Bing's search engine. Features:
+
+* Supports both news and web search types
+* Configurable results per keyword
+* Stealth browser automation to avoid detection
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "keywords": ["climate change", "renewable energy"],
+        "max_results_per_keyword": 5,
+        "search_type": "news",
+        "debug": False
+    }
+
+google_search
+~~~~~~~~~~~
+A task for searching articles using Google's search engine. Features:
+
+* Supports both news and web search types
+* Time-based filtering (days ago)
+* Multiple keyword support
+* Stealth browser automation
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "keywords": ["climate change", "renewable energy"],
+        "max_results_per_keyword": 5,
+        "days_ago": 7,
+        "search_type": "news",
+        "debug": False
+    }
+
+Content Publishing Tasks
+---------------------
+
+doc_publisher
+~~~~~~~~~~~
+A task for publishing documents to Telegram channels. Features:
+
+* Batch processing of documents
+* Time window filtering
+* HTML formatting support
+* Error handling and logging
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "channel_id": "-100123456789",
+        "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+        "time_window_minutes": 60,
+        "batch_size": 10
+    }
+
+News Processing Tasks
+------------------
+
+news_stream
+~~~~~~~~~
+A task for processing news streams using AI agents. Features:
+
+* Integration with Amazon Bedrock
+* Customizable prompt templates
+* Batch processing
+* Support for saving to docs
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "agent_id": 1,
+        "time_window_minutes": 60,
+        "max_items": 100,
+        "save_to_docs": True
+    }
+
+Web Scraping Tasks
+----------------
+
+playwright
+~~~~~~~~~
+A task for extracting links from web pages using Playwright. Features:
+
+* Configurable link selectors
+* Stealth browser automation
+* Automatic URL normalization
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "url": "https://example.com",
+        "link_selector": "a.article-link",
+        "max_links": 100
+    }
+
+rss
+~~~
+A task for parsing RSS feeds. Features:
+
+* Feed URL processing
+* Entry limit configuration
+* Automatic date parsing
+* Duplicate handling
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "feed_url": "https://example.com/feed.xml",
+        "max_entries": 100
+    }
+
+sitemap
+~~~~~~~
+A task for parsing XML sitemaps. Features:
+
+* Support for sitemap index files
+* Link limit configuration
+* Last modification date handling
+* Error handling for timeouts
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "sitemap_url": "https://example.com/sitemap.xml",
+        "max_links": 100,
+        "follow_next": False
+    }
+
+web
+~~~
+A task for scraping web articles using configurable selectors. Features:
+
+* Custom header support
+* Flexible selector configuration
+* Error handling
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "base_url": "https://example.com",
+        "selectors": {
+            "title": "h1.article-title",
+            "content": "div.article-content",
+            "date": "time.published-date"
+        },
+        "headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+    }
+
+Telegram Tasks
+------------
+
+telegram
+~~~~~~~
+A task for monitoring Telegram channels. Features:
+
+* Post limit configuration
+* Automatic scrolling
+* Message extraction
+* Timestamp handling
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "posts_limit": 20
+    }
+
+telegram_bulk_parser
+~~~~~~~~~~~~~~~~~
+A task for bulk parsing multiple Telegram channels. Features:
+
+* Time window filtering
+* Configurable scroll behavior
+* Async processing
+* Error handling per channel
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "time_window_minutes": 120,
+        "max_scrolls": 50,
+        "wait_time": 5
+    }
+
+telegram_publisher
+~~~~~~~~~~~~~~~
+A task for publishing content to Telegram channels. Features:
+
+* Batch processing
+* Time window filtering
+* Source type filtering
+* Error handling per message
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "channel_id": "-100123456789",
+        "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+        "batch_size": 10,
+        "time_window_minutes": 10,
+        "source_types": ["web", "telegram"]
+    }
+
+telegram_test
+~~~~~~~~~~~
+A task for testing Telegram channel connectivity. Features:
+
+* Channel access verification
+* Message sending test
+* Detailed test results
+* Random test messages
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "channel_id": "-100123456789",
+        "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
+    }
