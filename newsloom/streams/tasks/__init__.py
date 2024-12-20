@@ -3,6 +3,7 @@ import logging
 from .article_searcher import search_articles
 from .bing_search import search_bing
 from .doc_publisher import publish_docs
+from .google_search import search_google
 from .news_stream import process_news_stream
 from .playwright import extract_links
 from .rss import parse_rss_feed
@@ -26,6 +27,7 @@ TASK_MAPPING = {
     "telegram_test": test_telegram_channel,
     "article_searcher": search_articles,
     "bing_search": search_bing,
+    "google_search": search_google,
     "telegram_bulk_parser": run_telegram_parser,
     "news_stream": process_news_stream,
     "doc_publisher": publish_docs,
@@ -107,6 +109,13 @@ TASK_CONFIG_EXAMPLES = {
     "bing_search": {
         "keywords": ["climate change", "renewable energy"],
         "max_results_per_keyword": 5,
+        "search_type": "news",
+        "debug": False,
+    },
+    "google_search": {
+        "keywords": ["climate change", "renewable energy"],
+        "max_results_per_keyword": 5,
+        "days_ago": 7,
         "search_type": "news",
         "debug": False,
     },
