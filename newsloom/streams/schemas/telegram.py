@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -28,6 +28,13 @@ class TelegramPublishConfig(BaseModel):
     batch_size: Annotated[int, Field(gt=0, le=50)] = 10
     bot_token: str
     time_window_minutes: Annotated[int, Field(gt=0, le=1440)] = 10  # max 24 hours
+    source_types: Optional[List[str]] = Field(
+        None,
+        description=(
+            "Optional list of source types to filter news by (e.g. ['web', 'telegram']). "
+            "If not provided, all types will be included."
+        ),
+    )
 
     @field_validator("channel_id")
     def validate_channel_id(cls, v):

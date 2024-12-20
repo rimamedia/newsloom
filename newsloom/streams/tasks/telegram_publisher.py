@@ -35,13 +35,25 @@ def publish_to_telegram(
             # Get all sources associated with the media
             media_sources = await sync_to_async(list)(stream.media.sources.all())
 
-            # Get news from all media sources within time window
+            # Build base query
+            query = News.objects.filter(
+                source__in=media_sources,
+                link__isnull=False,
+                created_at__gte=time_threshold,
+            )
+
+            # Apply source type filter if specified
+            if (
+                "source_types" in stream.configuration
+                and stream.configuration["source_types"]
+            ):
+                query = query.filter(
+                    source__type__in=stream.configuration["source_types"]
+                )
+
+            # Get filtered news items
             news_items = await sync_to_async(list)(
-                News.objects.filter(
-                    source__in=media_sources,
-                    link__isnull=False,
-                    created_at__gte=time_threshold,
-                ).order_by("created_at")[:batch_size]
+                query.order_by("created_at")[:batch_size]
             )
 
             for news in news_items:

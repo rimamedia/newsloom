@@ -90,6 +90,7 @@ TASK_CONFIG_EXAMPLES = {
         "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
         "batch_size": 10,
         "time_window_minutes": 10,
+        "source_types": ["web", "telegram"],  # Optional: filter news by source types
     },
     "telegram_test": {
         "channel_id": "-100123456789",
