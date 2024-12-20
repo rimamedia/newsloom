@@ -25,7 +25,11 @@ def validate_aws_credentials() -> Tuple[bool, Optional[str]]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    required_vars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"]
+    required_vars = [
+        "BEDROCK_AWS_ACCESS_KEY_ID",
+        "BEDROCK_AWS_SECRET_ACCESS_KEY",
+        "BEDROCK_AWS_REGION",
+    ]
     missing_vars = [var for var in required_vars if not os.getenv(var)]
 
     if missing_vars:
