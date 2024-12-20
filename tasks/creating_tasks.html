@@ -89,78 +89,73 @@
             
   <section id="creating-new-tasks">
 <h1>Creating New Tasks<a class="headerlink" href="#creating-new-tasks" title="Link to this heading">¶</a></h1>
-<section id="task-development-guide">
-<h2>Task Development Guide<a class="headerlink" href="#task-development-guide" title="Link to this heading">¶</a></h2>
-<p>To create a new task in NewLoom, you’ll need to:</p>
-<ol class="arabic simple">
-<li><p>Create a new task function</p></li>
-<li><p>Define the task schema</p></li>
-<li><p>Register the task</p></li>
-<li><p>Implement the task logic</p></li>
-</ol>
-</section>
-<section id="basic-task-structure">
-<h2>Basic Task Structure<a class="headerlink" href="#basic-task-structure" title="Link to this heading">¶</a></h2>
-<p>All NewLoom tasks should be defined as functions and follow this basic structure:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">my_new_task</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Task description&quot;&quot;&quot;</span>
+<section id="complete-task-implementation-guide">
+<h2>Complete Task Implementation Guide<a class="headerlink" href="#complete-task-implementation-guide" title="Link to this heading">¶</a></h2>
+<p>To create a new task in NewLoom, you need to implement and integrate several components:</p>
+<section id="create-a-configuration-schema">
+<h3>1. Create a Configuration Schema<a class="headerlink" href="#create-a-configuration-schema" title="Link to this heading">¶</a></h3>
+<p>Create a new file in <code class="docutils literal notranslate"><span class="pre">streams/schemas/</span></code> to define your task’s configuration:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># streams/schemas/my_task.py</span>
+<span class="kn">from</span> <span class="nn">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
 
-    <span class="c1"># Task implementation</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="c1"># Task logic</span>
-        <span class="k">pass</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="c1"># Error handling</span>
-        <span class="k">raise</span> <span class="n">e</span>
+<span class="k">class</span> <span class="nc">MyTaskConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration schema for my task.&quot;&quot;&quot;</span>
+
+    <span class="n">parameter1</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span>  <span class="c1"># ... means required</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Description of parameter1&quot;</span><span class="p">,</span>
+        <span class="n">example</span><span class="o">=</span><span class="s2">&quot;example value&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parameter2</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># default value if not provided</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Description of parameter2&quot;</span><span class="p">,</span>
+        <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># greater than or equal to 1</span>
+        <span class="n">le</span><span class="o">=</span><span class="mi">100</span>  <span class="c1"># less than or equal to 100</span>
+    <span class="p">)</span>
 </pre></div>
 </div>
 </section>
-<section id="required-components">
-<h2>Required Components<a class="headerlink" href="#required-components" title="Link to this heading">¶</a></h2>
-<section id="parameters">
-<h3>1. Parameters<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
-<p>Every task must include these base parameters:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">stream_id</span></code>: Links the task to a Stream model instance</p></li>
-</ul>
-</section>
-<section id="task-logic">
-<h3>2. Task Logic<a class="headerlink" href="#task-logic" title="Link to this heading">¶</a></h3>
-<p>The task function should:</p>
-<ul class="simple">
-<li><p>Implement the task’s core logic</p></li>
-<li><p>Handle exceptions appropriately</p></li>
-<li><p>Update stream status</p></li>
-<li><p>Log task progress</p></li>
-</ul>
-</section>
-</section>
-<section id="registering-tasks">
-<h2>Registering Tasks<a class="headerlink" href="#registering-tasks" title="Link to this heading">¶</a></h2>
-<p>After creating your task, register it in the task mapping:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># streams/tasks/__init__.py</span>
-<span class="n">TASK_MAPPING</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;my_new_task&#39;</span><span class="p">:</span> <span class="n">my_new_task</span><span class="p">,</span>
-    <span class="c1"># ... other tasks</span>
+<section id="register-the-schema">
+<h3>2. Register the Schema<a class="headerlink" href="#register-the-schema" title="Link to this heading">¶</a></h3>
+<p>Add your schema to <code class="docutils literal notranslate"><span class="pre">streams/schemas/__init__.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">.my_task</span> <span class="kn">import</span> <span class="n">MyTaskConfig</span>
+
+<span class="n">STREAM_CONFIG_SCHEMAS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;my_task&quot;</span><span class="p">:</span> <span class="n">MyTaskConfig</span><span class="p">,</span>
+    <span class="c1"># ... other schemas</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 </section>
-<section id="error-handling">
-<h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading">¶</a></h2>
-<p>Implement proper error handling in your tasks:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">my_new_task</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="kn">from</span> <span class="nn">streams.models</span> <span class="kn">import</span> <span class="n">Stream</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<section id="create-task-implementation">
+<h3>3. Create Task Implementation<a class="headerlink" href="#create-task-implementation" title="Link to this heading">¶</a></h3>
+<p>Create a new file in <code class="docutils literal notranslate"><span class="pre">streams/tasks/</span></code> for your task implementation:</p>
+</section>
+<section id="basic-task-structure">
+<h3>Basic Task Structure<a class="headerlink" href="#basic-task-structure" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">my_task</span><span class="p">(</span><span class="n">stream_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Task description and purpose.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        stream_id: ID of the stream</span>
+<span class="sd">        **kwargs: Configuration parameters defined in MyTaskConfig</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;extracted_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;saved_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+        <span class="s2">&quot;stream_id&quot;</span><span class="p">:</span> <span class="n">stream_id</span><span class="p">,</span>
+    <span class="p">}</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="c1"># Task implementation</span>
+        <span class="c1"># Get stream</span>
         <span class="n">stream</span> <span class="o">=</span> <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">stream_id</span><span class="p">)</span>
-        <span class="c1"># ... task logic ...</span>
 
-        <span class="c1"># Update success status</span>
-        <span class="n">stream</span><span class="o">.</span><span class="n">last_run</span> <span class="o">=</span> <span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
-        <span class="n">stream</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">update_fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;last_run&#39;</span><span class="p">])</span>
+        <span class="c1"># Task implementation</span>
+        <span class="c1"># ...</span>
+
+        <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -172,26 +167,185 @@
 </pre></div>
 </div>
 </section>
+<section id="register-the-task">
+<h3>4. Register the Task<a class="headerlink" href="#register-the-task" title="Link to this heading">¶</a></h3>
+<p>Add your task to <code class="docutils literal notranslate"><span class="pre">streams/tasks/__init__.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">.my_task</span> <span class="kn">import</span> <span class="n">my_task</span>
+
+<span class="n">TASK_MAPPING</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;my_task&quot;</span><span class="p">:</span> <span class="n">my_task</span><span class="p">,</span>
+    <span class="c1"># ... other tasks</span>
+<span class="p">}</span>
+
+<span class="c1"># Add configuration example</span>
+<span class="n">TASK_CONFIG_EXAMPLES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;my_task&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;parameter1&quot;</span><span class="p">:</span> <span class="s2">&quot;example value&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;parameter2&quot;</span><span class="p">:</span> <span class="mi">50</span>
+    <span class="p">},</span>
+    <span class="c1"># ... other examples</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="add-to-stream-model">
+<h3>5. Add to Stream Model<a class="headerlink" href="#add-to-stream-model" title="Link to this heading">¶</a></h3>
+<p>Add your task type to <code class="docutils literal notranslate"><span class="pre">streams/models.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Stream</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">TYPE_CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;my_task&quot;</span><span class="p">,</span> <span class="s2">&quot;My Task Name&quot;</span><span class="p">),</span>
+        <span class="c1"># ... other tasks</span>
+    <span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="document-the-task">
+<h3>6. Document the Task<a class="headerlink" href="#document-the-task" title="Link to this heading">¶</a></h3>
+<p>Add your task to <code class="docutils literal notranslate"><span class="pre">docs/source/tasks/available_tasks.rst</span></code>:</p>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="gh">My Task</span>
+<span class="gh">~~~~~~~</span>
+<span class="m">-</span> Type: <span class="s">``my_task``</span>
+<span class="m">-</span> Description: What your task does
+<span class="m">-</span> Key Features:
+    <span class="m">*</span> Feature 1
+    <span class="m">*</span> Feature 2
+    <span class="m">*</span> Feature 3
+</pre></div>
+</div>
+</section>
+</section>
+<section id="error-handling-and-best-practices">
+<h2>Error Handling and Best Practices<a class="headerlink" href="#error-handling-and-best-practices" title="Link to this heading">¶</a></h2>
+<section id="error-handling">
+<h3>1. Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading">¶</a></h3>
+<p>Always implement proper error handling:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="c1"># Task logic</span>
+    <span class="k">pass</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">stream_id</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="n">status</span><span class="o">=</span><span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+        <span class="n">last_run</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="k">raise</span> <span class="n">e</span>
+</pre></div>
+</div>
+</section>
 <section id="best-practices">
-<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading">¶</a></h2>
+<h3>2. Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading">¶</a></h3>
 <ol class="arabic simple">
 <li><p>Documentation
-- Include detailed docstrings
-- Document parameters
-- Provide usage examples</p></li>
-<li><p>Error Handling
-- Use try-except blocks
-- Log errors with context
-- Update stream status</p></li>
+- Include detailed docstrings with type hints
+- Document all parameters and return values
+- Provide configuration examples
+- Update available_tasks.rst with features list</p></li>
+<li><p>Configuration Schema
+- Use pydantic Field for parameter validation
+- Include descriptions and examples
+- Set appropriate value constraints
+- Make parameters required or optional as needed</p></li>
 <li><p>Resource Management
-- Close connections
-- Clean up temporary files
-- Use context managers</p></li>
+- Use context managers for resources (with statements)
+- Close connections and files properly
+- Clean up temporary resources
+- Handle browser/API sessions appropriately</p></li>
 <li><p>Testing
-- Write unit tests
+- Write unit tests for your task
+- Test configuration validation
 - Test error cases
-- Mock external services</p></li>
+- Mock external services and APIs</p></li>
+<li><p>Logging
+- Use appropriate log levels (debug, info, warning, error)
+- Include context in log messages
+- Log start/end of operations
+- Log important state changes</p></li>
+<li><p>Performance
+- Use connection pooling where appropriate
+- Implement proper timeouts
+- Consider batch operations
+- Handle pagination for large datasets</p></li>
 </ol>
+</section>
+</section>
+<section id="example-implementation">
+<h2>Example Implementation<a class="headerlink" href="#example-implementation" title="Link to this heading">¶</a></h2>
+<p>The following example demonstrates how to implement a task that performs Google searches with time-based filtering:</p>
+<ol class="arabic simple">
+<li><p>Configuration Schema:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># streams/schemas/google_search.py</span>
+<span class="k">class</span> <span class="nc">GoogleSearchConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">keywords</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of keywords to search for&quot;</span><span class="p">,</span>
+        <span class="n">example</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;climate change&quot;</span><span class="p">,</span> <span class="s2">&quot;renewable energy&quot;</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">days_ago</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Filter results from the last X days&quot;</span><span class="p">,</span>
+        <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">le</span><span class="o">=</span><span class="mi">365</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Task Implementation:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># streams/tasks/google_search.py</span>
+<span class="nd">@cancellable_task</span>
+<span class="k">def</span> <span class="nf">search_google</span><span class="p">(</span>
+    <span class="n">stream_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">keywords</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">days_ago</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;extracted_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;saved_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;links&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Implementation...</span>
+        <span class="k">pass</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in Google search: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">e</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Integration:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># streams/tasks/__init__.py</span>
+<span class="n">TASK_MAPPING</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;google_search&quot;</span><span class="p">:</span> <span class="n">search_google</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">TASK_CONFIG_EXAMPLES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;google_search&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;example search&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;days_ago&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1"># streams/schemas/__init__.py</span>
+<span class="n">STREAM_CONFIG_SCHEMAS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;google_search&quot;</span><span class="p">:</span> <span class="n">GoogleSearchConfig</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># streams/models.py</span>
+<span class="n">TYPE_CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">&quot;google_search&quot;</span><span class="p">,</span> <span class="s2">&quot;Google Search&quot;</span><span class="p">),</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>For a complete example of a task implementation, see the following files:</p>
+<ul class="simple">
+<li><p>Schema: <code class="docutils literal notranslate"><span class="pre">streams/schemas/google_search.py</span></code></p></li>
+<li><p>Task: <code class="docutils literal notranslate"><span class="pre">streams/tasks/google_search.py</span></code></p></li>
+<li><p>Integration: Updates to <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code>, <code class="docutils literal notranslate"><span class="pre">models.py</span></code>, and documentation</p></li>
+</ul>
+<p>This example demonstrates proper configuration validation, error handling, resource management, and integration with the NewLoom system.</p>
 </section>
 </section>
 

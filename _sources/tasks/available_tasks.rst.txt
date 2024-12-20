@@ -60,6 +60,16 @@ Bing Search
     * News/web search options
     * Result limit configuration
 
+Google Search
+~~~~~~~~~~
+- Type: ``google_search``
+- Description: Performs searches using Google's search engine
+- Key Features:
+    * Multiple keyword support
+    * News/web search options
+    * Time-based filtering (last X days)
+    * Result limit configuration
+
 Content Processing Tasks
 ---------------------
 
