@@ -1,6 +1,7 @@
 import logging
 
 from .article_searcher import search_articles
+from .articlean import articlean
 from .bing_search import search_bing
 from .doc_publisher import publish_docs
 from .google_search import search_google
@@ -31,6 +32,7 @@ TASK_MAPPING = {
     "telegram_bulk_parser": run_telegram_parser,
     "news_stream": process_news_stream,
     "doc_publisher": publish_docs,
+    "articlean": articlean,
 }
 
 
@@ -54,6 +56,10 @@ def get_task_function(stream_type):
 
 # Example configuration for each task type
 TASK_CONFIG_EXAMPLES = {
+    "articlean": {
+        "endpoint": "http://35.92.156.236/process-url",
+        "token": "your-api-key-here",
+    },
     "sitemap_news": {
         "sitemap_url": "https://example.com/sitemap.xml",
         "max_links": 100,

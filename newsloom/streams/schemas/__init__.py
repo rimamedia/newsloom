@@ -1,4 +1,5 @@
 from .article_searcher import ArticleSearcherConfig
+from .articlean import ArticleanConfiguration
 from .bing_search import BingSearchConfig
 from .doc_publisher import DocPublisherConfig
 from .google_search import GoogleSearchConfig
@@ -29,4 +30,5 @@ STREAM_CONFIG_SCHEMAS = {
     "google_search": GoogleSearchConfig,
     "news_stream": NewsStreamConfig,
     "doc_publisher": DocPublisherConfig,
+    "articlean": ArticleanConfiguration,
 }
