@@ -29,6 +29,7 @@ class Stream(models.Model):
         ("telegram_bulk_parser", "Telegram Bulk Parser"),
         ("news_stream", "News Stream Processor"),
         ("doc_publisher", "Doc Publisher"),
+        ("articlean", "Articlean Processor"),
     ]
 
     FREQUENCY_CHOICES = [
