@@ -4,6 +4,11 @@
     <div class="chat-messages" id="chat-messages">
         <!-- Messages will be inserted here -->
     </div>
+    <div class="loader" id="chat-loader" style="display: none;">
+        <div class="loader-dot"></div>
+        <div class="loader-dot"></div>
+        <div class="loader-dot"></div>
+    </div>
     <div class="chat-input">
         <textarea id="chat-message-input" placeholder="Type your message here..."></textarea>
         <button id="chat-message-submit">Send</button>
@@ -92,6 +97,34 @@
     #chat-message-submit:hover {
         background: #0056b3;
     }
+
+    .loader {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .loader-dot {
+        width: 8px;
+        height: 8px;
+        background: #007bff;
+        border-radius: 50%;
+        animation: bounce 0.5s ease-in-out infinite;
+    }
+
+    .loader-dot:nth-child(2) {
+        animation-delay: 0.1s;
+    }
+
+    .loader-dot:nth-child(3) {
+        animation-delay: 0.2s;
+    }
+
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
 </style>
 
 <script>
@@ -104,13 +137,12 @@
     const submitButton = document.getElementById('chat-message-submit');
 
     chatSocket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
+        // Hide loader and re-enable input
+        document.getElementById('chat-loader').style.display = 'none';
+        messageInputDom.disabled = false;
+        submitButton.disabled = false;
 
-        // Add user message
-        const userMessageDiv = document.createElement('div');
-        userMessageDiv.className = 'message user';
-        userMessageDiv.innerHTML = `<div class="message-content">${data.message}</div>`;
-        messagesDiv.appendChild(userMessageDiv);
+        const data = JSON.parse(e.data);
 
         // Add assistant message
         const assistantMessageDiv = document.createElement('div');
@@ -137,6 +169,19 @@
     submitButton.onclick = function(e) {
         const message = messageInputDom.value.trim();
         if (message) {
+            // Show loader
+            document.getElementById('chat-loader').style.display = 'flex';
+            // Disable input and button while processing
+            messageInputDom.disabled = true;
+            submitButton.disabled = true;
+
+            // Add user message immediately
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user';
+            userMessageDiv.innerHTML = `<div class="message-content">${message}</div>`;
+            messagesDiv.appendChild(userMessageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
             chatSocket.send(JSON.stringify({
                 'message': message
             }));
