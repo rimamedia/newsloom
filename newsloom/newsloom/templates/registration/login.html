@@ -1,0 +1,95 @@
+{% extends "newsloom/home.html" %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <h2>Login</h2>
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_username">Username:</label>
+                <input type="text" name="username" id="id_username" required>
+            </div>
+            <div class="form-group">
+                <label for="id_password">Password:</label>
+                <input type="password" name="password" id="id_password" required>
+            </div>
+            <input type="hidden" name="next" value="{{ next }}">
+            <button type="submit">Log In</button>
+        </form>
+        {% if form.errors %}
+        <div class="error-message">
+            Your username and password didn't match. Please try again.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 200px);
+    }
+
+    .login-box {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .login-box h2 {
+        margin: 0 0 1.5rem;
+        color: #333;
+        text-align: center;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #666;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    button[type="submit"] {
+        width: 100%;
+        padding: 0.75rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    button[type="submit"]:hover {
+        background: #0056b3;
+    }
+
+    .error-message {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: #fee;
+        border: 1px solid #fcc;
+        border-radius: 4px;
+        color: #c00;
+        text-align: center;
+    }
+</style>
+{% endblock %}

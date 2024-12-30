@@ -57,7 +57,7 @@ RUN python manage.py collectstatic --noinput
 
 # Create log directory and files
 RUN mkdir -p /var/log && \
-    touch /var/log/gunicorn.err.log /var/log/gunicorn.out.log \
+    touch /var/log/daphne.err.log /var/log/daphne.out.log \
         /var/log/nginx.err.log /var/log/nginx.out.log \
         /var/log/stream_scheduler.err.log /var/log/stream_scheduler.out.log
 
