@@ -5,6 +5,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 from .models import Chat, ChatMessage
+from .system_prompt import SYSTEM_PROMPT
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -43,7 +44,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             response = self.client.messages.create(
                 model="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                max_tokens=1000,
+                max_tokens=8192,
+                temperature=0,
+                system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": message}],
             )
             return response.content[0].text
