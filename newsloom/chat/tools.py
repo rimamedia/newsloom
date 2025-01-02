@@ -2,6 +2,14 @@
 
 TOOLS = [
     {
+        "name": "list_media",
+        "description": "Get a list of all media entries from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
         "name": "add_media",
         "description": "Add a new media entry to the database",
         "input_schema": {
@@ -15,6 +23,42 @@ TOOLS = [
                 },
             },
             "required": ["name"],
+        },
+    },
+    {
+        "name": "update_media",
+        "description": "Update an existing media entry in the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the media to update"},
+                "name": {"type": "string", "description": "New name for the media"},
+                "source_ids": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "List of source IDs to associate with the media",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "delete_media",
+        "description": "Delete a media entry from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the media to delete"},
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "list_sources",
+        "description": "Get a list of all source entries from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
         },
     },
     {
@@ -43,6 +87,60 @@ TOOLS = [
                 },
             },
             "required": ["name", "link", "type"],
+        },
+    },
+    {
+        "name": "update_source",
+        "description": "Update an existing source entry in the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the source to update"},
+                "name": {"type": "string", "description": "New name for the source"},
+                "link": {
+                    "type": "string",
+                    "description": "New main website URL of the source",
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "web",
+                        "telegram",
+                        "search",
+                        "rss",
+                        "twitter",
+                        "facebook",
+                        "linkedin",
+                    ],
+                    "description": "New type for the source",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "delete_source",
+        "description": "Delete a source entry from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the source to delete"},
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "list_streams",
+        "description": "Get a list of all stream entries from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["active", "paused", "failed", "processing"],
+                    "description": "Optional status to filter streams by",
+                },
+            },
         },
     },
     {
@@ -103,6 +201,93 @@ TOOLS = [
         },
     },
     {
+        "name": "update_stream",
+        "description": "Update an existing stream entry in the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the stream to update"},
+                "name": {"type": "string", "description": "New name for the stream"},
+                "stream_type": {
+                    "type": "string",
+                    "enum": [
+                        "sitemap_news",
+                        "sitemap_blog",
+                        "playwright_link_extractor",
+                        "rss_feed",
+                        "web_article",
+                        "telegram_channel",
+                        "telegram_publish",
+                        "telegram_test",
+                        "article_searcher",
+                        "bing_search",
+                        "google_search",
+                        "telegram_bulk_parser",
+                        "news_stream",
+                        "doc_publisher",
+                        "articlean",
+                    ],
+                    "description": "New type for the stream",
+                },
+                "source_id": {
+                    "type": "integer",
+                    "description": "New source ID to associate with the stream",
+                },
+                "media_id": {
+                    "type": "integer",
+                    "description": "New media ID to associate with the stream",
+                },
+                "frequency": {
+                    "type": "string",
+                    "enum": [
+                        "5min",
+                        "15min",
+                        "30min",
+                        "1hour",
+                        "6hours",
+                        "12hours",
+                        "daily",
+                    ],
+                    "description": "New frequency for the stream",
+                },
+                "configuration": {
+                    "type": "object",
+                    "description": "New stream-specific configuration parameters",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["active", "paused", "failed", "processing"],
+                    "description": "New status for the stream",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "delete_stream",
+        "description": "Delete a stream entry from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the stream to delete"},
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "list_agents",
+        "description": "Get a list of all agent entries from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean",
+                    "description": "Optional flag to filter agents by active status",
+                },
+            },
+        },
+    },
+    {
         "name": "add_agent",
         "description": "Add a new agent entry to the database",
         "input_schema": {
@@ -132,6 +317,50 @@ TOOLS = [
                 },
             },
             "required": ["name", "provider", "system_prompt", "user_prompt_template"],
+        },
+    },
+    {
+        "name": "update_agent",
+        "description": "Update an existing agent entry in the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the agent to update"},
+                "name": {"type": "string", "description": "New name for the agent"},
+                "description": {
+                    "type": "string",
+                    "description": "New description of what this agent does",
+                },
+                "provider": {
+                    "type": "string",
+                    "enum": ["openai", "anthropic", "google", "bedrock"],
+                    "description": "New LLM provider to use",
+                },
+                "system_prompt": {
+                    "type": "string",
+                    "description": "New system prompt that defines the agent's behavior",
+                },
+                "user_prompt_template": {
+                    "type": "string",
+                    "description": "New template for the user prompt. Must contain {news} placeholder",  # noqa E501
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "description": "Whether this agent is active and can be used by streams",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "delete_agent",
+        "description": "Delete an agent entry from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "description": "ID of the agent to delete"},
+            },
+            "required": ["id"],
         },
     },
 ]
