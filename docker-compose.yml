@@ -22,6 +22,7 @@ services:
       - AWS_REGION=${AWS_REGION}
     volumes:
       - ./newsloom:/app/newsloom
+      - ./docs:/app/docs  # Mount docs directory
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
       - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
