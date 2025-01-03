@@ -1,9 +1,10 @@
 import json
+import logging
 from datetime import timedelta
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import DatabaseError, models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from mediamanager.models import Media
@@ -11,9 +12,14 @@ from pydantic import ValidationError as PydanticValidationError
 from sources.models import Source
 
 from .schemas import STREAM_CONFIG_SCHEMAS
+from .tasks import get_task_function
+
+logger = logging.getLogger(__name__)
 
 
 class Stream(models.Model):
+    version = models.IntegerField(default=1)
+
     TYPE_CHOICES = [
         ("sitemap_news", "Sitemap News Parser"),
         ("sitemap_blog", "Sitemap Blog Parser"),
@@ -125,9 +131,26 @@ class Stream(models.Model):
             raise ValidationError(str(e))
 
     def save(self, *args, **kwargs):
-        """Save the stream instance."""
+        """Save the stream instance with optimistic locking."""
         skip_validation = kwargs.pop("skip_validation", False)
         update_fields = kwargs.get("update_fields")
+
+        if self.pk and not update_fields:
+            # Implement optimistic locking for updates
+            try:
+                with transaction.atomic():
+                    current = Stream.objects.select_for_update(nowait=True).get(
+                        id=self.pk
+                    )
+                    if current.version != self.version:
+                        raise ValidationError(
+                            "Stream was modified. Please refresh and try again."
+                        )
+                    self.version += 1
+            except DatabaseError:
+                raise ValidationError(
+                    "Stream is currently locked. Please try again later."
+                )
 
         # Skip validation if we're only updating specific fields or if skip_validation is True
         if not skip_validation and not update_fields:
@@ -164,15 +187,6 @@ class Stream(models.Model):
 
     def execute_task(self):
         """Execute the stream task directly."""
-        import logging
-
-        from django.db import transaction
-        from django.utils import timezone
-
-        from .tasks import get_task_function
-
-        logger = logging.getLogger(__name__)
-
         stream_log = StreamLog.objects.create(stream=self, status="running")
 
         lock_key = f"stream_lock_{self.id}"
@@ -185,6 +199,7 @@ class Stream(models.Model):
             return
 
         try:
+            # Get task function outside transaction
             task_function = get_task_function(self.stream_type)
             if not task_function:
                 error_msg = (
@@ -197,23 +212,33 @@ class Stream(models.Model):
                 stream_log.save()
                 return
 
-            # Execute the task function
+            # Execute task outside transaction
             result = task_function(stream_id=self.id, **self.configuration)
             logger.debug(f"Task executed with result: {result}")
 
-            # Update stream log with success
+            # Update stream log
             stream_log.status = "success"
             stream_log.result = result
             stream_log.completed_at = timezone.now()
             stream_log.save()
 
-            # Update stream status and timing in a single transaction
-            with transaction.atomic():
-                now = timezone.now()
-                self.last_run = now
-                self.next_run = self.get_next_run_time()
-                self.save(update_fields=["last_run", "next_run"])
-                logger.debug(f"Updated stream {self.id} next_run to {self.next_run}")
+            # Update stream status in a minimal transaction with NOWAIT
+            try:
+                with transaction.atomic():
+                    stream = Stream.objects.select_for_update(nowait=True).get(
+                        id=self.id
+                    )
+                    now = timezone.now()
+                    stream.last_run = now
+                    stream.next_run = stream.get_next_run_time()
+                    stream.version += 1
+                    stream.save(update_fields=["last_run", "next_run", "version"])
+                    logger.debug(
+                        f"Updated stream {self.id} next_run to {stream.next_run}"
+                    )
+            except DatabaseError as e:
+                logger.warning(f"Could not update stream timing due to lock: {e}")
+                # Continue execution as the task itself was successful
 
         except Exception as e:
             error_msg = f"Error executing task for stream {self.id}: {str(e)}"
@@ -224,9 +249,18 @@ class Stream(models.Model):
             stream_log.completed_at = timezone.now()
             stream_log.save()
 
-            Stream.objects.filter(id=self.id).update(
-                status="failed", last_run=timezone.now()
-            )
+            try:
+                with transaction.atomic():
+                    Stream.objects.select_for_update(nowait=True).filter(
+                        id=self.id
+                    ).update(
+                        status="failed",
+                        last_run=timezone.now(),
+                        version=models.F("version") + 1,
+                    )
+            except DatabaseError as e:
+                logger.warning(f"Could not update stream status due to lock: {e}")
+
             raise e
 
         finally:
