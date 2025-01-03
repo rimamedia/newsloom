@@ -8,6 +8,13 @@ AVAILABLE_TASKS_DOC = (
 with open(AVAILABLE_TASKS_DOC, "r") as f:
     TASKS_DOCUMENTATION = f.read()
 
+# Import available agents documentation
+AVAILABLE_AGENTS_DOC = (
+    Path(__file__).parent.parent.parent / "docs/source/agents/index.rst"
+)
+with open(AVAILABLE_AGENTS_DOC, "r") as f:
+    AGENTS_DOCUMENTATION = f.read()
+
 
 SYSTEM_PROMPT = f"""
 
@@ -63,5 +70,11 @@ Here is task documentation for available tasks:
 
 ```
 {TASKS_DOCUMENTATION}
+```
+
+Here is agents documentation for available agents:
+
+```
+{AGENTS_DOCUMENTATION}
 ```
 """
