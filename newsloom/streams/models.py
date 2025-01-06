@@ -12,7 +12,6 @@ from pydantic import ValidationError as PydanticValidationError
 from sources.models import Source
 
 from .schemas import STREAM_CONFIG_SCHEMAS
-from .tasks import get_task_function
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +199,8 @@ class Stream(models.Model):
 
         try:
             # Get task function outside transaction
+            from .tasks import get_task_function  # Lazy import to avoid circular dependency
+
             task_function = get_task_function(self.stream_type)
             if not task_function:
                 error_msg = (
