@@ -2,6 +2,7 @@ import json
 
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 
 from .models import Stream, StreamLog, TelegramPublishLog
@@ -178,8 +179,6 @@ class StreamAdmin(admin.ModelAdmin):
                         schema.validate(config)
 
                     except Exception as e:
-                        from django.core.exceptions import ValidationError
-
                         raise ValidationError(
                             f"Configuration validation failed: {str(e)}"
                         )
