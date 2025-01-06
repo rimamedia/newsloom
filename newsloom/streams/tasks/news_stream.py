@@ -120,13 +120,13 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
         tools = [
             {
                 "name": "create_posts",
-                "description": "Create a list of posts from the analyzed news content",
+                "description": "Create a structured output from the analyzed content. Return only the processed content in the specified JSON format without any additional explanations or descriptions.",  # noqa: E501
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "topic": {
                             "type": "string",
-                            "description": "The main topic or theme of the posts",
+                            "description": "A brief topic or category for the content",
                         },
                         "posts": {
                             "type": "array",
@@ -135,16 +135,16 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
                                 "properties": {
                                     "text": {
                                         "type": "string",
-                                        "description": "The text content of the post",
+                                        "description": "The processed content (e.g., summary, translation, or formatted text)",  # noqa: E501
                                     },
                                     "url": {
                                         "type": "string",
-                                        "description": "The source URL for the post",
+                                        "description": "The source URL of the content",
                                     },
                                 },
                                 "required": ["text", "url"],
                             },
-                            "description": "Array of posts to create",
+                            "description": "Array of processed content items",
                         },
                     },
                     "required": ["topic", "posts"],
@@ -192,67 +192,68 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
                 json.dumps(response_body, indent=2),
             )
 
-            # Add assistant's response to messages
+            # Add assistant's response to conversation
             messages.append(
                 {"role": "assistant", "content": response_body.get("content", [])}
             )
 
-            # Get text content for final response
-            text_content = ""
-            for block in response_body.get("content", []):
-                if block.get("type") == "text":
-                    text_content += block.get("text", "")
-            final_response = text_content.strip()
+            # Get tool call from response
+            tool_block = next(
+                (
+                    c
+                    for c in response_body.get("content", [])
+                    if c.get("type") == "tool_use"
+                ),
+                None,
+            )
 
-            # Check for tool use
-            tool_calls = [
-                c
-                for c in response_body.get("content", [])
-                if c.get("type") == "tool_use"
-            ]
-
-            if not tool_calls:
+            if not tool_block:
                 logger.info("No tool calls in response, completing conversation")
                 break
 
-            # Process tool calls
-            for content in tool_calls:
-                logger.info(f"Processing tool call: {content.get('name')}")
-                try:
-                    if content.get("name") == "create_posts":
-                        tool_input = content.get("input", {})
-                        logger.info(
-                            "Successfully extracted tool input: %s",
-                            json.dumps(tool_input, indent=2),
-                        )
-                        # Add tool result to messages
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "tool_result",
-                                        "tool_use_id": content.get("id"),
-                                        "content": json.dumps(tool_input),
-                                    }
-                                ],
-                            }
-                        )
-                except Exception as e:
-                    error_msg = f"Error executing tool {content.get('name')}: {str(e)}"
-                    logger.error(error_msg)
+            # Extract tool details
+            tool_name = tool_block.get("name")
+            tool_input = tool_block.get("input")
+            tool_id = tool_block.get("id")
+
+            logger.info(f"Processing tool call: {tool_name}")
+            try:
+                if tool_name == "create_posts":
+                    logger.info(
+                        "Successfully extracted tool input: %s",
+                        json.dumps(tool_input, indent=2),
+                    )
+
+                    # Add tool result to conversation
                     messages.append(
                         {
                             "role": "user",
                             "content": [
                                 {
                                     "type": "tool_result",
-                                    "tool_use_id": content.get("id"),
-                                    "content": f"Error executing tool: {str(e)}",
+                                    "tool_use_id": tool_id,
+                                    "content": json.dumps(tool_input),
                                 }
                             ],
                         }
                     )
+                    final_response = json.dumps(tool_input)
+                    break
+            except Exception as e:
+                error_msg = f"Error executing tool {tool_name}: {str(e)}"
+                logger.error(error_msg)
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tool_id,
+                                "content": str(e),
+                            }
+                        ],
+                    }
+                )
 
         return {
             "completion": final_response,
@@ -383,8 +384,27 @@ def process_news_stream(
 
         # Format prompts with validated templates
         try:
-            system_prompt = agent.system_prompt.format(**template_vars)
+            # Format base prompts
+            base_system_prompt = agent.system_prompt.format(**template_vars)
             user_prompt = agent.user_prompt_template.format(**template_vars)
+
+            # Add tool usage instructions to system prompt
+            system_prompt = f"""
+{base_system_prompt}
+
+IMPORTANT INSTRUCTIONS FOR TOOL USAGE:
+1. When using the create_posts tool, you must return a valid JSON object
+2. The JSON must contain 'topic' and 'posts' fields
+3. Each post must have 'text' and 'url' fields
+4. Do not include any explanations or descriptions in the output
+5. Do not explain the content after using the tool
+6. Return only the JSON data through the tool
+
+Example of correct tool usage:
+{{"topic": "Example Topic", "posts": [{{"text": "content here", "url": "source_url"}}]}}
+
+Remember: Always use the tool to return structured data, never return raw text responses.
+"""
 
             logger.debug(
                 "Successfully formatted prompts - System prompt length: %d, User prompt length: %d",
