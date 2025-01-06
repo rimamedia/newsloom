@@ -156,59 +156,109 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
             "Preparing Bedrock request with tools: %s", json.dumps(tools, indent=2)
         )
 
-        # Prepare request body
-        request_body = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 8192,
-            "temperature": 0,
-            "messages": [
-                {"role": "user", "content": [{"type": "text", "text": user_prompt}]}
-            ],
-            "system": system_prompt,
-            "tools": tools,
-        }
+        # Initialize messages list
+        messages = [
+            {"role": "user", "content": [{"type": "text", "text": user_prompt}]}
+        ]
+        final_response = None
 
-        logger.debug(
-            "Sending request to Bedrock with body: %s", json.dumps(request_body)
-        )
+        while True:
+            # Prepare request body
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 8192,
+                "temperature": 0,
+                "messages": messages,
+                "system": system_prompt,
+                "tools": tools,
+            }
 
-        # Make API call
-        response = client.invoke_model(
-            modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps(request_body),
-        )
+            logger.debug(
+                "Sending request to Bedrock with body: %s", json.dumps(request_body)
+            )
 
-        # Parse response
-        response_body = json.loads(response["body"].read())
-        logger.info(
-            "Received raw response from Bedrock: %s",
-            json.dumps(response_body, indent=2),
-        )
+            # Make API call
+            response = client.invoke_model(
+                modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(request_body),
+            )
 
-        # Check for tool use
-        if response_body.get("stop_reason") == "tool_use":
+            # Parse response
+            response_body = json.loads(response["body"].read())
+            logger.info(
+                "Received raw response from Bedrock: %s",
+                json.dumps(response_body, indent=2),
+            )
+
+            # Add assistant's response to messages
+            messages.append(
+                {"role": "assistant", "content": response_body.get("content", [])}
+            )
+
+            # Get text content for final response
+            text_content = ""
             for block in response_body.get("content", []):
-                if block.get("type") == "tool_use":
-                    tool_input = block.get("input", {})
-                    logger.info(
-                        "Successfully extracted tool input: %s",
-                        json.dumps(tool_input, indent=2),
+                if block.get("type") == "text":
+                    text_content += block.get("text", "")
+            final_response = text_content.strip()
+
+            # Check for tool use
+            tool_calls = [
+                c
+                for c in response_body.get("content", [])
+                if c.get("type") == "tool_use"
+            ]
+
+            if not tool_calls:
+                logger.info("No tool calls in response, completing conversation")
+                break
+
+            # Process tool calls
+            for content in tool_calls:
+                logger.info(f"Processing tool call: {content.get('name')}")
+                try:
+                    if content.get("name") == "create_posts":
+                        tool_input = content.get("input", {})
+                        logger.info(
+                            "Successfully extracted tool input: %s",
+                            json.dumps(tool_input, indent=2),
+                        )
+                        # Add tool result to messages
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "tool_result",
+                                        "tool_use_id": content.get("id"),
+                                        "content": json.dumps(tool_input),
+                                    }
+                                ],
+                            }
+                        )
+                except Exception as e:
+                    error_msg = f"Error executing tool {content.get('name')}: {str(e)}"
+                    logger.error(error_msg)
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": content.get("id"),
+                                    "content": f"Error executing tool: {str(e)}",
+                                }
+                            ],
+                        }
                     )
-                    return {
-                        "completion": json.dumps(tool_input),
-                        "full_response": response_body,
-                    }
 
-        # Fallback to text response
-        text_content = ""
-        for block in response_body.get("content", []):
-            if block.get("type") == "text":
-                text_content += block.get("text", "")
-
-        logger.info("Falling back to text response")
-        return {"completion": text_content.strip(), "full_response": response_body}
+        return {
+            "completion": final_response,
+            "full_response": response_body,
+            "message_history": messages,
+        }
 
     except Exception as e:
         error_msg = f"Unexpected error in invoke_bedrock_anthropic: {str(e)}"
@@ -277,7 +327,12 @@ def process_news_stream(
             logger.info(
                 "No news items found in the last %d minutes", time_window_minutes
             )
-            return {"processed": 0, "saved": 0, "error": None}
+            return {
+                "processed": 0,
+                "saved": 0,
+                "error": None,
+                "bedrock_response": {"full_response": None, "message_history": []},
+            }
 
         logger.info("Found %d news items to process", len(news_items))
 
@@ -400,7 +455,10 @@ def process_news_stream(
                     "saved": 0,
                     "error": error_msg,
                     "response_text": processed_text,
-                    "full_response": response.get("full_response"),
+                    "bedrock_response": {
+                        "full_response": response.get("full_response"),
+                        "message_history": response.get("message_history", []),
+                    },
                 }
 
         logger.info(
@@ -412,6 +470,10 @@ def process_news_stream(
             "processed": processed_count,
             "saved": saved_count,
             "error": None,
+            "bedrock_response": {
+                "full_response": response.get("full_response"),
+                "message_history": response.get("message_history", []),
+            },
         }
 
     except Exception as e:
@@ -421,7 +483,14 @@ def process_news_stream(
             "processed": 0,
             "saved": 0,
             "error": error_msg,
-            "full_response": (
-                response.get("full_response") if "response" in locals() else None
-            ),
+            "bedrock_response": {
+                "full_response": (
+                    response.get("full_response") if "response" in locals() else None
+                ),
+                "message_history": (
+                    response.get("message_history", [])
+                    if "response" in locals()
+                    else []
+                ),
+            },
         }
