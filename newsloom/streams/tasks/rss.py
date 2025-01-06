@@ -8,7 +8,7 @@ from sources.models import News
 from streams.models import Stream
 
 
-def parse_rss_feed(stream_id, feed_url, max_entries=100):
+def parse_rss_feed(stream_id, url, max_items=10):
     logger = logging.getLogger(__name__)
     result = {
         "processed_count": 0,
@@ -18,13 +18,13 @@ def parse_rss_feed(stream_id, feed_url, max_entries=100):
     }
 
     try:
-        feed = feedparser.parse(feed_url)
-        logger.info(f"Fetched RSS feed from {feed_url}")
+        feed = feedparser.parse(str(url))
+        logger.info(f"Fetched RSS feed from {url}")
 
         stream = Stream.objects.get(id=stream_id)
 
         with transaction.atomic():
-            for entry in feed.entries[:max_entries]:
+            for entry in feed.entries[:max_items]:
                 published_at = None
                 if hasattr(entry, "published_parsed"):
                     published_at = datetime(*entry.published_parsed[:6])
