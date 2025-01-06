@@ -41,7 +41,7 @@ class StreamAdmin(admin.ModelAdmin):
     )
     list_filter = ("stream_type", "status", "frequency")
     search_fields = ("name", "source__name")
-    readonly_fields = ("last_run", "next_run", "created_at", "updated_at")
+    readonly_fields = ("last_run", "next_run", "created_at", "updated_at", "version")
 
     fieldsets = (
         (
@@ -68,7 +68,13 @@ class StreamAdmin(admin.ModelAdmin):
         (
             "Timing Information",
             {
-                "fields": ("last_run", "next_run", "created_at", "updated_at"),
+                "fields": (
+                    "last_run",
+                    "next_run",
+                    "created_at",
+                    "updated_at",
+                    "version",
+                ),
                 "classes": ("collapse",),
             },
         ),
@@ -153,29 +159,55 @@ class StreamAdmin(admin.ModelAdmin):
         return super().response_change(request, obj)
 
     def save_model(self, request, obj, form, change):
-        """Override save_model to handle validation differently."""
-        if not change:  # Only for new streams
-            # Get the schema
-            config_schema = STREAM_CONFIG_SCHEMAS.get(obj.stream_type)
-            if config_schema:
-                try:
-                    # Validate configuration directly
-                    if isinstance(obj.configuration, str):
-                        config = json.loads(obj.configuration)
-                    else:
-                        config = obj.configuration
+        """Override save_model to handle validation and locking."""
+        try:
+            if not change:  # Only for new streams
+                # Get the schema
+                config_schema = STREAM_CONFIG_SCHEMAS.get(obj.stream_type)
+                if config_schema:
+                    try:
+                        # Validate configuration directly
+                        if isinstance(obj.configuration, str):
+                            config = json.loads(obj.configuration)
+                        else:
+                            config = obj.configuration
 
-                    # Create schema instance without validation
-                    schema = config_schema.construct()
-                    # Validate the config
-                    schema.validate(config)
+                        # Create schema instance without validation
+                        schema = config_schema.construct()
+                        # Validate the config
+                        schema.validate(config)
 
-                except Exception as e:
-                    from django.core.exceptions import ValidationError
+                    except Exception as e:
+                        from django.core.exceptions import ValidationError
 
-                    raise ValidationError(f"Configuration validation failed: {str(e)}")
+                        raise ValidationError(
+                            f"Configuration validation failed: {str(e)}"
+                        )
 
-        super().save_model(request, obj, form, change)
+            super().save_model(request, obj, form, change)
+
+        except ValidationError as e:
+            if "Stream was modified" in str(e):
+                self.message_user(
+                    request,
+                    (
+                        "The stream was modified by another user or process. "
+                        "Please refresh and try again."
+                    ),
+                    level="ERROR",
+                )
+            elif "Stream is currently locked" in str(e):
+                self.message_user(
+                    request,
+                    (
+                        "The stream is currently running. "
+                        "Please wait for it to complete and try again."
+                    ),
+                    level="ERROR",
+                )
+            else:
+                self.message_user(request, str(e), level="ERROR")
+            raise
 
 
 @admin.register(StreamLog)

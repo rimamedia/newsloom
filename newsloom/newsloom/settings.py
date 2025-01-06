@@ -43,11 +43,17 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "channels",
     "mediamanager",
     "sources",
     "streams",
-    "agents",  # Added the agents app
+    "agents",
+    "chat",
 ]
+
+# Channels
+ASGI_APPLICATION = "newsloom.asgi.application"
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -211,3 +217,8 @@ CSRF_COOKIE_HTTPONLY = True
 
 # Add this for proper header forwarding
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Authentication settings
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/chat/"
+LOGOUT_REDIRECT_URL = "/"

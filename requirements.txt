@@ -1,4 +1,6 @@
 alabaster==1.0.0
+channels==4.0.0
+daphne==4.1.0
 annotated-types==0.7.0
 anthropic==0.40.0
 anyio==4.6.2.post1
@@ -19,7 +21,6 @@ docutils==0.21.2
 feedparser==6.0.11
 filelock==3.16.1
 greenlet==3.1.1
-gunicorn==23.0.0
 h11==0.14.0
 httpcore==1.0.7
 httpx==0.27.2

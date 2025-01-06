@@ -1,12 +1,18 @@
 #!/bin/bash
 
+# Set Django settings module
+export DJANGO_SETTINGS_MODULE=newsloom.settings
+
 # Wait for database
 echo "Waiting for database..."
 while ! nc -z $DB_HOST $DB_PORT; do
   sleep 1
 done
 
-# Apply database migrations
+# Create and apply database migrations
+echo "Creating database migrations..."
+python manage.py makemigrations
+
 echo "Applying database migrations..."
 python manage.py migrate
 
