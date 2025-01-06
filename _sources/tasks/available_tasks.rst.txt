@@ -18,6 +18,16 @@ A task for searching articles on web pages based on specific text content. It us
 * Visit each link and search for specific text in the article content
 * Save matching articles to the database
 
+.. important::
+   To save found articles, the stream **must** have a source configured in the admin panel. 
+   Without a configured source, the task will find articles but won't be able to save them 
+   to the database.
+
+Required Setup:
+    1. Create a Source in the admin panel
+    2. Create a Stream and select the created source
+    3. Configure the stream with the settings below
+
 Configuration example:
 
 .. code-block:: python
@@ -43,6 +53,11 @@ A task for searching articles using Bing's search engine. Features:
 * Configurable results per keyword
 * Stealth browser automation to avoid detection
 
+.. important::
+   To save found articles, the stream **must** have a source configured in the admin panel. 
+   Without a configured source, the task will find articles but won't be able to save them 
+   to the database.
+
 Configuration example:
 
 .. code-block:: python
@@ -54,6 +69,11 @@ Configuration example:
         "debug": False
     }
 
+Required Setup:
+    1. Create a Source in the admin panel (e.g., "Bing News")
+    2. Create a Stream and select the created source
+    3. Configure the stream with the above settings
+
 google_search
 ~~~~~~~~~~~
 A task for searching articles using Google's search engine. Features:
@@ -62,6 +82,16 @@ A task for searching articles using Google's search engine. Features:
 * Time-based filtering (days ago)
 * Multiple keyword support
 * Stealth browser automation
+
+.. important::
+   To save found articles, the stream **must** have a source configured in the admin panel. 
+   Without a configured source, the task will find articles but won't be able to save them 
+   to the database.
+
+Required Setup:
+    1. Create a Source in the admin panel (e.g., "Google News")
+    2. Create a Stream and select the created source
+    3. Configure the stream with the settings below
 
 Configuration example:
 
@@ -132,6 +162,16 @@ A task for extracting links from web pages using Playwright. Features:
 * Stealth browser automation
 * Automatic URL normalization
 
+.. important::
+   To save found articles, the stream **must** have a source configured in the admin panel. 
+   Without a configured source, the task will find articles but won't be able to save them 
+   to the database.
+
+Required Setup:
+    1. Create a Source in the admin panel
+    2. Create a Stream and select the created source
+    3. Configure the stream with the settings below
+
 Configuration example:
 
 .. code-block:: python
@@ -151,6 +191,16 @@ A task for parsing RSS feeds. Features:
 * Automatic date parsing
 * Duplicate handling
 
+.. important::
+   To save found articles, the stream **must** have a source configured in the admin panel. 
+   Without a configured source, the task will find articles but won't be able to save them 
+   to the database.
+
+Required Setup:
+    1. Create a Source in the admin panel (e.g., the RSS feed name)
+    2. Create a Stream and select the created source
+    3. Configure the stream with the settings below
+
 Configuration example:
 
 .. code-block:: python
@@ -168,6 +218,16 @@ A task for parsing XML sitemaps. Features:
 * Link limit configuration
 * Last modification date handling
 * Error handling for timeouts
+
+.. important::
+   To save found articles, the stream **must** have a source configured in the admin panel. 
+   Without a configured source, the task will find articles but won't be able to save them 
+   to the database.
+
+Required Setup:
+    1. Create a Source in the admin panel (e.g., the website name)
+    2. Create a Stream and select the created source
+    3. Configure the stream with the settings below
 
 Configuration example:
 

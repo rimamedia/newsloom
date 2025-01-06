@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>Creating Stream Schemas &#8212; NewsLoom  documentation</title>
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=0f75aaca" />
     <script src="../_static/documentation_options.js?v=5929fcd5"></script>
@@ -100,10 +100,10 @@
 </section>
 <section id="basic-schema-structure">
 <h2>Basic Schema Structure<a class="headerlink" href="#basic-schema-structure" title="Link to this heading">¶</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">HttpUrl</span><span class="p">,</span> <span class="n">Field</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">HttpUrl</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
 
-<span class="k">class</span> <span class="nc">MyNewSchema</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyNewSchema</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema description&quot;&quot;&quot;</span>
 
     <span class="c1"># Required fields</span>
@@ -113,7 +113,7 @@
     <span class="c1"># Optional fields</span>
     <span class="n">custom_field</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">class</span> <span class="nc">Config</span><span class="p">:</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
         <span class="n">extra</span> <span class="o">=</span> <span class="s1">&#39;forbid&#39;</span>  <span class="c1"># Prevent additional fields</span>
 </pre></div>
 </div>
@@ -135,13 +135,13 @@
 <section id="validation">
 <h3>2. Validation<a class="headerlink" href="#validation" title="Link to this heading">¶</a></h3>
 <p>Add field validators:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pydantic</span> <span class="kn">import</span> <span class="n">field_validator</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
-<span class="k">class</span> <span class="nc">MySchema</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MySchema</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s1">&#39;field_name&#39;</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">validate_field</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_field</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;valid_&#39;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Field must start with &#39;valid_&#39;&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">v</span>
@@ -151,7 +151,7 @@
 <section id="configuration">
 <h3>3. Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h3>
 <p>Set schema configuration:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Config</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
     <span class="n">extra</span> <span class="o">=</span> <span class="s1">&#39;forbid&#39;</span>  <span class="c1"># Prevent additional fields</span>
     <span class="n">arbitrary_types_allowed</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Allow custom types</span>
     <span class="n">json_schema_extra</span> <span class="o">=</span> <span class="p">{</span>
@@ -180,7 +180,7 @@
 <section id="schema-validation">
 <h2>Schema Validation<a class="headerlink" href="#schema-validation" title="Link to this heading">¶</a></h2>
 <p>The Stream model automatically validates configurations:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">clean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">clean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">config_schema</span> <span class="o">=</span> <span class="n">STREAM_CONFIG_SCHEMAS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_type</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">config_schema</span><span class="p">:</span>
