@@ -5,7 +5,7 @@ from typing import Dict, List, Literal, Optional
 from agents.models import Agent
 from mediamanager.models import Media
 from sources.models import Source
-from streams.models import Stream
+from streams.models import Stream, StreamLog
 
 
 def list_media() -> List[Dict]:
@@ -551,3 +551,52 @@ def delete_agent(id: int) -> None:
         agent.delete()
     except Agent.DoesNotExist:
         raise Agent.DoesNotExist(f"Agent with id {id} does not exist")
+
+
+def get_stream_logs(
+    stream_id: Optional[int] = None,
+    status: Optional[Literal["success", "failed", "running"]] = None,
+    limit: Optional[int] = 100,
+) -> List[Dict]:
+    """Get stream execution logs filtered by stream ID and/or status.
+
+    Args:
+        stream_id: Optional ID of the stream to get logs for
+        status: Optional status to filter logs by
+        limit: Optional maximum number of logs to return (default 100)
+
+    Returns:
+        List[Dict]: List of stream log entries with their properties
+
+    Raises:
+        Stream.DoesNotExist: If stream_id is provided but doesn't exist
+    """
+    # Validate stream_id if provided
+    if stream_id:
+        try:
+            Stream.objects.get(id=stream_id)
+        except Stream.DoesNotExist:
+            raise Stream.DoesNotExist(f"Stream with id {stream_id} does not exist")
+
+    # Build query
+    queryset = StreamLog.objects.all()
+    if stream_id:
+        queryset = queryset.filter(stream_id=stream_id)
+    if status:
+        queryset = queryset.filter(status=status)
+
+    # Get latest logs first
+    queryset = queryset.order_by("-started_at")[:limit]
+
+    return [
+        {
+            "id": log.id,
+            "stream_id": log.stream_id,
+            "status": log.status,
+            "started_at": log.started_at.isoformat(),
+            "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+            "error_message": log.error_message,
+            "result": log.result,
+        }
+        for log in queryset
+    ]
