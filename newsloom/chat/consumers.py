@@ -22,11 +22,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Initialize Anthropic Bedrock client
         self.client = AnthropicBedrock()
 
-        # Create a new chat for this connection
-        self.chat = await self.create_chat()
-
         # Initialize chat history
         self.chat_history = []
+        self.chat = None
 
     async def disconnect(self, close_code):
         pass
@@ -34,9 +32,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         try:
             text_data_json = json.loads(text_data)
-            message = text_data_json["message"]
+            message_type = text_data_json.get("type")
 
-            # Add user message to history
+            # Handle chat rename
+            if message_type == "rename_chat":
+                chat_id = text_data_json.get("chat_id")
+                new_title = text_data_json.get("new_title")
+
+                # Update chat title
+                success = await self.rename_chat(chat_id, new_title)
+                if success:
+                    # Send confirmation back to WebSocket
+                    await self.send(
+                        text_data=json.dumps(
+                            {
+                                "type": "chat_renamed",
+                                "chat_id": chat_id,
+                                "new_title": new_title,
+                            }
+                        )
+                    )
+                return
+
+            # Handle regular chat messages
+            message = text_data_json["message"]
+            chat_id = text_data_json.get("chat_id")
+
+            # Get or create chat and load history
+            if chat_id:
+                self.chat = await self.get_chat(chat_id)
+                if self.chat:
+                    await self.load_chat_history(self.chat)
+            if not self.chat:
+                self.chat = await self.create_chat()
+
+            # Add new user message to history
             self.chat_history.append({"role": "user", "content": message})
 
             # Get response from Claude
@@ -47,7 +77,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             # Send message and response back to WebSocket
             await self.send(
-                text_data=json.dumps({"message": message, "response": response})
+                text_data=json.dumps(
+                    {"message": message, "response": response, "chat_id": self.chat.id}
+                )
             )
         except Exception as e:
             await self.send(text_data=json.dumps({"error": str(e)}))
@@ -158,7 +190,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return Chat.objects.create(user=self.scope["user"])
 
     @database_sync_to_async
+    def get_chat(self, chat_id):
+        try:
+            return Chat.objects.get(id=chat_id, user=self.scope["user"])
+        except Chat.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def load_chat_history(self, chat):
+        messages = ChatMessage.objects.filter(chat=chat).order_by("timestamp")
+        for msg in messages:
+            self.chat_history.append({"role": "user", "content": msg.message})
+            if msg.response:
+                self.chat_history.append({"role": "assistant", "content": msg.response})
+
+    @database_sync_to_async
     def save_message(self, message, response):
         ChatMessage.objects.create(
             chat=self.chat, user=self.scope["user"], message=message, response=response
         )
+
+    @database_sync_to_async
+    def rename_chat(self, chat_id, new_title):
+        """Rename a chat if it belongs to the current user."""
+        try:
+            chat = Chat.objects.get(id=chat_id, user=self.scope["user"])
+            chat.title = new_title
+            chat.save()
+            return True
+        except Chat.DoesNotExist:
+            return False
