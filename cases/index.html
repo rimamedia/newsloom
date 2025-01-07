@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Use Cases &#8212; NewsLoom  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=0f75aaca" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Agents" href="../agents/index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">NewsLoom</a></h1>
+
+
+
+<p class="blurb">A Django-based web scraping and content aggregation system</p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=rimamedia&repo=newsloom&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../agents/index.html">Agents</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Use Cases</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#telegram-news-processing-pipeline">Telegram News Processing Pipeline</a></li>
+</ul>
+</li>
+</ul>
+
+
+<hr />
+<ul>
+    
+    <li class="toctree-l1"><a href="https://docs.djangoproject.com/">Django Documentation</a></li>
+    
+    <li class="toctree-l1"><a href="https://playwright.dev/python/">Playwright Documentation</a></li>
+    
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../agents/index.html" title="previous chapter">Agents</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="use-cases">
+<h1>Use Cases<a class="headerlink" href="#use-cases" title="Link to this heading">¶</a></h1>
+<p>This section provides detailed examples of common workflows and use cases in NewLoom, demonstrating how different components work together.</p>
+<section id="telegram-news-processing-pipeline">
+<h2>Telegram News Processing Pipeline<a class="headerlink" href="#telegram-news-processing-pipeline" title="Link to this heading">¶</a></h2>
+<p>This example demonstrates how to set up a pipeline for processing news from Telegram channels and republishing them.</p>
+<section id="prerequisites">
+<h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h3>
+<p>Before setting up the pipeline, ensure you have:</p>
+<ul class="simple">
+<li><p>Telegram API credentials configured</p></li>
+<li><p>Access to source Telegram channels</p></li>
+<li><p>Target Telegram channel for publishing</p></li>
+</ul>
+</section>
+<section id="step-1-media-setup">
+<h3>Step 1: Media Setup<a class="headerlink" href="#step-1-media-setup" title="Link to this heading">¶</a></h3>
+<p>First, create a media profile that defines the style and format for the rewritten content:</p>
+<ol class="arabic simple">
+<li><p>Navigate to Admin &gt; Media Manager &gt; Add Media</p></li>
+<li><p>Configure:
+* Name: “Telegram News Format”
+* Add example posts that demonstrate your desired writing style</p></li>
+</ol>
+</section>
+<section id="step-2-source-configuration">
+<h3>Step 2: Source Configuration<a class="headerlink" href="#step-2-source-configuration" title="Link to this heading">¶</a></h3>
+<p>Add the source Telegram channels:</p>
+<ol class="arabic simple">
+<li><p>Go to Admin &gt; Sources &gt; Add Source</p></li>
+<li><p>For each channel:
+* Name: Channel’s name
+* Type: “Telegram Channel”
+* Link: Channel username/ID</p></li>
+</ol>
+</section>
+<section id="step-3-input-stream-telegram-parser">
+<h3>Step 3: Input Stream (Telegram Parser)<a class="headerlink" href="#step-3-input-stream-telegram-parser" title="Link to this heading">¶</a></h3>
+<p>Create a stream to monitor and parse Telegram channels:</p>
+<ol class="arabic">
+<li><p>Go to Admin &gt; Streams &gt; Add Stream</p></li>
+<li><p>Configure:
+* Name: “Telegram Channel Monitor”
+* Stream Type: “telegram_bulk_parser”
+* Source: Select your configured Telegram source
+* Frequency: Choose monitoring frequency (e.g., “15min”)
+* Configuration:</p>
+<blockquote>
+<div><div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;parse_links&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;save_media&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<p>This stream will regularly check the source channels and create Doc objects for new posts.</p>
+</section>
+<section id="step-4-processing-stream">
+<h3>Step 4: Processing Stream<a class="headerlink" href="#step-4-processing-stream" title="Link to this heading">¶</a></h3>
+<p>Create a stream to process the collected posts:</p>
+<ol class="arabic">
+<li><p>Add new stream:
+* Name: “News Processor”
+* Stream Type: “news_stream”
+* Media: Select your “Telegram News Format” media
+* Frequency: “5min”
+* Configuration:</p>
+<blockquote>
+<div><div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;prompt_template&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Analyze and rewrite this news item in our style: {content}&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;max_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<p>This stream processes new Doc objects using the configured prompt and generates rewritten content.</p>
+</section>
+<section id="step-5-publishing-stream">
+<h3>Step 5: Publishing Stream<a class="headerlink" href="#step-5-publishing-stream" title="Link to this heading">¶</a></h3>
+<p>Finally, create a stream to publish the processed content:</p>
+<ol class="arabic">
+<li><p>Add new stream:
+* Name: “Telegram Publisher”
+* Stream Type: “doc_publisher”
+* Media: Select your “Telegram News Format” media
+* Frequency: “5min”
+* Configuration:</p>
+<blockquote>
+<div><div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;channel&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;@your_channel_username&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;include_source&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+</section>
+<section id="important-considerations">
+<h3>Important Considerations<a class="headerlink" href="#important-considerations" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt><strong>Stream Dependencies</strong>: The streams process content in sequence:</dt><dd><ol class="arabic simple">
+<li><p>telegram_bulk_parser creates Doc objects from source channels</p></li>
+<li><p>news_stream processes these Doc objects</p></li>
+<li><p>doc_publisher publishes the processed content</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>Media Configuration</strong>: The media profile is essential for:</dt><dd><ul>
+<li><p>Defining content style through examples</p></li>
+<li><p>Maintaining consistent output format</p></li>
+<li><p>Guiding AI processing</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>Monitoring</strong>: The admin interface provides:</dt><dd><ul>
+<li><p>Stream execution status tracking</p></li>
+<li><p>Processing logs</p></li>
+<li><p>Error messages for troubleshooting</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="simple">
+<dt>This pipeline demonstrates NewLoom’s ability to:</dt><dd><ul class="simple">
+<li><p>Monitor Telegram channels</p></li>
+<li><p>Process content using AI</p></li>
+<li><p>Maintain consistent publishing style</p></li>
+<li><p>Automate the entire workflow</p></li>
+</ul>
+</dd>
+</dl>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, RimaMedia.
+      
+      |
+      <a href="../_sources/cases/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
