@@ -88,6 +88,7 @@ Technical Architecture
    tasks/index
    schemas/index
    agents/index
+   cases/index
 
 Quick Links
 ----------
