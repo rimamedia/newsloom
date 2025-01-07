@@ -1,5 +1,8 @@
 {% extends "newsloom/home.html" %}
 {% block content %}
+<!-- Include marked.js for markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <div class="chat-page">
     <div class="chat-sidebar">
         <h3>Previous Chats</h3>
@@ -169,10 +172,81 @@
         word-wrap: break-word;
     }
 
+    /* Markdown Styles */
+    .message-content h1,
+    .message-content h2,
+    .message-content h3,
+    .message-content h4,
+    .message-content h5,
+    .message-content h6 {
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+        font-weight: 600;
+    }
+
+    .message-content p {
+        margin: 0.5em 0;
+    }
+
+    .message-content ul,
+    .message-content ol {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+    }
+
+    .message-content code {
+        background: rgba(0, 0, 0, 0.1);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+
+    .message-content pre {
+        background: rgba(0, 0, 0, 0.1);
+        padding: 1em;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 0.5em 0;
+    }
+
+    .message-content pre code {
+        background: none;
+        padding: 0;
+    }
+
+    .message-content blockquote {
+        border-left: 3px solid #ddd;
+        margin: 0.5em 0;
+        padding-left: 1em;
+        color: #666;
+    }
+
+    .message-content a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .message-content a:hover {
+        text-decoration: underline;
+    }
+
     .message.user .message-content {
         background: #007bff;
         color: white;
         border-radius: 12px 12px 0 12px;
+    }
+
+    .message.user .message-content code {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .message.user .message-content pre {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .message.user .message-content a {
+        color: #fff;
+        text-decoration: underline;
     }
 
     .message.assistant .message-content {
@@ -254,6 +328,13 @@
 </div>
 
 <script>
+    // Configure marked options
+    marked.setOptions({
+        breaks: true, // Enable line breaks
+        gfm: true,    // Enable GitHub Flavored Markdown
+        sanitize: true // Sanitize HTML input
+    });
+
     // Get current chat ID from URL or data attribute
     const pathParts = window.location.pathname.split('/');
     const currentChatId = pathParts[pathParts.length - 2] === 'chat' ? null : pathParts[pathParts.length - 2];
@@ -315,10 +396,10 @@
             return;
         }
 
-        // Add assistant message
+        // Add assistant message with markdown rendering
         const assistantMessageDiv = document.createElement('div');
         assistantMessageDiv.className = 'message assistant';
-        assistantMessageDiv.innerHTML = `<div class="message-content">${data.response}</div>`;
+        assistantMessageDiv.innerHTML = `<div class="message-content">${marked.parse(data.response)}</div>`;
         messagesDiv.appendChild(assistantMessageDiv);
 
         // Scroll to bottom
@@ -346,10 +427,10 @@
             messageInputDom.disabled = true;
             submitButton.disabled = true;
 
-            // Add user message immediately
+            // Add user message immediately with markdown rendering
             const userMessageDiv = document.createElement('div');
             userMessageDiv.className = 'message user';
-            userMessageDiv.innerHTML = `<div class="message-content">${message}</div>`;
+            userMessageDiv.innerHTML = `<div class="message-content">${marked.parse(message)}</div>`;
             messagesDiv.appendChild(userMessageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
@@ -360,5 +441,11 @@
             messageInputDom.value = '';
         }
     };
+
+    // Initialize markdown rendering for existing messages
+    document.querySelectorAll('.message-content').forEach(content => {
+        const text = content.textContent;
+        content.innerHTML = marked.parse(text);
+    });
 </script>
 {% endblock %}
