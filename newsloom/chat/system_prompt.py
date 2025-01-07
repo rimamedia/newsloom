@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from newsloom.chat.tools import TOOLS
+from .tools import TOOLS
 
 # Import available tasks documentation
 AVAILABLE_TASKS_DOC = (
