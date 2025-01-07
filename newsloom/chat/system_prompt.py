@@ -186,16 +186,48 @@ Example workflow analysis:
 
 ```mermaid
 flowchart TD
-    A[User Request] --> B{{Analyze Request Type}}
-    B --> C[Stream Creation]
-    B --> D[Content Monitoring]
-    B --> E[Rewriting Task]
-    C --> F{{Validate Requirements}}
-    F --> G[Configure Stream]
-    G --> H[Test Stream]
-    H --> I[Deploy Stream]
-    D --> J[Set Monitoring Rules]
-    E --> K[Apply Rewriting Guidelines]
+flowchart TD
+    %% Input Sources
+    TG[Telegram Channels] -->|Source Data| Parser
+
+    %% Parser Stream
+    subgraph Parser[telegram_bulk_parser Stream]
+        P1[Parse Messages]
+        P2[Extract Media]
+        P3[Create Doc Objects]
+        P1 --> P2 --> P3
+    end
+
+    %% News Processing Stream
+    subgraph Processor[news_stream]
+        N1[Load Doc]
+        N2[Apply Media Format]
+        N3[Generate New Content]
+        N4[Update Doc]
+        N1 --> N2 --> N3 --> N4
+    end
+
+    %% Publishing Stream
+    subgraph Publisher[doc_publisher Stream]
+        PB1[Format Message]
+        PB2[Add Source Attribution]
+        PB3[Publish to Channel]
+        PB1 --> PB2 --> PB3
+    end
+
+    %% Main Flow
+    Parser -->|Doc Objects| Processor
+    Processor -->|Processed Docs| Publisher
+    Publisher -->|Published Content| Output[Target Telegram Channel]
+
+    %% Agents Integration
+    Agent1[Media Format Agent] -.->|Style Guidelines| N2
+    Agent2[Content Generation Agent] -.->|Rewriting Rules| N3
+
+    %% Data Store
+    DB[(Doc Storage)] --- Parser
+    DB --- Processor
+    DB --- Publisher
 ```
 
 INTERACTION RULES:
