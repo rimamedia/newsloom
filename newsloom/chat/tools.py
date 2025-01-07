@@ -363,4 +363,28 @@ TOOLS = [
             "required": ["id"],
         },
     },
+    {
+        "name": "get_stream_logs",
+        "description": "Get stream execution logs filtered by stream ID and/or status",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "stream_id": {
+                    "type": "integer",
+                    "description": "Optional ID of the stream to get logs for",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["success", "failed", "running"],
+                    "description": "Optional status to filter logs by",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Optional maximum number of logs to return (default 100)",
+                    "minimum": 1,
+                    "maximum": 1000,
+                },
+            },
+        },
+    },
 ]
