@@ -5,10 +5,18 @@
         <h3>Previous Chats</h3>
         <div class="chat-list">
             {% for chat in user_chats %}
-                <a href="{% url 'chat:room_with_id' chat.id %}" class="chat-item {% if current_chat.id == chat.id %}active{% endif %}">
-                    <div class="chat-title">{{ chat.title }}</div>
-                    <div class="chat-date">{{ chat.updated_at|date:"M d, Y" }}</div>
-                </a>
+                <div class="chat-item {% if current_chat.id == chat.id %}active{% endif %}">
+                    <a href="{% url 'chat:room_with_id' chat.id %}" class="chat-link">
+                        <div class="chat-title">{{ chat.title }}</div>
+                        <div class="chat-date">{{ chat.updated_at|date:"M d, Y" }}</div>
+                    </a>
+                    <button class="rename-button" data-chat-id="{{ chat.id }}" title="Rename chat">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                </div>
             {% endfor %}
         </div>
     </div>
@@ -66,12 +74,39 @@
     }
 
     .chat-item {
-        display: block;
+        display: flex;
+        align-items: center;
         padding: 15px 20px;
         border-bottom: 1px solid #eee;
-        text-decoration: none;
         color: inherit;
         transition: background 0.2s;
+    }
+
+    .chat-link {
+        flex: 1;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .rename-button {
+        background: none;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        color: #6c757d;
+        opacity: 0.5;
+        transition: opacity 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .rename-button:hover {
+        opacity: 1;
+    }
+
+    .chat-item.active .rename-button {
+        opacity: 0.8;
     }
 
     .chat-item:hover {
@@ -206,6 +241,18 @@
     }
 </style>
 
+<!-- Rename Dialog -->
+<div id="rename-dialog" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; width: 300px;">
+        <h3 style="margin-top: 0;">Rename Chat</h3>
+        <input type="text" id="new-chat-title" style="width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button id="cancel-rename" style="padding: 8px 16px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 4px; cursor: pointer;">Cancel</button>
+            <button id="confirm-rename" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // Get current chat ID from URL or data attribute
     const pathParts = window.location.pathname.split('/');
@@ -219,6 +266,38 @@
     const messageInputDom = document.getElementById('chat-message-input');
     const submitButton = document.getElementById('chat-message-submit');
 
+    let currentRenamingChatId = null;
+
+    // Handle rename button clicks
+    document.querySelectorAll('.rename-button').forEach(button => {
+        button.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const chatId = this.dataset.chatId;
+            const chatTitle = this.closest('.chat-item').querySelector('.chat-title').textContent;
+            currentRenamingChatId = chatId;
+            document.getElementById('new-chat-title').value = chatTitle;
+            document.getElementById('rename-dialog').style.display = 'block';
+        };
+    });
+
+    // Handle dialog buttons
+    document.getElementById('cancel-rename').onclick = function() {
+        document.getElementById('rename-dialog').style.display = 'none';
+    };
+
+    document.getElementById('confirm-rename').onclick = function() {
+        const newTitle = document.getElementById('new-chat-title').value.trim();
+        if (newTitle && currentRenamingChatId) {
+            chatSocket.send(JSON.stringify({
+                'type': 'rename_chat',
+                'chat_id': currentRenamingChatId,
+                'new_title': newTitle
+            }));
+            document.getElementById('rename-dialog').style.display = 'none';
+        }
+    };
+
     chatSocket.onmessage = function(e) {
         // Hide loader and re-enable input
         document.getElementById('chat-loader').style.display = 'none';
@@ -226,6 +305,15 @@
         submitButton.disabled = false;
 
         const data = JSON.parse(e.data);
+
+        if (data.type === 'chat_renamed') {
+            // Update the chat title in the UI
+            const chatItem = document.querySelector(`.chat-item [data-chat-id="${data.chat_id}"]`).closest('.chat-item');
+            if (chatItem) {
+                chatItem.querySelector('.chat-title').textContent = data.new_title;
+            }
+            return;
+        }
 
         // Add assistant message
         const assistantMessageDiv = document.createElement('div');

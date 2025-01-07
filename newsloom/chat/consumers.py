@@ -32,6 +32,29 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         try:
             text_data_json = json.loads(text_data)
+            message_type = text_data_json.get("type")
+
+            # Handle chat rename
+            if message_type == "rename_chat":
+                chat_id = text_data_json.get("chat_id")
+                new_title = text_data_json.get("new_title")
+
+                # Update chat title
+                success = await self.rename_chat(chat_id, new_title)
+                if success:
+                    # Send confirmation back to WebSocket
+                    await self.send(
+                        text_data=json.dumps(
+                            {
+                                "type": "chat_renamed",
+                                "chat_id": chat_id,
+                                "new_title": new_title,
+                            }
+                        )
+                    )
+                return
+
+            # Handle regular chat messages
             message = text_data_json["message"]
             chat_id = text_data_json.get("chat_id")
 
@@ -186,3 +209,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         ChatMessage.objects.create(
             chat=self.chat, user=self.scope["user"], message=message, response=response
         )
+
+    @database_sync_to_async
+    def rename_chat(self, chat_id, new_title):
+        """Rename a chat if it belongs to the current user."""
+        try:
+            chat = Chat.objects.get(id=chat_id, user=self.scope["user"])
+            chat.title = new_title
+            chat.save()
+            return True
+        except Chat.DoesNotExist:
+            return False
