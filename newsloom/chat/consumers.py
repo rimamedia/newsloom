@@ -1,6 +1,9 @@
+import asyncio
 import json
 import logging
 import os
+import traceback
+from datetime import datetime
 
 from anthropic import AnthropicBedrock
 from asgiref.sync import sync_to_async
@@ -16,28 +19,158 @@ logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
+    HEARTBEAT_INTERVAL = 30  # Send heartbeat every 30 seconds
+    CONNECTION_TIMEOUT = 300  # Close connection after 5 minutes of inactivity
+
     async def connect(self):
-        # Accept the WebSocket connection
-        await self.accept()
+        try:
+            # Get user from scope
+            if not self.scope.get("user") or not self.scope["user"].is_authenticated:
+                logger.error("Unauthorized WebSocket connection attempt")
+                await self.close(code=4001)
+                return
 
-        # Initialize Anthropic Bedrock client with credentials from environment
-        self.client = AnthropicBedrock(
-            aws_access_key_id=os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY"),
-            region_name=os.environ.get("BEDROCK_AWS_REGION", "us-west-2"),
-        )
+            # Accept the WebSocket connection
+            await self.accept()
+            logger.info(
+                f"WebSocket connection established for user {self.scope['user'].username}"
+            )
 
-        # Initialize chat history
-        self.chat_history = []
-        self.chat = None
+            # Initialize Anthropic Bedrock client with credentials from environment
+            aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
+            aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
+            aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
+
+            # Log credential status (without exposing actual values)
+            logger.info(f"AWS Region: {aws_region}")
+            logger.info(f"AWS Access Key present: {bool(aws_access_key)}")
+            logger.info(f"AWS Secret Key present: {bool(aws_secret_key)}")
+
+            if not aws_access_key or not aws_secret_key:
+                error_msg = "Missing AWS credentials for Bedrock"
+                logger.error(error_msg)
+                await self.send(text_data=json.dumps({"error": error_msg}))
+                await self.close(code=4002)
+                return
+
+            try:
+                self.client = AnthropicBedrock(
+                    aws_access_key=aws_access_key,
+                    aws_secret_key=aws_secret_key,
+                    aws_region=aws_region,
+                )
+
+                # Test the connection with a minimal request
+                await sync_to_async(self.client.messages.create)(
+                    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    max_tokens=1,
+                    messages=[{"role": "user", "content": "test"}],
+                )
+                logger.info("Successfully tested Bedrock connection")
+
+            except Exception as e:
+                error_msg = f"Failed to initialize Bedrock client: {str(e)}"
+                logger.error(error_msg)
+                logger.error(traceback.format_exc())
+                await self.send(text_data=json.dumps({"error": error_msg}))
+                await self.close(code=4002)
+                return
+
+            # Initialize chat history
+            self.chat_history = []
+            self.chat = None
+            self.last_activity = datetime.now()
+            self.is_connected = True
+
+            # Start heartbeat and timeout monitoring
+            self.heartbeat_task = asyncio.create_task(self.send_heartbeat())
+            self.timeout_task = asyncio.create_task(self.monitor_timeout())
+
+        except Exception as e:
+            logger.error(f"Error in connect: {str(e)}")
+            logger.error(traceback.format_exc())
+            await self.close(code=4000)
 
     async def disconnect(self, close_code):
-        pass
+        """Handle WebSocket disconnection.
+
+        Close codes:
+        - 4000: General error
+        - 4001: Unauthorized
+        - 4002: Bedrock initialization failed
+        """
+        try:
+            logger.info(f"WebSocket disconnecting with code: {close_code}")
+
+            # Clean up tasks
+            self.is_connected = False
+            if hasattr(self, "heartbeat_task"):
+                self.heartbeat_task.cancel()
+                try:
+                    await self.heartbeat_task
+                except asyncio.CancelledError:
+                    pass
+
+            if hasattr(self, "timeout_task"):
+                self.timeout_task.cancel()
+                try:
+                    await self.timeout_task
+                except asyncio.CancelledError:
+                    pass
+
+            # Clean up resources
+            self.client = None
+            self.chat_history = None
+            self.chat = None
+
+            logger.info(
+                f"Successfully cleaned up resources for user {self.scope['user'].username}"
+            )
+
+        except Exception as e:
+            logger.error(f"Error in disconnect: {str(e)}")
+            logger.error(traceback.format_exc())
+
+    async def send_heartbeat(self):
+        """Send periodic heartbeat to keep connection alive."""
+        try:
+            while self.is_connected:
+                await self.send(text_data=json.dumps({"type": "heartbeat"}))
+                await asyncio.sleep(self.HEARTBEAT_INTERVAL)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error in heartbeat: {str(e)}")
+            await self.close()
+
+    async def monitor_timeout(self):
+        """Monitor for connection timeout."""
+        try:
+            while self.is_connected:
+                if (
+                    datetime.now() - self.last_activity
+                ).seconds > self.CONNECTION_TIMEOUT:
+                    logger.warning("Connection timed out due to inactivity")
+                    await self.close()
+                    break
+                await asyncio.sleep(10)  # Check every 10 seconds
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error in timeout monitor: {str(e)}")
+            await self.close()
 
     async def receive(self, text_data):
         try:
+            # Update last activity timestamp
+            self.last_activity = datetime.now()
+
             text_data_json = json.loads(text_data)
             message_type = text_data_json.get("type")
+
+            # Handle heartbeat response
+            if message_type == "heartbeat_response":
+                return
 
             # Handle chat rename
             if message_type == "rename_chat":
@@ -60,7 +193,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 return
 
             # Handle regular chat messages
-            message = text_data_json["message"]
+            message = text_data_json.get("message")
+            if not message:
+                await self.send(text_data=json.dumps({"error": "Message is required"}))
+                return
+
             chat_id = text_data_json.get("chat_id")
 
             # Get or create chat and load history
@@ -74,19 +211,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Add new user message to history
             self.chat_history.append({"role": "user", "content": message})
 
-            # Get response from Claude
-            response = await self.get_claude_response()
-
-            # Save the message and response to the database
-            await self.save_message(message, response)
-
-            # Send message and response back to WebSocket
-            await self.send(
-                text_data=json.dumps(
-                    {"message": message, "response": response, "chat_id": self.chat.id}
+            try:
+                # Get response from Claude with timeout
+                response = await asyncio.wait_for(
+                    self.get_claude_response(),
+                    timeout=120,  # 2 minute timeout for response
                 )
-            )
+
+                # Save the message and response to the database
+                await self.save_message(message, response)
+
+                # Send message and response back to WebSocket
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "chat_message",
+                            "message": message,
+                            "response": response,
+                            "chat_id": self.chat.id,
+                        }
+                    )
+                )
+
+            except asyncio.TimeoutError:
+                logger.error("Timeout waiting for Claude response")
+                await self.send(
+                    text_data=json.dumps(
+                        {"error": "Request timed out. Please try again."}
+                    )
+                )
+
+        except json.JSONDecodeError:
+            await self.send(text_data=json.dumps({"error": "Invalid JSON format"}))
         except Exception as e:
+            logger.error(f"Error in receive: {str(e)}")
+            logger.error(traceback.format_exc())
             await self.send(text_data=json.dumps({"error": str(e)}))
 
     async def get_claude_response(self):
