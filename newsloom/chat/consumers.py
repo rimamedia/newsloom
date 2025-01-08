@@ -174,20 +174,49 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             # Handle stop processing request
             if message_type == "stop_processing":
+                logger.info("Received stop processing request")
                 if hasattr(self, "processing_task"):
-                    self.processing_task.cancel()
-                    try:
-                        await self.processing_task
-                    except asyncio.CancelledError:
-                        pass
+                    # Send status update that we're stopping
                     await self.send(
                         text_data=json.dumps(
                             {
-                                "type": "process_complete",
-                                "message": "Processing stopped by user",
+                                "type": "status",
+                                "message": "Stopping conversation...",
                             }
                         )
                     )
+
+                    # Cancel the processing task and wait for it to complete
+                    logger.info("Cancelling processing task")
+                    self.processing_task.cancel()
+
+                    try:
+                        # Wait for task to be cancelled with timeout
+                        await asyncio.wait_for(self.processing_task, timeout=5.0)
+                        logger.info("Processing task cancelled successfully")
+                    except asyncio.TimeoutError:
+                        logger.error("Timeout waiting for task cancellation")
+                    except asyncio.CancelledError:
+                        logger.info("Processing task cancelled successfully")
+                    except Exception as e:
+                        logger.error(f"Error cancelling task: {str(e)}")
+                        logger.error(traceback.format_exc())
+                    finally:
+                        # Reset processing state
+                        self.processing_task = None
+
+                        # Send completion message
+                        await self.send(
+                            text_data=json.dumps(
+                                {
+                                    "type": "process_complete",
+                                    "message": "Processing stopped by user",
+                                }
+                            )
+                        )
+                        logger.info("Stop processing complete")
+                else:
+                    logger.warning("Stop request received but no processing task found")
                 return
 
             # Handle chat rename
@@ -238,11 +267,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             except asyncio.CancelledError:
                 logger.info("Message processing cancelled by user")
-                await self.send(
-                    text_data=json.dumps(
-                        {"type": "process_complete", "message": "Processing cancelled"}
-                    )
-                )
+                # Don't send completion message here since it's already sent in stop handler
+                return
 
             except asyncio.TimeoutError:
                 logger.error("Timeout waiting for Claude response")
@@ -269,27 +295,48 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 )
             )
 
-            # Get response from Claude with periodic status updates
-            response = await self.get_claude_response()
+            try:
+                # Get response from Claude with periodic status updates
+                response = await self.get_claude_response()
 
-            # Save the message and response to the database
-            await self.save_message(message, response)
+                # Only save and send response if not cancelled
+                if response:
+                    try:
+                        # Save the message and response to the database
+                        await self.save_message(message, response)
 
-            # Send final response
-            await self.send(
-                text_data=json.dumps(
-                    {
-                        "type": "chat_message",
-                        "message": message,
-                        "response": response,
-                        "chat_id": self.chat.id,
-                    }
-                )
-            )
+                        # Send final response
+                        await self.send(
+                            text_data=json.dumps(
+                                {
+                                    "type": "chat_message",
+                                    "message": message,
+                                    "response": response,
+                                    "chat_id": self.chat.id,
+                                }
+                            )
+                        )
 
-            # Send completion status
-            await self.send(text_data=json.dumps({"type": "process_complete"}))
+                        # Send completion status
+                        await self.send(
+                            text_data=json.dumps({"type": "process_complete"})
+                        )
+                    except Exception as e:
+                        logger.error(f"Error saving/sending response: {str(e)}")
+                        raise
 
+            except asyncio.CancelledError:
+                logger.info("Process message cancelled")
+                # Don't save partial responses or send completion message
+                # The stop handler will send the appropriate messages
+                raise
+            except Exception as e:
+                logger.error(f"Error in process_message: {str(e)}")
+                await self.send(text_data=json.dumps({"error": str(e)}))
+                raise
+
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             logger.error(f"Error in process_message: {str(e)}", exc_info=True)
             await self.send(text_data=json.dumps({"error": str(e)}))
@@ -309,14 +356,37 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     )
                 )
 
-                response = await sync_to_async(self.client.messages.create)(
-                    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                    max_tokens=8192,
-                    temperature=0,
-                    system=SYSTEM_PROMPT,
-                    tools=TOOLS,
-                    messages=self.chat_history,
+                # Create a task for the API call that can be cancelled
+                api_task = asyncio.create_task(
+                    sync_to_async(self.client.messages.create)(
+                        model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+                        max_tokens=8192,
+                        temperature=0,
+                        system=SYSTEM_PROMPT,
+                        tools=TOOLS,
+                        messages=self.chat_history,
+                    )
                 )
+
+                try:
+                    # Wait for the API call with timeout
+                    response = await asyncio.wait_for(api_task, timeout=60.0)
+                except asyncio.TimeoutError:
+                    # Cancel the API task if it times out
+                    api_task.cancel()
+                    try:
+                        await api_task
+                    except asyncio.CancelledError:
+                        pass
+                    raise
+                except asyncio.CancelledError:
+                    # Cancel the API task if the parent task is cancelled
+                    api_task.cancel()
+                    try:
+                        await api_task
+                    except asyncio.CancelledError:
+                        pass
+                    raise
 
                 logger.info(
                     f"API Response: {json.dumps(response.model_dump(), indent=2)}"
@@ -360,8 +430,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             # Execute the tool asynchronously
                             try:
                                 tool_func = getattr(tool_functions, tool_name)
-                                tool_result = await sync_to_async(tool_func)(
-                                    **tool_input
+                                # Wrap tool execution in shield to ensure it can be cancelled
+                                tool_result = await asyncio.shield(
+                                    sync_to_async(tool_func)(**tool_input)
                                 )
                                 logger.info(
                                     f"Tool execution successful. Result: {tool_result}"
@@ -381,6 +452,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                     }
                                 )
 
+                            except asyncio.CancelledError:
+                                logger.info(f"Tool execution cancelled: {tool_name}")
+                                raise
                             except Exception as e:
                                 logger.error(f"Tool execution failed: {str(e)}")
                                 # Add error result to history with role: user
@@ -410,6 +484,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 return final_response
 
         except asyncio.CancelledError:
+            logger.info("Claude response generation cancelled")
             raise
 
         except Exception as e:

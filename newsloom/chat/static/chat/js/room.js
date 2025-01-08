@@ -97,6 +97,9 @@ function connectWebSocket() {
             return;
         }
 
+        // Log all received messages for debugging
+        console.log('Received WebSocket message:', data);
+
         // Handle status updates
         if (data.type === 'status') {
             statusMessage.textContent = data.message;
@@ -109,6 +112,14 @@ function connectWebSocket() {
             processingStatus.style.display = 'none';
             messageInputDom.disabled = false;
             submitButton.disabled = false;
+            stopButton.style.display = 'none'; // Hide stop button when processing complete
+            stopButton.disabled = false; // Re-enable stop button
+            stopButton.style.opacity = '1'; // Reset opacity
+
+            // Clear status message if it was a normal completion
+            if (data.type === 'process_complete' && !data.message) {
+                statusMessage.textContent = '';
+            }
         }
 
         if (data.error) {
@@ -174,9 +185,29 @@ function connectWebSocket() {
 // Handle stop button click
 stopButton.onclick = function () {
     if (isProcessing && isConnected) {
-        chatSocket.send(JSON.stringify({
-            'type': 'stop_processing'
-        }));
+        console.log('Sending stop request...');
+        // Update UI to show stopping state
+        statusMessage.textContent = 'Stopping...';
+        stopButton.disabled = true;
+        stopButton.style.opacity = '0.5';
+        messageInputDom.disabled = true;
+        submitButton.disabled = true;
+
+        try {
+            chatSocket.send(JSON.stringify({
+                'type': 'stop_processing'
+            }));
+            console.log('Stop request sent successfully');
+            showStatus('Stopping processing...', 'warning');
+        } catch (error) {
+            console.error('Failed to send stop request:', error);
+            // Re-enable the button if send fails
+            stopButton.disabled = false;
+            stopButton.style.opacity = '1';
+            messageInputDom.disabled = false;
+            submitButton.disabled = false;
+            showStatus('Failed to stop processing', 'error');
+        }
     }
 };
 
@@ -229,7 +260,12 @@ submitButton.onclick = function (e) {
         // Show processing status
         isProcessing = true;
         processingStatus.style.display = 'flex';
+        stopButton.style.display = 'block'; // Show stop button when processing starts
+        stopButton.disabled = false; // Ensure stop button is enabled
+        stopButton.style.opacity = '1'; // Ensure stop button is fully visible
         statusMessage.textContent = 'Processing your request...';
+        messageInputDom.disabled = true; // Disable input while processing
+        submitButton.disabled = true; // Disable submit while processing
 
         // Add user message immediately with markdown rendering
         const userMessageDiv = document.createElement('div');
