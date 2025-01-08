@@ -45,10 +45,18 @@
             </div>
             {% endfor %}
         </div>
-        <div class="loader" id="chat-loader" style="display: none;">
-            <div class="loader-dot"></div>
-            <div class="loader-dot"></div>
-            <div class="loader-dot"></div>
+        <div class="processing-status" id="processing-status" style="display: none;">
+            <div class="status-message">Processing your request...</div>
+            <div class="loader">
+                <div class="loader-dot"></div>
+                <div class="loader-dot"></div>
+                <div class="loader-dot"></div>
+            </div>
+            <button id="stop-processing" class="stop-button" title="Stop processing">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                </svg>
+            </button>
         </div>
         <div class="chat-input">
             <textarea id="chat-message-input" placeholder="Type your message here..."></textarea>
@@ -313,18 +321,35 @@
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         #chat-message-submit:hover {
             background: #0056b3;
         }
 
+        .processing-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+        }
+
+        .status-message {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
         .loader {
             display: flex;
             gap: 8px;
-            justify-content: center;
-            padding: 20px;
+            align-items: center;
         }
 
         .loader-dot {
@@ -341,6 +366,30 @@
 
         .loader-dot:nth-child(3) {
             animation-delay: 0.2s;
+        }
+
+        .stop-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            padding: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stop-button:hover {
+            background: #c82333;
+        }
+
+        .stop-button svg {
+            width: 16px;
+            height: 16px;
         }
 
         @keyframes bounce {
@@ -388,12 +437,16 @@
         let chatSocket = null;
         let reconnectAttempts = 0;
         let isConnected = false;
+        let isProcessing = false;
         const MAX_RECONNECT_ATTEMPTS = 5;
         const RECONNECT_DELAY = 3000; // 3 seconds
 
         const messagesDiv = document.getElementById('chat-messages');
         const messageInputDom = document.getElementById('chat-message-input');
         const submitButton = document.getElementById('chat-message-submit');
+        const stopButton = document.getElementById('stop-processing');
+        const processingStatus = document.getElementById('processing-status');
+        const statusMessage = document.querySelector('.status-message');
 
         let currentRenamingChatId = null;
 
@@ -401,16 +454,16 @@
         const statusIndicator = document.createElement('div');
         statusIndicator.className = 'connection-status';
         statusIndicator.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 14px;
-        z-index: 1000;
-        transition: all 0.3s ease;
-        display: none;
-    `;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: none;
+        `;
         document.body.appendChild(statusIndicator);
 
         function showStatus(message, type) {
@@ -469,10 +522,19 @@
                     return;
                 }
 
-                // Hide loader and re-enable input
-                document.getElementById('chat-loader').style.display = 'none';
-                messageInputDom.disabled = false;
-                submitButton.disabled = false;
+                // Handle status updates
+                if (data.type === 'status') {
+                    statusMessage.textContent = data.message;
+                    return;
+                }
+
+                // Handle process completion or error
+                if (data.type === 'process_complete' || data.error) {
+                    isProcessing = false;
+                    processingStatus.style.display = 'none';
+                    messageInputDom.disabled = false;
+                    submitButton.disabled = false;
+                }
 
                 if (data.error) {
                     showStatus(data.error, 'error');
@@ -504,8 +566,10 @@
             chatSocket.onclose = function (e) {
                 console.log('WebSocket closed with code:', e.code, 'reason:', e.reason);
                 isConnected = false;
+                isProcessing = false;
                 messageInputDom.disabled = true;
                 submitButton.disabled = true;
+                processingStatus.style.display = 'none';
 
                 if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                     showStatus('Connection lost. Reconnecting...', 'warning');
@@ -531,6 +595,15 @@
                 showStatus('Connection error', 'error');
             };
         }
+
+        // Handle stop button click
+        stopButton.onclick = function () {
+            if (isProcessing && isConnected) {
+                chatSocket.send(JSON.stringify({
+                    'type': 'stop_processing'
+                }));
+            }
+        };
 
         // Handle rename button clicks
         document.querySelectorAll('.rename-button').forEach(button => {
@@ -578,25 +651,24 @@
         // Add connection status styles
         const style = document.createElement('style');
         style.textContent = `
-        .connection-status {
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    `;
+            .connection-status {
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                animation: fadeIn 0.3s ease;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
         document.head.appendChild(style);
 
         submitButton.onclick = function (e) {
             const message = messageInputDom.value.trim();
             if (message && isConnected) {
-                // Show loader
-                document.getElementById('chat-loader').style.display = 'flex';
-                // Disable input and button while processing
-                messageInputDom.disabled = true;
-                submitButton.disabled = true;
+                // Show processing status
+                isProcessing = true;
+                processingStatus.style.display = 'flex';
+                statusMessage.textContent = 'Processing your request...';
 
                 // Add user message immediately with markdown rendering
                 const userMessageDiv = document.createElement('div');
@@ -612,7 +684,9 @@
                     }));
                     messageInputDom.value = '';
                 } catch (error) {
+                    isProcessing = false;
                     showStatus('Failed to send message. Please try again.', 'error');
+                    processingStatus.style.display = 'none';
                     messageInputDom.disabled = false;
                     submitButton.disabled = false;
                 }
@@ -626,5 +700,38 @@
             const text = content.textContent;
             content.innerHTML = marked.parse(text);
         });
+
+        // Load chat history from localStorage on page load
+        window.onload = function () {
+            if (currentChatId) {
+                const savedMessages = localStorage.getItem(`chat_${currentChatId}`);
+                if (savedMessages) {
+                    const messages = JSON.parse(savedMessages);
+                    messages.forEach(msg => {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = `message ${msg.type}`;
+                        messageDiv.innerHTML = `<div class="message-content">${marked.parse(msg.content)}</div>`;
+                        messagesDiv.appendChild(messageDiv);
+                    });
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+            }
+        };
+
+        // Save messages to localStorage when new messages are added
+        const observer = new MutationObserver(function (mutations) {
+            if (currentChatId) {
+                const messages = [];
+                document.querySelectorAll('.message').forEach(msg => {
+                    messages.push({
+                        type: msg.classList.contains('user') ? 'user' : 'assistant',
+                        content: msg.querySelector('.message-content').textContent
+                    });
+                });
+                localStorage.setItem(`chat_${currentChatId}`, JSON.stringify(messages));
+            }
+        });
+
+        observer.observe(messagesDiv, { childList: true, subtree: true });
     </script>
     {% endblock %}

@@ -172,6 +172,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if message_type == "heartbeat_response":
                 return
 
+            # Handle stop processing request
+            if message_type == "stop_processing":
+                if hasattr(self, "processing_task"):
+                    self.processing_task.cancel()
+                    try:
+                        await self.processing_task
+                    except asyncio.CancelledError:
+                        pass
+                    await self.send(
+                        text_data=json.dumps(
+                            {
+                                "type": "process_complete",
+                                "message": "Processing stopped by user",
+                            }
+                        )
+                    )
+                return
+
             # Handle chat rename
             if message_type == "rename_chat":
                 chat_id = text_data_json.get("chat_id")
@@ -212,24 +230,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.chat_history.append({"role": "user", "content": message})
 
             try:
-                # Get response from Claude with timeout
-                response = await asyncio.wait_for(
-                    self.get_claude_response(),
-                    timeout=120,  # 2 minute timeout for response
+                # Create a task for processing
+                self.processing_task = asyncio.create_task(
+                    self.process_message(message)
                 )
+                await self.processing_task
 
-                # Save the message and response to the database
-                await self.save_message(message, response)
-
-                # Send message and response back to WebSocket
+            except asyncio.CancelledError:
+                logger.info("Message processing cancelled by user")
                 await self.send(
                     text_data=json.dumps(
-                        {
-                            "type": "chat_message",
-                            "message": message,
-                            "response": response,
-                            "chat_id": self.chat.id,
-                        }
+                        {"type": "process_complete", "message": "Processing cancelled"}
                     )
                 )
 
@@ -248,13 +259,56 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.error(traceback.format_exc())
             await self.send(text_data=json.dumps({"error": str(e)}))
 
+    async def process_message(self, message):
+        """Process a message and handle all status updates."""
+        try:
+            # Initial status update
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "status", "message": "Analyzing your request..."}
+                )
+            )
+
+            # Get response from Claude with periodic status updates
+            response = await self.get_claude_response()
+
+            # Save the message and response to the database
+            await self.save_message(message, response)
+
+            # Send final response
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "chat_message",
+                        "message": message,
+                        "response": response,
+                        "chat_id": self.chat.id,
+                    }
+                )
+            )
+
+            # Send completion status
+            await self.send(text_data=json.dumps({"type": "process_complete"}))
+
+        except Exception as e:
+            logger.error(f"Error in process_message: {str(e)}", exc_info=True)
+            await self.send(text_data=json.dumps({"error": str(e)}))
+
     async def get_claude_response(self):
+        """Get response from Claude with status updates."""
         try:
             logger.info(
                 f"Current chat history: {json.dumps(self.chat_history, indent=2)}"
             )
 
             while True:
+                # Update status before API call
+                await self.send(
+                    text_data=json.dumps(
+                        {"type": "status", "message": "Generating response..."}
+                    )
+                )
+
                 response = await sync_to_async(self.client.messages.create)(
                     model="anthropic.claude-3-5-sonnet-20241022-v2:0",
                     max_tokens=8192,
@@ -288,6 +342,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             tool_name = content.name
                             tool_input = content.input
                             tool_id = content.id
+
+                            # Update status for tool execution
+                            await self.send(
+                                text_data=json.dumps(
+                                    {
+                                        "type": "status",
+                                        "message": f"Executing {tool_name}...",
+                                    }
+                                )
+                            )
 
                             logger.info(f"Executing tool: {tool_name}")
                             logger.info(f"Tool input: {tool_input}")
@@ -344,6 +408,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     {"role": "assistant", "content": final_response}
                 )
                 return final_response
+
+        except asyncio.CancelledError:
+            raise
 
         except Exception as e:
             logger.error(f"Error in get_claude_response: {str(e)}", exc_info=True)
