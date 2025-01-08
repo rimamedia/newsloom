@@ -66,7 +66,7 @@ def get_bedrock_client():
 
         client = session.client(
             service_name="bedrock-runtime",
-            region_name=os.getenv("AWS_REGION", "us-east-1"),
+            region_name=os.getenv("BEDROCK_AWS_REGION", "us-east-1"),
         )
         return client
 

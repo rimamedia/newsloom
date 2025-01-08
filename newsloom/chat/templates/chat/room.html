@@ -1,451 +1,84 @@
 {% extends "newsloom/home.html" %}
+{% load static %}
+
 {% block content %}
 <!-- Include marked.js for markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="{% static 'chat/css/room.css' %}">
 
 <div class="chat-page">
     <div class="chat-sidebar">
-        <h3>Previous Chats</h3>
+        <div class="sidebar-header">
+            <h3>Previous Chats</h3>
+            <a href="{% url 'chat:room' %}" class="new-chat-button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                New Chat
+            </a>
+        </div>
         <div class="chat-list">
             {% for chat in user_chats %}
-                <div class="chat-item {% if current_chat.id == chat.id %}active{% endif %}">
-                    <a href="{% url 'chat:room_with_id' chat.id %}" class="chat-link">
-                        <div class="chat-title">{{ chat.title }}</div>
-                        <div class="chat-date">{{ chat.updated_at|date:"M d, Y" }}</div>
-                    </a>
-                    <button class="rename-button" data-chat-id="{{ chat.id }}" title="Rename chat">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                    </button>
-                </div>
+            <div class="chat-item {% if current_chat.id == chat.id %}active{% endif %}">
+                <a href="{% url 'chat:room_with_id' chat.id %}" class="chat-link">
+                    <div class="chat-title">{{ chat.title }}</div>
+                    <div class="chat-date">{{ chat.updated_at|date:"M d, Y" }}</div>
+                </a>
+                <button class="rename-button" data-chat-id="{{ chat.id }}" title="Rename chat">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+            </div>
             {% endfor %}
         </div>
     </div>
     <div class="chat-container">
-    <div class="chat-messages" id="chat-messages">
-        {% for message in messages %}
+        <div class="chat-messages" id="chat-messages">
+            {% for message in messages %}
             <div class="message {% if message.user == request.user %}user{% else %}assistant{% endif %}">
                 <div class="message-content">{{ message.message }}</div>
                 {% if message.response %}
-                    <div class="message assistant">
-                        <div class="message-content">{{ message.response }}</div>
-                    </div>
+                <div class="message assistant">
+                    <div class="message-content">{{ message.response }}</div>
+                </div>
                 {% endif %}
             </div>
-        {% endfor %}
-    </div>
-    <div class="loader" id="chat-loader" style="display: none;">
-        <div class="loader-dot"></div>
-        <div class="loader-dot"></div>
-        <div class="loader-dot"></div>
-    </div>
-    <div class="chat-input">
-        <textarea id="chat-message-input" placeholder="Type your message here..."></textarea>
-        <button id="chat-message-submit">Send</button>
-    </div>
-</div>
-
-<style>
-    .chat-page {
-        display: flex;
-        gap: 20px;
-        padding: 20px;
-        height: calc(100vh - 100px);
-    }
-
-    .chat-sidebar {
-        width: 250px;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-
-    .chat-sidebar h3 {
-        padding: 20px;
-        margin: 0;
-        border-bottom: 1px solid #eee;
-    }
-
-    .chat-list {
-        overflow-y: auto;
-        flex: 1;
-    }
-
-    .chat-item {
-        display: flex;
-        align-items: center;
-        padding: 15px 20px;
-        border-bottom: 1px solid #eee;
-        color: inherit;
-        transition: background 0.2s;
-    }
-
-    .chat-link {
-        flex: 1;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .rename-button {
-        background: none;
-        border: none;
-        padding: 4px;
-        cursor: pointer;
-        color: #6c757d;
-        opacity: 0.5;
-        transition: opacity 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .rename-button:hover {
-        opacity: 1;
-    }
-
-    .chat-item.active .rename-button {
-        opacity: 0.8;
-    }
-
-    .chat-item:hover {
-        background: #f8f9fa;
-    }
-
-    .chat-item.active {
-        background: #e9ecef;
-    }
-
-    .chat-title {
-        font-weight: 500;
-        margin-bottom: 5px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .chat-date {
-        font-size: 0.8em;
-        color: #6c757d;
-    }
-
-    .chat-container {
-        flex: 1;
-        margin: 0;
-        height: calc(100vh - 200px);
-        display: flex;
-        flex-direction: column;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    .chat-messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-    }
-
-    .message {
-        margin-bottom: 20px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .message.user {
-        align-items: flex-end;
-    }
-
-    .message.assistant {
-        align-items: flex-start;
-    }
-
-    .message-content {
-        max-width: 70%;
-        padding: 12px 16px;
-        border-radius: 12px;
-        margin: 4px 0;
-        word-wrap: break-word;
-    }
-
-    /* Markdown Styles */
-    .message-content h1,
-    .message-content h2,
-    .message-content h3,
-    .message-content h4,
-    .message-content h5,
-    .message-content h6 {
-        margin-top: 0.5em;
-        margin-bottom: 0.5em;
-        font-weight: 600;
-    }
-
-    .message-content p {
-        margin: 0.5em 0;
-    }
-
-    .message-content ul,
-    .message-content ol {
-        margin: 0.5em 0;
-        padding-left: 1.5em;
-    }
-
-    .message-content code {
-        background: rgba(0, 0, 0, 0.1);
-        padding: 0.2em 0.4em;
-        border-radius: 3px;
-        font-family: monospace;
-    }
-
-    .message-content pre {
-        background: rgba(0, 0, 0, 0.1);
-        padding: 1em;
-        border-radius: 6px;
-        overflow-x: auto;
-        margin: 0.5em 0;
-    }
-
-    .message-content pre code {
-        background: none;
-        padding: 0;
-    }
-
-    .message-content blockquote {
-        border-left: 3px solid #ddd;
-        margin: 0.5em 0;
-        padding-left: 1em;
-        color: #666;
-    }
-
-    .message-content a {
-        color: #007bff;
-        text-decoration: none;
-    }
-
-    .message-content a:hover {
-        text-decoration: underline;
-    }
-
-    .message.user .message-content {
-        background: #007bff;
-        color: white;
-        border-radius: 12px 12px 0 12px;
-    }
-
-    .message.user .message-content code {
-        background: rgba(255, 255, 255, 0.2);
-    }
-
-    .message.user .message-content pre {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .message.user .message-content a {
-        color: #fff;
-        text-decoration: underline;
-    }
-
-    .message.assistant .message-content {
-        background: #f0f2f5;
-        color: black;
-        border-radius: 12px 12px 12px 0;
-    }
-
-    .chat-input {
-        padding: 20px;
-        border-top: 1px solid #eee;
-        display: flex;
-        gap: 10px;
-    }
-
-    #chat-message-input {
-        flex: 1;
-        padding: 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        resize: none;
-        height: 50px;
-        font-family: inherit;
-    }
-
-    #chat-message-submit {
-        padding: 0 20px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-
-    #chat-message-submit:hover {
-        background: #0056b3;
-    }
-
-    .loader {
-        display: flex;
-        gap: 8px;
-        justify-content: center;
-        padding: 20px;
-    }
-
-    .loader-dot {
-        width: 8px;
-        height: 8px;
-        background: #007bff;
-        border-radius: 50%;
-        animation: bounce 0.5s ease-in-out infinite;
-    }
-
-    .loader-dot:nth-child(2) {
-        animation-delay: 0.1s;
-    }
-
-    .loader-dot:nth-child(3) {
-        animation-delay: 0.2s;
-    }
-
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-</style>
-
-<!-- Rename Dialog -->
-<div id="rename-dialog" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
-    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; width: 300px;">
-        <h3 style="margin-top: 0;">Rename Chat</h3>
-        <input type="text" id="new-chat-title" style="width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button id="cancel-rename" style="padding: 8px 16px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 4px; cursor: pointer;">Cancel</button>
-            <button id="confirm-rename" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+            {% endfor %}
+        </div>
+        <div class="processing-status" id="processing-status" style="display: none;">
+            <div class="status-message">Processing your request...</div>
+            <div class="loader">
+                <div class="loader-dot"></div>
+                <div class="loader-dot"></div>
+                <div class="loader-dot"></div>
+            </div>
+            <button id="stop-processing" class="stop-button" title="Stop processing">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                </svg>
+            </button>
+        </div>
+        <div class="chat-input">
+            <textarea id="chat-message-input" placeholder="Type your message here..."></textarea>
+            <button id="chat-message-submit">Send</button>
         </div>
     </div>
-</div>
 
-<script>
-    // Configure marked options
-    marked.setOptions({
-        breaks: true, // Enable line breaks
-        gfm: true,    // Enable GitHub Flavored Markdown
-        sanitize: true // Sanitize HTML input
-    });
 
-    // Get current chat ID from URL or data attribute
-    const pathParts = window.location.pathname.split('/');
-    const currentChatId = pathParts[pathParts.length - 2] === 'chat' ? null : pathParts[pathParts.length - 2];
+    <!-- Rename Dialog -->
+    <div id="rename-dialog">
+        <div>
+            <h3>Rename Chat</h3>
+            <input type="text" id="new-chat-title">
+            <div>
+                <button id="cancel-rename">Cancel</button>
+                <button id="confirm-rename">Save</button>
+            </div>
+        </div>
+    </div>
 
-    const chatSocket = new WebSocket(
-        'ws://' + window.location.host + '/ws/chat/'
-    );
-
-    const messagesDiv = document.getElementById('chat-messages');
-    const messageInputDom = document.getElementById('chat-message-input');
-    const submitButton = document.getElementById('chat-message-submit');
-
-    let currentRenamingChatId = null;
-
-    // Handle rename button clicks
-    document.querySelectorAll('.rename-button').forEach(button => {
-        button.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const chatId = this.dataset.chatId;
-            const chatTitle = this.closest('.chat-item').querySelector('.chat-title').textContent;
-            currentRenamingChatId = chatId;
-            document.getElementById('new-chat-title').value = chatTitle;
-            document.getElementById('rename-dialog').style.display = 'block';
-        };
-    });
-
-    // Handle dialog buttons
-    document.getElementById('cancel-rename').onclick = function() {
-        document.getElementById('rename-dialog').style.display = 'none';
-    };
-
-    document.getElementById('confirm-rename').onclick = function() {
-        const newTitle = document.getElementById('new-chat-title').value.trim();
-        if (newTitle && currentRenamingChatId) {
-            chatSocket.send(JSON.stringify({
-                'type': 'rename_chat',
-                'chat_id': currentRenamingChatId,
-                'new_title': newTitle
-            }));
-            document.getElementById('rename-dialog').style.display = 'none';
-        }
-    };
-
-    chatSocket.onmessage = function(e) {
-        // Hide loader and re-enable input
-        document.getElementById('chat-loader').style.display = 'none';
-        messageInputDom.disabled = false;
-        submitButton.disabled = false;
-
-        const data = JSON.parse(e.data);
-
-        if (data.type === 'chat_renamed') {
-            // Update the chat title in the UI
-            const chatItem = document.querySelector(`.chat-item [data-chat-id="${data.chat_id}"]`).closest('.chat-item');
-            if (chatItem) {
-                chatItem.querySelector('.chat-title').textContent = data.new_title;
-            }
-            return;
-        }
-
-        // Add assistant message with markdown rendering
-        const assistantMessageDiv = document.createElement('div');
-        assistantMessageDiv.className = 'message assistant';
-        assistantMessageDiv.innerHTML = `<div class="message-content">${marked.parse(data.response)}</div>`;
-        messagesDiv.appendChild(assistantMessageDiv);
-
-        // Scroll to bottom
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    };
-
-    chatSocket.onclose = function(e) {
-        console.error('Chat socket closed unexpectedly');
-    };
-
-    messageInputDom.focus();
-    messageInputDom.onkeyup = function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            submitButton.click();
-            e.preventDefault();
-        }
-    };
-
-    submitButton.onclick = function(e) {
-        const message = messageInputDom.value.trim();
-        if (message) {
-            // Show loader
-            document.getElementById('chat-loader').style.display = 'flex';
-            // Disable input and button while processing
-            messageInputDom.disabled = true;
-            submitButton.disabled = true;
-
-            // Add user message immediately with markdown rendering
-            const userMessageDiv = document.createElement('div');
-            userMessageDiv.className = 'message user';
-            userMessageDiv.innerHTML = `<div class="message-content">${marked.parse(message)}</div>`;
-            messagesDiv.appendChild(userMessageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-            chatSocket.send(JSON.stringify({
-                'message': message,
-                'chat_id': currentChatId
-            }));
-            messageInputDom.value = '';
-        }
-    };
-
-    // Initialize markdown rendering for existing messages
-    document.querySelectorAll('.message-content').forEach(content => {
-        const text = content.textContent;
-        content.innerHTML = marked.parse(text);
-    });
-</script>
-{% endblock %}
+    <script src="{% static 'chat/js/room.js' %}"></script>
+    {% endblock %}

@@ -256,4 +256,13 @@ Here is a list of cases from the documentation:
 ```
 {CASES}
 ```
+
+Tips and Tricks:
+
+- When creating a new agent, always use the Bedrock provider as the default.
+- Never use Telegram Test Publisher for user streams.
+- If you need to parse a Telegram channel, first check if there is already a running
+stream with the Telegram Bulk Parser type, as this stream parses all Telegram sources.
+- If user aske add telegam channel like https://t.me/belamova add them as https://t.me/s/belamova
+- If you think user need to update thream config do it by yourself, but always ask user before
 """

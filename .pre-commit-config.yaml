@@ -11,7 +11,7 @@ repos:
     -   id: end-of-file-fixer
         exclude: |
             (?x)^(
-                .*\.(md|rst|conf)$|
+                .*\.(md|rst|conf|html|js|css)$|
                 .*/migrations/.*\.py$|
                 ^\.github/.*$|
                 .*/logs/.*$|
