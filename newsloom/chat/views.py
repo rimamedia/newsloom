@@ -13,9 +13,9 @@ def chat_room(request, chat_id=None):
     current_chat = None
     if chat_id:
         current_chat = get_object_or_404(Chat, id=chat_id, user=request.user)
-    # Otherwise use the most recent chat or None
-    elif user_chats.exists():
-        current_chat = user_chats.first()
+    # For base chat URL without ID, always start fresh chat session
+    else:
+        current_chat = None
 
     # Get messages for current chat if it exists
     messages = []

@@ -5,7 +5,16 @@
 
 <div class="chat-page">
     <div class="chat-sidebar">
-        <h3>Previous Chats</h3>
+        <div class="sidebar-header">
+            <h3>Previous Chats</h3>
+            <a href="{% url 'chat:room' %}" class="new-chat-button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                New Chat
+            </a>
+        </div>
         <div class="chat-list">
             {% for chat in user_chats %}
                 <div class="chat-item {% if current_chat.id == chat.id %}active{% endif %}">
@@ -65,10 +74,34 @@
         height: 100%;
     }
 
-    .chat-sidebar h3 {
+    .sidebar-header {
         padding: 20px;
         margin: 0;
         border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .sidebar-header h3 {
+        margin: 0;
+    }
+
+    .new-chat-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: background 0.2s;
+    }
+
+    .new-chat-button:hover {
+        background: #0056b3;
     }
 
     .chat-list {

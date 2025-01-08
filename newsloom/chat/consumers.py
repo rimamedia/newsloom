@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from anthropic import AnthropicBedrock
 from asgiref.sync import sync_to_async
@@ -19,8 +20,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Accept the WebSocket connection
         await self.accept()
 
-        # Initialize Anthropic Bedrock client
-        self.client = AnthropicBedrock()
+        # Initialize Anthropic Bedrock client with credentials from environment
+        self.client = AnthropicBedrock(
+            aws_access_key_id=os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("BEDROCK_AWS_REGION", "us-west-2"),
+        )
 
         # Initialize chat history
         self.chat_history = []
