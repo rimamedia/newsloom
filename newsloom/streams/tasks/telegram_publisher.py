@@ -105,9 +105,7 @@ def publish_to_telegram(stream_id, **config):
     except Exception as e:
         logger.error(f"Error publishing to Telegram: {str(e)}", exc_info=True)
         result["errors"].append(str(e))
-        Stream.objects.filter(id=stream_id).update(
-            status="failed", last_run=timezone.now()
-        )
+        Stream.update_status(stream_id, status="failed")
         raise e
 
     return result

@@ -144,12 +144,7 @@ def extract_links(stream_id, url, link_selector, max_links=100):
 
         # Update stream status on failure
         with ThreadPoolExecutor(max_workers=1) as executor:
-            executor.submit(
-                update_stream_status,
-                stream_id,
-                status="failed",
-                last_run=timezone.now(),
-            )
+            executor.submit(update_stream_status, stream_id, status="failed")
         raise e
 
 
@@ -244,15 +239,10 @@ def save_links(links, stream):
         connection.close()
 
 
-def update_stream_status(stream_id, status=None, last_run=None):
-    """Update the stream's status and last run time."""
+def update_stream_status(stream_id, status=None):
+    """Update the stream's status and timing."""
     try:
-        update_fields = {}
         if status:
-            update_fields["status"] = status
-        if last_run:
-            update_fields["last_run"] = last_run
-
-        Stream.objects.filter(id=stream_id).update(**update_fields)
+            Stream.update_status(stream_id, status=status)
     finally:
         connection.close()

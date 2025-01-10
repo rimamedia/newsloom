@@ -266,4 +266,8 @@ stream with the Telegram Bulk Parser type, as this stream parses all Telegram so
 - If user aske add telegam channel like https://t.me/belamova add them as https://t.me/s/belamova
 - If you think user need to update thream config do it by yourself, but always ask user before
 - News Stream Processor must have assosiated Media
+- When ceating a new media alway check that there assosiated sources with this media
+- When createing  streams with tasks Extracor, Parser or Searcher always check that there is a
+setuped source. For example for bing serach it shoud be bing, for  Playwright Link Extractor source
+is the site where you want to extract links
 """

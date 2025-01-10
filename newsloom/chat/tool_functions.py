@@ -298,6 +298,8 @@ def add_stream(
         except Media.DoesNotExist:
             raise Media.DoesNotExist(f"Media with id {media_id} does not exist")
 
+    from django.utils import timezone
+
     stream = Stream(
         name=name,
         stream_type=stream_type,
@@ -305,6 +307,7 @@ def add_stream(
         media=media,
         frequency=frequency,
         configuration=configuration,
+        next_run=timezone.now(),  # Set next_run to now when creating
     )
     stream.full_clean()  # This will validate the configuration against schema
     stream.save()
@@ -397,6 +400,11 @@ def update_stream(
                 stream.media = Media.objects.get(id=media_id)
             except Media.DoesNotExist:
                 raise Media.DoesNotExist(f"Media with id {media_id} does not exist")
+
+    from django.utils import timezone
+
+    # Set next_run to now when updating
+    stream.next_run = timezone.now()
 
     stream.full_clean()
     stream.save()

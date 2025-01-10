@@ -135,6 +135,7 @@ class StreamAdmin(admin.ModelAdmin):
     def copy_stream(self, request, object_id):
         from django.contrib import messages
         from django.shortcuts import get_object_or_404, redirect
+        from django.utils import timezone
 
         stream = get_object_or_404(Stream, id=object_id)
         new_stream = Stream.objects.create(
@@ -144,6 +145,7 @@ class StreamAdmin(admin.ModelAdmin):
             frequency=stream.frequency,
             configuration=stream.configuration,
             status="inactive",  # Set as inactive by default
+            next_run=timezone.now(),  # Set next_run to now
         )
 
         messages.success(request, f'Stream "{stream.name}" was successfully copied.')
@@ -160,7 +162,7 @@ class StreamAdmin(admin.ModelAdmin):
         return super().response_change(request, obj)
 
     def save_model(self, request, obj, form, change):
-        """Override save_model to handle validation and locking."""
+        """Override save_model to handle validation."""
         try:
             if not change:  # Only for new streams
                 # Get the schema
@@ -182,6 +184,11 @@ class StreamAdmin(admin.ModelAdmin):
                         raise ValidationError(
                             f"Configuration validation failed: {str(e)}"
                         )
+
+                # Set next_run for new streams
+                from django.utils import timezone
+
+                obj.next_run = timezone.now()
 
             super().save_model(request, obj, form, change)
 

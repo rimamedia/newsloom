@@ -3,7 +3,7 @@ import logging
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, models, transaction
+from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from mediamanager.models import Media
@@ -17,6 +17,21 @@ logger = logging.getLogger(__name__)
 
 class Stream(models.Model):
     version = models.IntegerField(default=1)
+
+    @classmethod
+    def update_status(cls, stream_id: int, status: str = "failed") -> None:
+        """Update stream status and timing fields.
+
+        Args:
+            stream_id: ID of the stream to update
+            status: New status for the stream (default: "failed")
+        """
+        from django.utils import timezone
+
+        now = timezone.now()
+        cls.objects.filter(id=stream_id).update(
+            status=status, last_run=now, next_run=now
+        )
 
     TYPE_CHOICES = [
         ("sitemap_news", "Sitemap News Parser"),
@@ -129,26 +144,9 @@ class Stream(models.Model):
             raise ValidationError(str(e))
 
     def save(self, *args, **kwargs):
-        """Save the stream instance with optimistic locking."""
+        """Save the stream instance."""
         skip_validation = kwargs.pop("skip_validation", False)
         update_fields = kwargs.get("update_fields")
-
-        if self.pk and not update_fields:
-            # Implement optimistic locking for updates
-            try:
-                with transaction.atomic():
-                    current = Stream.objects.select_for_update(nowait=True).get(
-                        id=self.pk
-                    )
-                    if current.version != self.version:
-                        raise ValidationError(
-                            "Stream was modified. Please refresh and try again."
-                        )
-                    self.version += 1
-            except DatabaseError:
-                raise ValidationError(
-                    "Stream is currently locked. Please try again later."
-                )
 
         # Skip validation if we're only updating specific fields or if skip_validation is True
         if not skip_validation and not update_fields:
@@ -160,6 +158,10 @@ class Stream(models.Model):
                 # Restore original configuration if validation fails
                 self.configuration = current_config
                 raise e
+
+        # Only set next_run to now when creating a new stream
+        if not self.id and (not update_fields or "next_run" in (update_fields or [])):
+            self.next_run = timezone.now()
 
         super().save(*args, **kwargs)
 
