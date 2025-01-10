@@ -31,6 +31,8 @@ class StreamAdminForm(forms.ModelForm):
 class StreamAdmin(admin.ModelAdmin):
     """Admin interface configuration for Stream model."""
 
+    actions = ["pause_streams", "activate_streams"]
+
     list_display = (
         "name",
         "stream_type",
@@ -160,6 +162,22 @@ class StreamAdmin(admin.ModelAdmin):
         if "_copy_stream" in request.POST:
             return self.copy_stream(request, obj.id)
         return super().response_change(request, obj)
+
+    def pause_streams(self, request, queryset):
+        """Pause selected streams."""
+        updated = queryset.update(status="paused")
+        self.message_user(request, f"{updated} streams were successfully paused.")
+
+    pause_streams.short_description = "Pause selected streams"
+
+    def activate_streams(self, request, queryset):
+        """Activate selected streams."""
+        from django.utils import timezone
+
+        updated = queryset.update(status="active", next_run=timezone.now())
+        self.message_user(request, f"{updated} streams were successfully activated.")
+
+    activate_streams.short_description = "Activate selected streams"
 
     def save_model(self, request, obj, form, change):
         """Override save_model to handle validation."""

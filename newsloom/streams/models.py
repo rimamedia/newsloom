@@ -159,9 +159,17 @@ class Stream(models.Model):
                 self.configuration = current_config
                 raise e
 
-        # Only set next_run to now when creating a new stream
-        if not self.id and (not update_fields or "next_run" in (update_fields or [])):
-            self.next_run = timezone.now()
+        # Set next_run to now when:
+        # 1. Creating a new stream
+        # 2. Changing status to active
+        if not update_fields or "next_run" in (update_fields or []):
+            if not self.id or (
+                self.id
+                and "status" in (update_fields or [])
+                and self.status == "active"
+                and Stream.objects.get(id=self.id).status != "active"
+            ):
+                self.next_run = timezone.now()
 
         super().save(*args, **kwargs)
 

@@ -54,6 +54,17 @@ class StreamExecutionTests(TestCase):
         stream.refresh_from_db()
         self.assertEqual(stream.next_run, initial_next_run)
 
+        # Test that next_run is updated when status changes to active
+        stream.status = "paused"
+        stream.save(update_fields=["status"])
+        paused_next_run = stream.next_run
+
+        stream.status = "active"
+        stream.save(update_fields=["status"])
+        stream.refresh_from_db()
+        self.assertNotEqual(stream.next_run, paused_next_run)
+        self.assertGreater(stream.next_run, paused_next_run)
+
     @patch("streams.tasks.get_task_function")
     def test_successful_task_execution(self, mock_get_task_function):
         # Mock the task function
