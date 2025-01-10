@@ -387,4 +387,179 @@ TOOLS = [
             },
         },
     },
+    {
+        "name": "list_docs",
+        "description": "Get a list of all doc entries from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "media_id": {
+                    "type": "integer",
+                    "description": "Optional ID of media to filter docs by",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["new", "edit", "publish"],
+                    "description": "Optional status to filter docs by",
+                },
+            },
+        },
+    },
+    {
+        "name": "add_doc",
+        "description": "Add a new doc entry to the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "media_id": {
+                    "type": "integer",
+                    "description": "ID of the media this doc belongs to",
+                },
+                "link": {
+                    "type": "string",
+                    "description": "Unique URL for the doc",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Title of the doc",
+                },
+                "text": {
+                    "type": "string",
+                    "description": "Content text of the doc",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["new", "edit", "publish"],
+                    "description": "Status of the doc",
+                },
+                "published_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Optional publication date/time",
+                },
+            },
+            "required": ["media_id", "link"],
+        },
+    },
+    {
+        "name": "update_doc",
+        "description": "Update an existing doc entry in the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "ID of the doc to update",
+                },
+                "media_id": {
+                    "type": "integer",
+                    "description": "New media ID for the doc",
+                },
+                "link": {
+                    "type": "string",
+                    "description": "New URL for the doc",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "New title for the doc",
+                },
+                "text": {
+                    "type": "string",
+                    "description": "New content text for the doc",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["new", "edit", "publish"],
+                    "description": "New status for the doc",
+                },
+                "published_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "New publication date/time",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "delete_doc",
+        "description": "Delete a doc entry from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "ID of the doc to delete",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "list_examples",
+        "description": "Get a list of all example entries from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "media_id": {
+                    "type": "integer",
+                    "description": "Optional ID of media to filter examples by",
+                },
+            },
+        },
+    },
+    {
+        "name": "add_example",
+        "description": "Add a new example entry to the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "media_id": {
+                    "type": "integer",
+                    "description": "ID of the media this example belongs to",
+                },
+                "text": {
+                    "type": "string",
+                    "description": "Content text of the example",
+                },
+            },
+            "required": ["media_id", "text"],
+        },
+    },
+    {
+        "name": "update_example",
+        "description": "Update an existing example entry in the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "ID of the example to update",
+                },
+                "media_id": {
+                    "type": "integer",
+                    "description": "New media ID for the example",
+                },
+                "text": {
+                    "type": "string",
+                    "description": "New content text for the example",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "delete_example",
+        "description": "Delete an example entry from the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "ID of the example to delete",
+                },
+            },
+            "required": ["id"],
+        },
+    },
 ]

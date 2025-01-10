@@ -130,38 +130,54 @@ class Stream(models.Model):
             raise ValidationError(str(e))
 
     def save(self, *args, **kwargs):
-        """Save the stream instance with optimistic locking."""
+        """Save the stream instance with selective locking."""
         skip_validation = kwargs.pop("skip_validation", False)
-        update_fields = kwargs.get("update_fields")
+        update_fields = kwargs.get("update_fields", None)
 
-        if self.pk and not update_fields:
-            # Implement optimistic locking for updates
+        # Define critical fields that require locking
+        critical_fields = {"stream_type", "configuration"}
+
+        # Check if we're updating any critical fields
+        is_critical_update = not update_fields or bool(
+            critical_fields & set(update_fields or [])
+        )
+
+        if self.pk and is_critical_update:
             try:
                 with transaction.atomic():
+                    # Only lock for critical updates
                     current = Stream.objects.select_for_update(nowait=True).get(
                         id=self.pk
                     )
+
+                    # For critical updates, check version
                     if current.version != self.version:
                         raise ValidationError(
                             "Stream was modified. Please refresh and try again."
                         )
-                    self.version += 1
-            except DatabaseError:
-                raise ValidationError(
-                    "Stream is currently locked. Please try again later."
-                )
 
-        # Skip validation if we're only updating specific fields or if skip_validation is True
-        if not skip_validation and not update_fields:
-            # Store current configuration
+                    # Increment version for critical updates
+                    self.version += 1
+
+            except DatabaseError:
+                # If stream is locked, only allow non-critical updates
+                if is_critical_update:
+                    raise ValidationError(
+                        "Stream is currently locked. Please try again later."
+                    )
+
+        # Validate configuration if needed
+        if not skip_validation and (
+            not update_fields or "configuration" in (update_fields or [])
+        ):
             current_config = self.configuration
             try:
                 self.clean()
             except Exception as e:
-                # Restore original configuration if validation fails
                 self.configuration = current_config
                 raise e
 
+        # For non-critical updates, proceed without version check
         super().save(*args, **kwargs)
 
     def get_next_run_time(self):

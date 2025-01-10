@@ -116,11 +116,11 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
         if client is None:
             client = get_bedrock_client()
 
-        # Define the create_posts tool
+        # Define the create_docs tool
         tools = [
             {
-                "name": "create_posts",
-                "description": "Create a list of posts from the analyzed news content",
+                "name": "create_docs",
+                "description": "Create a list of docs from the analyzed news content",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -128,26 +128,26 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
                             "type": "string",
                             "description": "The main topic or theme of the posts",
                         },
-                        "posts": {
+                        "docs": {
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "properties": {
                                     "text": {
                                         "type": "string",
-                                        "description": "The text content of the post",
+                                        "description": "The text content of the docs",
                                     },
                                     "url": {
                                         "type": "string",
-                                        "description": "The source URL for the post",
+                                        "description": "The source URL for the docs",
                                     },
                                 },
                                 "required": ["text", "url"],
                             },
-                            "description": "Array of posts to create",
+                            "description": "Array of docs to create",
                         },
                     },
-                    "required": ["topic", "posts"],
+                    "required": ["topic", "docs"],
                 },
             }
         ]
@@ -219,7 +219,7 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
             for content in tool_calls:
                 logger.info(f"Processing tool call: {content.get('name')}")
                 try:
-                    if content.get("name") == "create_posts":
+                    if content.get("name") == "create_docs":
                         tool_input = content.get("input", {})
                         logger.info(
                             "Successfully extracted tool input: %s",

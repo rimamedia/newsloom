@@ -3,8 +3,8 @@
 from typing import Dict, List, Literal, Optional
 
 from agents.models import Agent
-from mediamanager.models import Media
-from sources.models import Source
+from mediamanager.models import Examples, Media
+from sources.models import Doc, Source
 from streams.models import Stream, StreamLog
 
 
@@ -367,39 +367,73 @@ def update_stream(
     except Stream.DoesNotExist:
         raise Stream.DoesNotExist(f"Stream with id {id} does not exist")
 
-    if name is not None:
-        stream.name = name
-    if stream_type is not None:
-        stream.stream_type = stream_type
-    if frequency is not None:
-        stream.frequency = frequency
-    if configuration is not None:
-        stream.configuration = configuration
-    if status is not None:
-        stream.status = status
+    # Separate critical and non-critical updates
+    critical_updates = {}
+    non_critical_updates = {}
+    update_fields = set()
 
-    # Update source if source_id provided
+    # Handle critical updates (stream_type and configuration)
+    if stream_type is not None:
+        critical_updates["stream_type"] = stream_type
+        update_fields.add("stream_type")
+    if configuration is not None:
+        critical_updates["configuration"] = configuration
+        update_fields.add("configuration")
+
+    # Handle non-critical updates
+    if name is not None:
+        non_critical_updates["name"] = name
+        update_fields.add("name")
+    if frequency is not None:
+        non_critical_updates["frequency"] = frequency
+        update_fields.add("frequency")
+    if status is not None:
+        non_critical_updates["status"] = status
+        update_fields.add("status")
+
+    # Handle source updates
     if source_id is not None:
-        if source_id == 0:  # Special case to remove source
-            stream.source = None
+        if source_id == 0:
+            non_critical_updates["source"] = None
         else:
             try:
-                stream.source = Source.objects.get(id=source_id)
+                source = Source.objects.get(id=source_id)
+                non_critical_updates["source"] = source
             except Source.DoesNotExist:
                 raise Source.DoesNotExist(f"Source with id {source_id} does not exist")
+        update_fields.add("source")
 
-    # Update media if media_id provided
+    # Handle media updates
     if media_id is not None:
-        if media_id == 0:  # Special case to remove media
-            stream.media = None
+        if media_id == 0:
+            non_critical_updates["media"] = None
         else:
             try:
-                stream.media = Media.objects.get(id=media_id)
+                media = Media.objects.get(id=media_id)
+                non_critical_updates["media"] = media
             except Media.DoesNotExist:
                 raise Media.DoesNotExist(f"Media with id {media_id} does not exist")
+        update_fields.add("media")
 
-    stream.full_clean()
-    stream.save()
+    # Apply non-critical updates first
+    if non_critical_updates:
+        for field, value in non_critical_updates.items():
+            setattr(stream, field, value)
+        # Save non-critical updates immediately
+        stream.save(
+            update_fields=list(update_fields - {"stream_type", "configuration"})
+        )
+
+    # Apply critical updates if any
+    if critical_updates:
+        for field, value in critical_updates.items():
+            setattr(stream, field, value)
+        # Validate and save critical updates
+        stream.full_clean()
+        stream.save(
+            update_fields=list({"stream_type", "configuration"} & update_fields)
+        )
+
     return stream
 
 
@@ -600,3 +634,254 @@ def get_stream_logs(
         }
         for log in queryset
     ]
+
+
+def list_docs(
+    media_id: Optional[int] = None, status: Optional[str] = None
+) -> List[Dict]:
+    """Get a list of all doc entries from the database.
+
+    Args:
+        media_id: Optional ID of media to filter docs by
+        status: Optional status to filter docs by
+
+    Returns:
+        List[Dict]: List of doc entries with their properties
+    """
+    queryset = Doc.objects.all()
+    if media_id:
+        queryset = queryset.filter(media_id=media_id)
+    if status:
+        queryset = queryset.filter(status=status)
+
+    return [
+        {
+            "id": doc.id,
+            "media_id": doc.media_id,
+            "link": doc.link,
+            "title": doc.title,
+            "text": doc.text,
+            "status": doc.status,
+            "published_at": doc.published_at.isoformat() if doc.published_at else None,
+            "created_at": doc.created_at.isoformat(),
+            "updated_at": doc.updated_at.isoformat(),
+        }
+        for doc in queryset
+    ]
+
+
+def add_doc(
+    media_id: int,
+    link: str,
+    title: Optional[str] = None,
+    text: Optional[str] = None,
+    status: Optional[Literal["new", "edit", "publish"]] = "new",
+    published_at: Optional[str] = None,
+) -> Doc:
+    """Add a new doc entry to the database.
+
+    Args:
+        media_id: ID of the media this doc belongs to
+        link: Unique URL for the doc
+        title: Optional title of the doc
+        text: Optional content text of the doc
+        status: Optional status of the doc (default: "new")
+        published_at: Optional publication date/time
+
+    Returns:
+        Doc: The created Doc instance
+
+    Raises:
+        ValidationError: If validation fails
+        Media.DoesNotExist: If media_id doesn't exist
+    """
+    try:
+        media = Media.objects.get(id=media_id)
+    except Media.DoesNotExist:
+        raise Media.DoesNotExist(f"Media with id {media_id} does not exist")
+
+    doc = Doc(
+        media=media,
+        link=link,
+        title=title,
+        text=text,
+        status=status,
+        published_at=published_at,
+    )
+    doc.full_clean()
+    doc.save()
+    return doc
+
+
+def update_doc(
+    id: int,
+    media_id: Optional[int] = None,
+    link: Optional[str] = None,
+    title: Optional[str] = None,
+    text: Optional[str] = None,
+    status: Optional[Literal["new", "edit", "publish"]] = None,
+    published_at: Optional[str] = None,
+) -> Doc:
+    """Update an existing doc entry in the database.
+
+    Args:
+        id: ID of the doc to update
+        media_id: Optional new media ID for the doc
+        link: Optional new URL for the doc
+        title: Optional new title for the doc
+        text: Optional new content text for the doc
+        status: Optional new status for the doc
+        published_at: Optional new publication date/time
+
+    Returns:
+        Doc: The updated Doc instance
+
+    Raises:
+        Doc.DoesNotExist: If doc with given id doesn't exist
+        ValidationError: If validation fails
+        Media.DoesNotExist: If media_id is provided but doesn't exist
+    """
+    try:
+        doc = Doc.objects.get(id=id)
+    except Doc.DoesNotExist:
+        raise Doc.DoesNotExist(f"Doc with id {id} does not exist")
+
+    if media_id is not None:
+        try:
+            doc.media = Media.objects.get(id=media_id)
+        except Media.DoesNotExist:
+            raise Media.DoesNotExist(f"Media with id {media_id} does not exist")
+
+    if link is not None:
+        doc.link = link
+    if title is not None:
+        doc.title = title
+    if text is not None:
+        doc.text = text
+    if status is not None:
+        doc.status = status
+    if published_at is not None:
+        doc.published_at = published_at
+
+    doc.full_clean()
+    doc.save()
+    return doc
+
+
+def delete_doc(id: int) -> None:
+    """Delete a doc entry from the database.
+
+    Args:
+        id: ID of the doc to delete
+
+    Raises:
+        Doc.DoesNotExist: If doc with given id doesn't exist
+    """
+    try:
+        doc = Doc.objects.get(id=id)
+        doc.delete()
+    except Doc.DoesNotExist:
+        raise Doc.DoesNotExist(f"Doc with id {id} does not exist")
+
+
+def list_examples(media_id: Optional[int] = None) -> List[Dict]:
+    """Get a list of all example entries from the database.
+
+    Args:
+        media_id: Optional ID of media to filter examples by
+
+    Returns:
+        List[Dict]: List of example entries with their properties
+    """
+    queryset = Examples.objects.all()
+    if media_id:
+        queryset = queryset.filter(media_id=media_id)
+
+    return [
+        {
+            "id": example.id,
+            "media_id": example.media_id,
+            "text": example.text,
+            "created_at": example.created_at.isoformat(),
+            "updated_at": example.updated_at.isoformat(),
+        }
+        for example in queryset
+    ]
+
+
+def add_example(media_id: int, text: str) -> Examples:
+    """Add a new example entry to the database.
+
+    Args:
+        media_id: ID of the media this example belongs to
+        text: Content text of the example
+
+    Returns:
+        Examples: The created Examples instance
+
+    Raises:
+        ValidationError: If validation fails
+        Media.DoesNotExist: If media_id doesn't exist
+    """
+    try:
+        media = Media.objects.get(id=media_id)
+    except Media.DoesNotExist:
+        raise Media.DoesNotExist(f"Media with id {media_id} does not exist")
+
+    example = Examples(media=media, text=text)
+    example.full_clean()
+    example.save()
+    return example
+
+
+def update_example(
+    id: int, media_id: Optional[int] = None, text: Optional[str] = None
+) -> Examples:
+    """Update an existing example entry in the database.
+
+    Args:
+        id: ID of the example to update
+        media_id: Optional new media ID for the example
+        text: Optional new content text for the example
+
+    Returns:
+        Examples: The updated Examples instance
+
+    Raises:
+        Examples.DoesNotExist: If example with given id doesn't exist
+        ValidationError: If validation fails
+        Media.DoesNotExist: If media_id is provided but doesn't exist
+    """
+    try:
+        example = Examples.objects.get(id=id)
+    except Examples.DoesNotExist:
+        raise Examples.DoesNotExist(f"Example with id {id} does not exist")
+
+    if media_id is not None:
+        try:
+            example.media = Media.objects.get(id=media_id)
+        except Media.DoesNotExist:
+            raise Media.DoesNotExist(f"Media with id {media_id} does not exist")
+
+    if text is not None:
+        example.text = text
+
+    example.full_clean()
+    example.save()
+    return example
+
+
+def delete_example(id: int) -> None:
+    """Delete an example entry from the database.
+
+    Args:
+        id: ID of the example to delete
+
+    Raises:
+        Examples.DoesNotExist: If example with given id doesn't exist
+    """
+    try:
+        example = Examples.objects.get(id=id)
+        example.delete()
+    except Examples.DoesNotExist:
+        raise Examples.DoesNotExist(f"Example with id {id} does not exist")
