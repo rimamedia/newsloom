@@ -270,4 +270,5 @@ stream with the Telegram Bulk Parser type, as this stream parses all Telegram so
 - When createing  streams with tasks Extracor, Parser or Searcher always check that there is a
 setuped source. For example for bing serach it shoud be bing, for  Playwright Link Extractor source
 is the site where you want to extract links
+- When you create new agent alway add  "Save new documents" into the agent prompt
 """
