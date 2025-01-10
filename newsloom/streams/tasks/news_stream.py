@@ -100,13 +100,16 @@ def validate_prompt_template(
         return [missing_key]
 
 
-def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) -> Dict:
+def invoke_bedrock_anthropic(
+    system_prompt: str, user_prompt: str, stream=None, client=None
+) -> Dict:
     """
     Invoke the Anthropic model through Amazon Bedrock with tool calling.
 
     Args:
         system_prompt: The system prompt that defines behavior
         user_prompt: The user prompt with content to process
+        stream: Stream object for saving posts
         client: Optional pre-configured boto3 client
 
     Returns:
@@ -225,6 +228,43 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
                             "Successfully extracted tool input: %s",
                             json.dumps(tool_input, indent=2),
                         )
+
+                        # Save posts to database
+                        try:
+                            posts = tool_input.get("posts", [])
+                            topic = tool_input.get("topic", "Untitled")
+                            saved_count = 0
+
+                            if stream is None:
+                                raise ValueError(
+                                    "Stream object is required for saving posts"
+                                )
+
+                            for post in posts:
+                                doc = Doc.objects.create(
+                                    media=stream.media,
+                                    link=post.get("url", ""),
+                                    title=topic,
+                                    text=post.get("text", ""),
+                                    status="new",
+                                )
+                                saved_count += 1
+                                logger.info("Created doc %d for post", doc.id)
+
+                            result = {
+                                "success": True,
+                                "message": f"Successfully saved {saved_count} posts",
+                                "saved_count": saved_count,
+                            }
+                        except Exception as e:
+                            error_msg = f"Error saving posts: {str(e)}"
+                            logger.error(error_msg)
+                            result = {
+                                "success": False,
+                                "message": error_msg,
+                                "saved_count": 0,
+                            }
+
                         # Add tool result to messages
                         messages.append(
                             {
@@ -233,7 +273,7 @@ def invoke_bedrock_anthropic(system_prompt: str, user_prompt: str, client=None) 
                                     {
                                         "type": "tool_result",
                                         "tool_use_id": content.get("id"),
-                                        "content": json.dumps(tool_input),
+                                        "content": json.dumps(result),
                                     }
                                 ],
                             }
@@ -409,57 +449,30 @@ def process_news_stream(
         logger.info("Making API call to Bedrock")
 
         response = invoke_bedrock_anthropic(
-            system_prompt=system_prompt, user_prompt=user_prompt, client=bedrock_client
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            stream=stream,
+            client=bedrock_client,
         )
 
         processed_text = response.get("completion", "").strip()
         processed_count = len(news_items)
+
+        # Calculate total saved posts from tool results
         saved_count = 0
+        for message in response.get("message_history", []):
+            if message.get("role") == "user" and message.get("content"):
+                for content in message["content"]:
+                    if content.get("type") == "tool_result":
+                        try:
+                            result = json.loads(content.get("content", "{}"))
+                            saved_count += result.get("saved_count", 0)
+                        except json.JSONDecodeError:
+                            pass
 
         logger.info(
             "Received response from Bedrock with %d characters", len(processed_text)
         )
-
-        # Parse the response and save to docs
-        if save_to_docs and processed_text:
-            try:
-                # Parse the JSON response
-                logger.debug("Attempting to parse JSON response: %s", processed_text)
-                result = json.loads(processed_text)
-                logger.info(
-                    "Successfully parsed JSON response with schema: %s",
-                    json.dumps({k: type(v).__name__ for k, v in result.items()}),
-                )
-
-                # Create a doc for each post
-                posts = result.get("posts", [])
-                logger.info("Processing %d posts from response", len(posts))
-
-                for i, post in enumerate(posts, 1):
-                    logger.debug("Creating doc for post %d/%d", i, len(posts))
-                    doc = Doc.objects.create(
-                        media=stream.media,
-                        link=post.get("url", ""),
-                        title=result.get("topic", "Untitled"),
-                        text=post.get("text", ""),
-                        status="new",
-                    )
-                    saved_count += 1
-                    logger.info("Created doc %d for post %d/%d", doc.id, i, len(posts))
-
-            except json.JSONDecodeError as e:
-                error_msg = f"Failed to parse JSON response: {e}"
-                logger.error("%s\nResponse text: %s", error_msg, processed_text)
-                return {
-                    "processed": processed_count,
-                    "saved": 0,
-                    "error": error_msg,
-                    "response_text": processed_text,
-                    "bedrock_response": {
-                        "full_response": response.get("full_response"),
-                        "message_history": response.get("message_history", []),
-                    },
-                }
 
         logger.info(
             "Completed processing with %d items processed and %d docs saved",
