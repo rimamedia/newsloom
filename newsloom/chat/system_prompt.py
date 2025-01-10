@@ -265,4 +265,5 @@ Tips and Tricks:
 stream with the Telegram Bulk Parser type, as this stream parses all Telegram sources.
 - If user aske add telegam channel like https://t.me/belamova add them as https://t.me/s/belamova
 - If you think user need to update thream config do it by yourself, but always ask user before
+- News Stream Processor must have assosiated Media
 """
