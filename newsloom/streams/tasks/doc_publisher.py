@@ -16,6 +16,7 @@ def publish_docs(
     bot_token,
     time_window_minutes=60,
     batch_size=10,
+    **kwargs,  # Accept any additional configuration parameters
 ):
     """
     Publish docs from database to Telegram channel.
