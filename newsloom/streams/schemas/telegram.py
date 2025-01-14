@@ -2,7 +2,7 @@ from typing import Annotated, List, Optional
 
 from pydantic import Field, field_validator
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class TelegramConfig(BaseConfig):

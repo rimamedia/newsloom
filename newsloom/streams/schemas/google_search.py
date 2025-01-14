@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from pydantic import Field
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class GoogleSearchConfig(BaseConfig):

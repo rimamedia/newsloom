@@ -1,4 +1,4 @@
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class ArticleanConfiguration(BaseConfig):

@@ -306,6 +306,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         await self.save_message(message, response)
 
                         # Send final response
+                        # Get the saved message with timestamp
+                        chat_message = await self.get_last_message()
                         await self.send(
                             text_data=json.dumps(
                                 {
@@ -313,6 +315,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                     "message": message,
                                     "response": response,
                                     "chat_id": self.chat.id,
+                                    "timestamp": (
+                                        chat_message.timestamp.isoformat()
+                                        if chat_message
+                                        else None
+                                    ),
                                 }
                             )
                         )
@@ -526,3 +533,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return True
         except Chat.DoesNotExist:
             return False
+
+    @database_sync_to_async
+    def get_last_message(self):
+        """Get the most recent message for the current chat."""
+        try:
+            return ChatMessage.objects.filter(chat=self.chat).latest("timestamp")
+        except ChatMessage.DoesNotExist:
+            return None

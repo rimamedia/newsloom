@@ -1,5 +1,3 @@
-from pydantic import BaseModel
-
 from .article_searcher import ArticleSearcherConfig
 from .articlean import ArticleanConfiguration
 from .bing_search import BingSearchConfig
@@ -11,17 +9,6 @@ from .rss import RSSConfig
 from .sitemap import BaseSitemapConfig
 from .telegram import TelegramBulkParserConfig, TelegramConfig, TelegramPublishConfig
 from .web_article import WebArticleConfig
-
-
-class BaseConfig(BaseModel):
-    """Base configuration class for all stream configurations.
-
-    This class sets up common configuration for all stream schemas,
-    including allowing extra fields to be provided without validation errors.
-    """
-
-    model_config = {"extra": "ignore"}  # Allow but ignore any extra fields
-
 
 STREAM_CONFIG_SCHEMAS = {
     "sitemap_news": BaseSitemapConfig,

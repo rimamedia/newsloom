@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class NewsStreamConfig(BaseConfig):

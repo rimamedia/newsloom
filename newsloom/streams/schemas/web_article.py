@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 from pydantic import HttpUrl, field_validator
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class WebArticleConfig(BaseConfig):
