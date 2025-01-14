@@ -239,6 +239,26 @@ Configuration example:
         "follow_next": False
     }
 
+articlean
+~~~~~~~~
+A task for processing articles through the Articlean service. Features:
+
+* Extracts article content and title from URLs
+* Automatic error handling and retry logic
+* Batch processing support
+* Transaction-safe database updates
+
+.. important::
+   This task requires the following environment variables to be set:
+   
+   * ARTICLEAN_API_KEY: API key for authentication
+   * ARTICLEAN_API_URL: Endpoint URL for the Articlean service
+
+Required Setup:
+    1. Set up the required environment variables in your .env file
+    2. Create a Stream in the admin panel
+    3. Configure the stream (no additional configuration required)
+
 web
 ~~~
 A task for scraping web articles using configurable selectors. Features:

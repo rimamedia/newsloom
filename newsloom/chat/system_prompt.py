@@ -236,5 +236,8 @@ be the site where you want to extract links from.
   4. Ensure streams are generating new documents
   5. Verify documents are being saved
 - For setting up a Telegram document publisher, you need to ask for the ID, not the NAME.
+- Search streams usualy save links to the database, so for parsing content (text and titles)
+you need to use the Articlean task.
+
 
 """

@@ -1,27 +1,38 @@
 import json
 import logging
+import os
 from typing import Any, Dict
 
 import requests
 from django.db import transaction
 from django.db.models import Q
+from dotenv import load_dotenv
 from sources.models import News
 from streams.models import Stream
+
+# Load environment variables
+load_dotenv()
+
 
 logger = logging.getLogger(__name__)
 
 
-def articlean(stream_id: int, endpoint: str, token: str) -> Dict[str, Any]:
+def articlean(stream_id: int) -> Dict[str, Any]:
     """Process articles through the Articlean service.
 
     Args:
         stream_id: ID of the stream being executed
-        endpoint: Articlean service endpoint
-        token: Authentication token
 
     Returns:
         Dict containing execution statistics
+
+    Raises:
+        EnvironmentError: If required environment variables are not set
     """
+    # Check required environment variables
+    if not os.getenv("ARTICLEAN_API_KEY") or not os.getenv("ARTICLEAN_API_URL"):
+        raise EnvironmentError("Missing required environment variables")
+
     # Get stream to access its source
     stream = Stream.objects.get(id=stream_id)
 
@@ -41,10 +52,15 @@ def articlean(stream_id: int, endpoint: str, token: str) -> Dict[str, Any]:
         try:
             # Prepare request
             payload = json.dumps({"url": article.link})
-            headers = {"x-api-key": token, "Content-Type": "application/json"}
+            headers = {
+                "x-api-key": os.getenv("ARTICLEAN_API_KEY"),
+                "Content-Type": "application/json",
+            }
 
             # Send request
-            response = requests.request("POST", endpoint, headers=headers, data=payload)
+            response = requests.request(
+                "POST", os.getenv("ARTICLEAN_API_URL"), headers=headers, data=payload
+            )
             response.raise_for_status()
 
             # Parse response
