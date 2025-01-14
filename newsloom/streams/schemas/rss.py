@@ -1,11 +1,8 @@
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import Field, HttpUrl
+
+from . import BaseConfig
 
 
-class RSSConfig(BaseModel):
+class RSSConfig(BaseConfig):
     url: HttpUrl
     max_items: int = Field(default=10)
-
-    class Config:
-        """Configuration for RSS Feed schema validation."""
-
-        extra = "forbid"

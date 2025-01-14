@@ -1,9 +1,11 @@
 from typing import Dict, Optional
 
-from pydantic import BaseModel, HttpUrl, field_validator
+from pydantic import HttpUrl, field_validator
+
+from . import BaseConfig
 
 
-class WebArticleConfig(BaseModel):
+class WebArticleConfig(BaseConfig):
     base_url: HttpUrl
     selectors: Dict[str, str]
     pagination: Optional[Dict[str, str]] = None
@@ -15,8 +17,3 @@ class WebArticleConfig(BaseModel):
             missing = required_selectors - v.keys()
             raise ValueError(f"Missing required selectors: {missing}")
         return v
-
-    class Config:
-        """Configuration for Web Article schema validation."""
-
-        extra = "forbid"

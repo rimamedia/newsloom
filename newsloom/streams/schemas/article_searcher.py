@@ -1,7 +1,9 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import HttpUrl
+
+from . import BaseConfig
 
 
-class ArticleSearcherConfig(BaseModel):
+class ArticleSearcherConfig(BaseConfig):
     url: HttpUrl
     link_selector: str
     link_selector_type: str = "css"
@@ -9,5 +11,3 @@ class ArticleSearcherConfig(BaseModel):
     article_selector_type: str = "css"
     search_text: str
     max_links: int = 10
-
-    model_config = {"extra": "forbid"}

@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from . import BaseConfig
 
 
-class ArticleanConfiguration(BaseModel):
+class ArticleanConfiguration(BaseConfig):
     """Configuration for the Articlean task.
 
     Note:
