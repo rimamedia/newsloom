@@ -7,12 +7,7 @@ from .news_stream import NewsStreamConfig
 from .playwright import PlaywrightConfig
 from .rss import RSSConfig
 from .sitemap import BaseSitemapConfig
-from .telegram import (
-    TelegramBulkParserConfig,
-    TelegramConfig,
-    TelegramPublishConfig,
-    TelegramTestConfig,
-)
+from .telegram import TelegramBulkParserConfig, TelegramConfig, TelegramPublishConfig
 from .web_article import WebArticleConfig
 
 STREAM_CONFIG_SCHEMAS = {
@@ -23,7 +18,6 @@ STREAM_CONFIG_SCHEMAS = {
     "web_article": WebArticleConfig,
     "telegram_channel": TelegramConfig,
     "telegram_publish": TelegramPublishConfig,
-    "telegram_test": TelegramTestConfig,
     "telegram_bulk_parser": TelegramBulkParserConfig,
     "article_searcher": ArticleSearcherConfig,
     "bing_search": BingSearchConfig,

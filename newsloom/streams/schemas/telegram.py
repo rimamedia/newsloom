@@ -57,18 +57,6 @@ class TelegramPublishConfig(BaseModel):
         extra = "forbid"
 
 
-class TelegramTestConfig(BaseModel):
-    """Configuration schema for Telegram test task."""
-
-    channel_id: str
-    bot_token: str
-
-    class Config:
-        """Configuration for schema validation."""
-
-        extra = "forbid"
-
-
 class TelegramBulkParserConfig(BaseModel):
     """Configuration schema for bulk Telegram channel parsing."""
 
