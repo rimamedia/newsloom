@@ -12,7 +12,6 @@ from .sitemap import parse_sitemap
 from .telegram import monitor_telegram_channel
 from .telegram_bulk_parser import run_telegram_parser
 from .telegram_publisher import publish_to_telegram
-from .telegram_test import test_telegram_channel
 from .web import scrape_web_article
 
 # Map stream types to their corresponding task functions
@@ -25,7 +24,6 @@ TASK_MAPPING = {
     "web_article": scrape_web_article,
     "telegram_channel": monitor_telegram_channel,
     "telegram_publish": publish_to_telegram,
-    "telegram_test": test_telegram_channel,
     "article_searcher": search_articles,
     "bing_search": search_bing,
     "google_search": search_google,
@@ -99,10 +97,6 @@ TASK_CONFIG_EXAMPLES = {
         "batch_size": 10,
         "time_window_minutes": 10,
         "source_types": ["web", "telegram"],  # Optional: filter news by source types
-    },
-    "telegram_test": {
-        "channel_id": "-100123456789",
-        "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
     },
     "article_searcher": {
         "url": "https://example.com",

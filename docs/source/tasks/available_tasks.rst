@@ -322,21 +322,3 @@ Configuration example:
         "time_window_minutes": 10,
         "source_types": ["web", "telegram"]
     }
-
-telegram_test
-~~~~~~~~~~~
-A task for testing Telegram channel connectivity. Features:
-
-* Channel access verification
-* Message sending test
-* Detailed test results
-* Random test messages
-
-Configuration example:
-
-.. code-block:: python
-
-    {
-        "channel_id": "-100123456789",
-        "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-    }
