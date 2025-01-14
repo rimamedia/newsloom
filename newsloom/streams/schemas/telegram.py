@@ -1,9 +1,11 @@
 from typing import Annotated, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from . import BaseConfig
 
 
-class TelegramConfig(BaseModel):
+class TelegramConfig(BaseConfig):
     channel_id: str
     limit: Annotated[int, Field(gt=0, le=100)] = 50
     include_media: bool = True
@@ -17,13 +19,8 @@ class TelegramConfig(BaseModel):
             raise ValueError("Channel ID must be numeric after -100")
         return v
 
-    class Config:
-        """Configuration for Telegram schema validation."""
 
-        extra = "forbid"
-
-
-class TelegramPublishConfig(BaseModel):
+class TelegramPublishConfig(BaseConfig):
     channel_id: str
     batch_size: Annotated[int, Field(gt=0, le=50)] = 10
     bot_token: str
@@ -51,20 +48,10 @@ class TelegramPublishConfig(BaseModel):
             raise ValueError("Bot token cannot be empty")
         return v.strip()
 
-    class Config:
-        """Configuration for Telegram Publisher schema validation."""
 
-        extra = "forbid"
-
-
-class TelegramBulkParserConfig(BaseModel):
+class TelegramBulkParserConfig(BaseConfig):
     """Configuration schema for bulk Telegram channel parsing."""
 
     time_window_minutes: Annotated[int, Field(gt=0, le=1440)] = 60  # max 24 hours
     max_scrolls: Annotated[int, Field(gt=0, le=100)] = 20
     wait_time: Annotated[int, Field(gt=0, le=30)] = 10
-
-    class Config:
-        """Configuration for schema validation."""
-
-        extra = "forbid"

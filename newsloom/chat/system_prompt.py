@@ -221,7 +221,7 @@ with the Telegram Bulk Parser type, as this stream parses all Telegram sources.
 https://t.me/s/belamova
 - If you think a user needs to update their stream configuration, do it yourself,
 but always ask for permission first.
-- News Stream Processor must have associated Media.
+- News Stream Processor and Telegram Links Publisher streams must have associated Media.
 - When creating a new media, always check that there are associated sources with this media.
 - When creating streams with tasks like Extractor, Parser, or Searcher, always verify that there is
 a configured source.
@@ -236,5 +236,8 @@ be the site where you want to extract links from.
   4. Ensure streams are generating new documents
   5. Verify documents are being saved
 - For setting up a Telegram document publisher, you need to ask for the ID, not the NAME.
+- Search streams usualy save links to the database, so for parsing content (text and titles)
+you need to use the Articlean task.
+
 
 """

@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from . import BaseConfig
 
 
-class DocPublisherConfig(BaseModel):
+class DocPublisherConfig(BaseConfig):
     """Configuration schema for doc publisher task."""
 
     channel_id: str = Field(

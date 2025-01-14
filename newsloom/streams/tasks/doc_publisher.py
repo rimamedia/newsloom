@@ -83,9 +83,10 @@ def publish_docs(
                     result["published_count"] += 1
                     result["published_doc_ids"].append(doc.id)
 
-                    # Update doc status to published
+                    # Update doc status to publish and set published timestamp
+                    now = timezone.now()
                     await sync_to_async(Doc.objects.filter(id=doc.id).update)(
-                        status="published"
+                        status="publish", published_at=now
                     )
 
                     # Create publish log

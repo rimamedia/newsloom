@@ -57,7 +57,7 @@ def search_bing(
     debug: bool = False,
 ) -> Dict:
     """
-    Search Bing for articles matching the given keywords.
+    Search Bing for articles matching the given keywords from the last 24 hours.
 
     Args:
         stream_id: ID of the stream
@@ -122,7 +122,11 @@ def search_bing(
                                 if search_type == "news"
                                 else BING_SEARCH_URL
                             )
-                            search_url = f"{base_url}?q={query}"
+                            # Add time filter for last 24 hours (interval=1)
+                            time_filter = (
+                                "&qft=interval~%221%22" if search_type == "news" else ""
+                            )
+                            search_url = f"{base_url}?q={query}{time_filter}"
 
                             # Add reduced wait for news content
                             if search_type == "news":

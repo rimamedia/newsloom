@@ -1,9 +1,11 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from . import BaseConfig
 
 
-class NewsStreamConfig(BaseModel):
+class NewsStreamConfig(BaseConfig):
     agent_id: int = Field(..., description="ID of the agent to use for processing news")
     time_window_minutes: int = Field(
         60,
@@ -15,5 +17,3 @@ class NewsStreamConfig(BaseModel):
     save_to_docs: bool = Field(
         True, description="Whether to save the processed output to docs"
     )
-
-    model_config = {"extra": "forbid"}

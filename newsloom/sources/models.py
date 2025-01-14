@@ -58,6 +58,7 @@ class Doc(models.Model):
         ("new", "New"),
         ("edit", "Edit"),
         ("publish", "Publish"),
+        ("failed", "Failed"),
     ]
 
     media = models.ForeignKey(

@@ -1,9 +1,11 @@
 from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from . import BaseConfig
 
 
-class BingSearchConfig(BaseModel):
+class BingSearchConfig(BaseConfig):
     """Configuration schema for Bing search stream."""
 
     keywords: List[str] = Field(

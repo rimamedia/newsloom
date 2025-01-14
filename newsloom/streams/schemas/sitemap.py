@@ -1,14 +1,11 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import Field, HttpUrl
+
+from . import BaseConfig
 
 
-class BaseSitemapConfig(BaseModel):
+class BaseSitemapConfig(BaseConfig):
     sitemap_url: HttpUrl
     max_links: Annotated[int, Field(gt=0, le=1000)] = 100
     follow_next: bool = False
-
-    class Config:
-        """Configuration for Sitemap schema validation."""
-
-        extra = "forbid"
