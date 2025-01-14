@@ -2,9 +2,8 @@ import json
 import logging
 from datetime import timedelta
 
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, models, transaction
+from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from mediamanager.models import Media
@@ -18,6 +17,21 @@ logger = logging.getLogger(__name__)
 
 class Stream(models.Model):
     version = models.IntegerField(default=1)
+
+    @classmethod
+    def update_status(cls, stream_id: int, status: str = "failed") -> None:
+        """Update stream status and timing fields.
+
+        Args:
+            stream_id: ID of the stream to update
+            status: New status for the stream (default: "failed")
+        """
+        from django.utils import timezone
+
+        now = timezone.now()
+        cls.objects.filter(id=stream_id).update(
+            status=status, last_run=now, next_run=now
+        )
 
     TYPE_CHOICES = [
         ("sitemap_news", "Sitemap News Parser"),
@@ -130,26 +144,9 @@ class Stream(models.Model):
             raise ValidationError(str(e))
 
     def save(self, *args, **kwargs):
-        """Save the stream instance with optimistic locking."""
+        """Save the stream instance."""
         skip_validation = kwargs.pop("skip_validation", False)
         update_fields = kwargs.get("update_fields")
-
-        if self.pk and not update_fields:
-            # Implement optimistic locking for updates
-            try:
-                with transaction.atomic():
-                    current = Stream.objects.select_for_update(nowait=True).get(
-                        id=self.pk
-                    )
-                    if current.version != self.version:
-                        raise ValidationError(
-                            "Stream was modified. Please refresh and try again."
-                        )
-                    self.version += 1
-            except DatabaseError:
-                raise ValidationError(
-                    "Stream is currently locked. Please try again later."
-                )
 
         # Skip validation if we're only updating specific fields or if skip_validation is True
         if not skip_validation and not update_fields:
@@ -161,6 +158,18 @@ class Stream(models.Model):
                 # Restore original configuration if validation fails
                 self.configuration = current_config
                 raise e
+
+        # Set next_run to now when:
+        # 1. Creating a new stream
+        # 2. Changing status to active
+        if not update_fields or "next_run" in (update_fields or []):
+            if not self.id or (
+                self.id
+                and "status" in (update_fields or [])
+                and self.status == "active"
+                and Stream.objects.get(id=self.id).status != "active"
+            ):
+                self.next_run = timezone.now()
 
         super().save(*args, **kwargs)
 
@@ -186,21 +195,12 @@ class Stream(models.Model):
 
     def execute_task(self):
         """Execute the stream task directly."""
+        from .tasks import get_task_function  # Lazy import to avoid circular dependency
+
         stream_log = StreamLog.objects.create(stream=self, status="running")
 
-        lock_key = f"stream_lock_{self.id}"
-        if not cache.add(lock_key, "1", timeout=300):
-            logger.warning(f"Stream {self.id} is locked")
-            stream_log.status = "failed"
-            stream_log.error_message = "Stream is locked"
-            stream_log.completed_at = timezone.now()
-            stream_log.save()
-            return
-
         try:
-            # Get task function outside transaction
-            from .tasks import get_task_function  # Lazy import to avoid circular dependency
-
+            # Get task function
             task_function = get_task_function(self.stream_type)
             if not task_function:
                 error_msg = (
@@ -213,7 +213,7 @@ class Stream(models.Model):
                 stream_log.save()
                 return
 
-            # Execute task outside transaction
+            # Execute task
             result = task_function(stream_id=self.id, **self.configuration)
             logger.debug(f"Task executed with result: {result}")
 
@@ -223,23 +223,13 @@ class Stream(models.Model):
             stream_log.completed_at = timezone.now()
             stream_log.save()
 
-            # Update stream status in a minimal transaction with NOWAIT
-            try:
-                with transaction.atomic():
-                    stream = Stream.objects.select_for_update(nowait=True).get(
-                        id=self.id
-                    )
-                    now = timezone.now()
-                    stream.last_run = now
-                    stream.next_run = stream.get_next_run_time()
-                    stream.version += 1
-                    stream.save(update_fields=["last_run", "next_run", "version"])
-                    logger.debug(
-                        f"Updated stream {self.id} next_run to {stream.next_run}"
-                    )
-            except DatabaseError as e:
-                logger.warning(f"Could not update stream timing due to lock: {e}")
-                # Continue execution as the task itself was successful
+            # Update stream timing
+            now = timezone.now()
+            self.last_run = now
+            self.next_run = self.get_next_run_time()
+            self.save(update_fields=["last_run", "next_run"])
+
+            return result
 
         except Exception as e:
             error_msg = f"Error executing task for stream {self.id}: {str(e)}"
@@ -250,25 +240,10 @@ class Stream(models.Model):
             stream_log.completed_at = timezone.now()
             stream_log.save()
 
-            try:
-                with transaction.atomic():
-                    Stream.objects.select_for_update(nowait=True).filter(
-                        id=self.id
-                    ).update(
-                        status="failed",
-                        last_run=timezone.now(),
-                        version=models.F("version") + 1,
-                    )
-            except DatabaseError as e:
-                logger.warning(f"Could not update stream status due to lock: {e}")
+            self.status = "failed"
+            self.save(update_fields=["status"])
 
             raise e
-
-        finally:
-            cache.delete(lock_key)
-            logger.debug(f"Lock released for stream {self.id}")
-
-        return result
 
 
 class TelegramPublishLog(models.Model):

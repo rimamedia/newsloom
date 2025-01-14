@@ -120,9 +120,7 @@ def parse_rss_feed(stream_id, url, max_items=10):
     except Exception as e:
         logger.error(f"Error processing RSS feed: {str(e)}", exc_info=True)
         result["errors"].append(str(e))
-        Stream.objects.filter(id=stream_id).update(
-            status="failed", last_run=timezone.now()
-        )
+        Stream.update_status(stream_id, status="failed")
         raise e
 
     return result

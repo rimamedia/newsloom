@@ -43,16 +43,12 @@ def parse_sitemap(stream_id, sitemap_url, max_links=100, follow_next=False):
         error_msg = f"Timeout while fetching sitemap from {sitemap_url}"
         logger.error(error_msg)
         result["errors"].append(error_msg)
-        Stream.objects.filter(id=stream_id).update(
-            status="failed", last_run=timezone.now()
-        )
+        Stream.update_status(stream_id, status="failed")
         raise
     except Exception as e:
         logger.error(f"Error processing sitemap: {str(e)}", exc_info=True)
         result["errors"].append(str(e))
-        Stream.objects.filter(id=stream_id).update(
-            status="failed", last_run=timezone.now()
-        )
+        Stream.update_status(stream_id, status="failed")
         raise e
 
     return result

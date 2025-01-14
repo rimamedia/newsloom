@@ -34,9 +34,7 @@ def scrape_web_article(stream_id, base_url, selectors, headers):
     except Exception as e:
         logger.error(f"Error scraping web article: {str(e)}", exc_info=True)
         result["errors"].append(str(e))
-        Stream.objects.filter(id=stream_id).update(
-            status="failed", last_run=timezone.now()
-        )
+        Stream.update_status(stream_id, status="failed")
         raise e
 
     return result

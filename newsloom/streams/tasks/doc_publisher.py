@@ -138,9 +138,7 @@ def publish_docs(
         error_msg = f"Error in doc publisher task: {str(e)}"
         logger.error(error_msg, exc_info=True)
         result["errors"].append(error_msg)
-        Stream.objects.filter(id=stream_id).update(
-            status="failed", last_run=timezone.now()
-        )
+        Stream.update_status(stream_id, status="failed")
         raise e
 
     return result

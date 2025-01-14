@@ -1,5 +1,3 @@
-import threading
-from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from unittest.mock import Mock, patch
 
@@ -11,6 +9,8 @@ from streams.models import Stream, StreamLog
 class StreamExecutionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from django.utils import timezone
+
         # Create a test stream with valid configuration
         cls.stream = Stream.objects.create(
             name="Test Stream",
@@ -21,6 +21,7 @@ class StreamExecutionTests(TestCase):
                 "channel_id": "-1001234567890",
                 "bot_token": "test_bot_token",
             },
+            next_run=timezone.now(),  # Set initial next_run time
         )
 
     def setUp(self):
@@ -29,6 +30,40 @@ class StreamExecutionTests(TestCase):
 
     def tearDown(self):
         cache.clear()
+
+    def test_next_run_update_behavior(self):
+        """Test that next_run is only set automatically when creating a new stream."""
+
+        # Create a new stream and verify next_run is set
+        stream = Stream.objects.create(
+            name="Test Next Run",
+            stream_type="telegram_test",
+            frequency="5min",
+            status="active",
+            configuration={
+                "channel_id": "-1001234567890",
+                "bot_token": "test_bot_token",
+            },
+        )
+        self.assertIsNotNone(stream.next_run)
+        initial_next_run = stream.next_run
+
+        # Update the stream and verify next_run doesn't change
+        stream.name = "Updated Name"
+        stream.save()
+        stream.refresh_from_db()
+        self.assertEqual(stream.next_run, initial_next_run)
+
+        # Test that next_run is updated when status changes to active
+        stream.status = "paused"
+        stream.save(update_fields=["status"])
+        paused_next_run = stream.next_run
+
+        stream.status = "active"
+        stream.save(update_fields=["status"])
+        stream.refresh_from_db()
+        self.assertNotEqual(stream.next_run, paused_next_run)
+        self.assertGreater(stream.next_run, paused_next_run)
 
     @patch("streams.tasks.get_task_function")
     def test_successful_task_execution(self, mock_get_task_function):
@@ -54,18 +89,6 @@ class StreamExecutionTests(TestCase):
         # Verify next_run was updated correctly
         expected_next_run = self.stream.last_run + timedelta(minutes=5)
         self.assertEqual(self.stream.next_run, expected_next_run)
-
-    def test_locked_stream_execution(self):
-        # Set lock in cache
-        cache.add(f"stream_lock_{self.stream.id}", "1", timeout=300)
-
-        # Try to execute the task
-        self.stream.execute_task()
-
-        # Verify stream log indicates locked status
-        log = StreamLog.objects.get(stream=self.stream)
-        self.assertEqual(log.status, "failed")
-        self.assertEqual(log.error_message, "Stream is locked")
 
     @patch("streams.tasks.get_task_function")
     def test_task_function_not_found(self, mock_get_task_function):
@@ -98,30 +121,3 @@ class StreamExecutionTests(TestCase):
         # Verify stream status was updated
         self.stream.refresh_from_db()
         self.assertEqual(self.stream.status, "failed")
-
-    @patch("streams.tasks.get_task_function")
-    @patch("streams.models.StreamLog.objects.create")
-    @patch("streams.models.Stream.save")
-    def test_concurrent_execution_prevention(
-        self, mock_save, mock_create_log, mock_get_task_function
-    ):
-        execution_count = 0
-        lock = threading.Lock()
-
-        def count_execution(*args, **kwargs):
-            nonlocal execution_count
-            with lock:
-                execution_count += 1
-                return {"status": "success"}
-
-        mock_task = Mock(side_effect=count_execution)
-        mock_get_task_function.return_value = mock_task
-        mock_create_log.return_value = Mock()
-        mock_save.return_value = None
-
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = [executor.submit(self.stream.execute_task) for _ in range(3)]
-            for future in futures:
-                future.result()
-
-        self.assertEqual(execution_count, 1)
