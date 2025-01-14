@@ -311,6 +311,10 @@ A task for publishing content to Telegram channels. Features:
 * Source type filtering
 * Error handling per message
 
+.. important::
+   The stream **must** have an associated media configured in the admin panel.
+   Without a configured media, the task will fail to run.
+
 Configuration example:
 
 .. code-block:: python
