@@ -312,6 +312,7 @@ def process_news_stream(
     time_window_minutes: int = 60,
     max_items: int = 100,
     save_to_docs: bool = True,
+    **kwargs,  # Accept any additional configuration parameters
 ) -> Dict:
     """
     Process news items using the specified agent.

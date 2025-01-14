@@ -17,11 +17,12 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def articlean(stream_id: int) -> Dict[str, Any]:
+def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
     """Process articles through the Articlean service.
 
     Args:
         stream_id: ID of the stream being executed
+        **kwargs: Additional keyword arguments that will be ignored
 
     Returns:
         Dict containing execution statistics

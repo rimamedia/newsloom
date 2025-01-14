@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import Field
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class BingSearchConfig(BaseConfig):

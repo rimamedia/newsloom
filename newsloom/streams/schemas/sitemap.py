@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import Field, HttpUrl
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class BaseSitemapConfig(BaseConfig):

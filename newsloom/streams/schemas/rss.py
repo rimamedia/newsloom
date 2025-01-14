@@ -1,6 +1,6 @@
 from pydantic import Field, HttpUrl
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class RSSConfig(BaseConfig):

@@ -1,6 +1,6 @@
 from pydantic import HttpUrl
 
-from . import BaseConfig
+from .base_model import BaseConfig
 
 
 class ArticleSearcherConfig(BaseConfig):

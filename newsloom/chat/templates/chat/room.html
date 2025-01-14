@@ -39,9 +39,19 @@
         <div class="chat-messages" id="chat-messages">
             {% for message in messages %}
             <div class="message {% if message.user == request.user %}user{% else %}assistant{% endif %}">
+                <div class="message-header">
+                    <span class="message-timestamp" data-timestamp="{{ message.timestamp|date:'c' }}">
+                        {{ message.timestamp|date:"M d, Y H:i" }}
+                    </span>
+                </div>
                 <div class="message-content">{{ message.message }}</div>
                 {% if message.response %}
                 <div class="message assistant">
+                    <div class="message-header">
+                        <span class="message-timestamp" data-timestamp="{{ message.timestamp|date:'c' }}">
+                            {{ message.timestamp|date:"M d, Y H:i" }}
+                        </span>
+                    </div>
                     <div class="message-content">{{ message.response }}</div>
                 </div>
                 {% endif %}

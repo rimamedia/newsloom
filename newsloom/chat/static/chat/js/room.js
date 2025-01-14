@@ -5,6 +5,28 @@ marked.setOptions({
     sanitize: true // Sanitize HTML input
 });
 
+// Function to format timestamp in local time
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Convert all UTC timestamps to local time
+function updateTimestamps() {
+    document.querySelectorAll('.message-timestamp').forEach(element => {
+        const timestamp = element.getAttribute('data-timestamp');
+        if (timestamp) {
+            element.textContent = formatTimestamp(timestamp);
+        }
+    });
+}
+
 // Get current chat ID from URL or data attribute
 const pathParts = window.location.pathname.split('/');
 const currentChatId = pathParts[pathParts.length - 2] === 'chat' ? null : pathParts[pathParts.length - 2];
@@ -138,10 +160,18 @@ function connectWebSocket() {
         }
 
         if (data.type === 'chat_message') {
-            // Add assistant message with markdown rendering
+            const timestamp = new Date().toISOString();
+            // Add assistant message with markdown rendering and timestamp
             const assistantMessageDiv = document.createElement('div');
             assistantMessageDiv.className = 'message assistant';
-            assistantMessageDiv.innerHTML = `<div class="message-content">${marked.parse(data.response)}</div>`;
+            assistantMessageDiv.innerHTML = `
+                <div class="message-header">
+                    <span class="message-timestamp" data-timestamp="${timestamp}">
+                        ${formatTimestamp(timestamp)}
+                    </span>
+                </div>
+                <div class="message-content">${marked.parse(data.response)}</div>
+            `;
             messagesDiv.appendChild(assistantMessageDiv);
 
             // Scroll to bottom
@@ -267,10 +297,18 @@ submitButton.onclick = function (e) {
         messageInputDom.disabled = true; // Disable input while processing
         submitButton.disabled = true; // Disable submit while processing
 
-        // Add user message immediately with markdown rendering
+        const timestamp = new Date().toISOString();
+        // Add user message immediately with markdown rendering and timestamp
         const userMessageDiv = document.createElement('div');
         userMessageDiv.className = 'message user';
-        userMessageDiv.innerHTML = `<div class="message-content">${marked.parse(message)}</div>`;
+        userMessageDiv.innerHTML = `
+            <div class="message-header">
+                <span class="message-timestamp" data-timestamp="${timestamp}">
+                    ${formatTimestamp(timestamp)}
+                </span>
+            </div>
+            <div class="message-content">${marked.parse(message)}</div>
+        `;
         messagesDiv.appendChild(userMessageDiv);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
@@ -292,11 +330,12 @@ submitButton.onclick = function (e) {
     }
 };
 
-// Initialize markdown rendering for existing messages
+// Initialize markdown rendering for existing messages and convert timestamps
 document.querySelectorAll('.message-content').forEach(content => {
     const text = content.textContent;
     content.innerHTML = marked.parse(text);
 });
+updateTimestamps();
 
 // Load chat history from localStorage on page load only if there are no messages
 window.onload = function () {
@@ -307,7 +346,14 @@ window.onload = function () {
             messages.forEach(msg => {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${msg.type}`;
-                messageDiv.innerHTML = `<div class="message-content">${marked.parse(msg.content)}</div>`;
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-timestamp" data-timestamp="${msg.timestamp || new Date().toISOString()}">
+                            ${formatTimestamp(msg.timestamp || new Date().toISOString())}
+                        </span>
+                    </div>
+                    <div class="message-content">${marked.parse(msg.content)}</div>
+                `;
                 messagesDiv.appendChild(messageDiv);
             });
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -322,7 +368,8 @@ const observer = new MutationObserver(function (mutations) {
         document.querySelectorAll('.message').forEach(msg => {
             messages.push({
                 type: msg.classList.contains('user') ? 'user' : 'assistant',
-                content: msg.querySelector('.message-content').textContent
+                content: msg.querySelector('.message-content').textContent,
+                timestamp: msg.querySelector('.message-timestamp').getAttribute('data-timestamp')
             });
         });
         localStorage.setItem(`chat_${currentChatId}`, JSON.stringify(messages));
