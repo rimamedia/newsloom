@@ -180,6 +180,7 @@ Always implement proper error handling:
    - Close connections and files properly
    - Clean up temporary resources
    - Handle browser/API sessions appropriately
+   - Validate required stream resources (source, media) before task execution
 
 4. Testing
    - Write unit tests for your task
