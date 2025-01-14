@@ -9,9 +9,9 @@ docutils==0.21.2
 greenlet==3.1.1
 idna==3.10
 imagesize==1.4.1
-Jinja2==3.1.4
+Jinja2==3.1.5
 lockfile==0.12.2
-luigi==3.5.2
+luigi==3.6.0
 MarkupSafe==3.0.2
 packaging==24.2
 playwright==1.49.0
