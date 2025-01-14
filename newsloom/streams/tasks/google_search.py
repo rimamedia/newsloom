@@ -134,30 +134,77 @@ def search_google(
                             # Update selector and extraction logic based on search type
                             if search_type == "news":
                                 # Target article headlines in Google News
-                                link_selector = "article h3 > a[href]"
+                                # Using multiple possible selectors for better reliability
+                                link_selectors = [
+                                    "article h3 > a[href]",  # Primary selector
+                                    "article a[href]",  # Fallback selector
+                                    ".VDXfz",  # Alternative class-based selector
+                                ]
 
-                                # Navigate and wait for articles to load
-                                page.goto(search_url, timeout=30000)
-                                # Wait specifically for article elements
-                                page.wait_for_selector("article", timeout=30000)
-                                page.wait_for_load_state("networkidle", timeout=30000)
+                                # Navigate with longer timeout and wait for load
+                                page.goto(search_url, timeout=60000)
+
+                                # Try multiple selectors with reduced timeout
+                                link_selector = None
+                                for selector in link_selectors:
+                                    try:
+                                        if debug:
+                                            logger.info(f"Trying selector: {selector}")
+                                        # Reduced timeout for each attempt
+                                        element = page.wait_for_selector(
+                                            selector, timeout=10000
+                                        )
+                                        if element:
+                                            link_selector = selector
+                                            if debug:
+                                                logger.info(
+                                                    f"Successfully found selector: {selector}"
+                                                )
+                                            break
+                                    except Exception as e:
+                                        if debug:
+                                            logger.warning(
+                                                f"Selector {selector} failed: {str(e)}"
+                                            )
+                                        continue
+
+                                if not link_selector:
+                                    raise Exception(
+                                        "No valid selector found for Google News articles"
+                                    )
+
+                                # Wait for network to be idle
+                                page.wait_for_load_state("networkidle", timeout=10000)
                             else:
                                 link_selector = (
                                     "div.g a[href^='http']"  # Regular search results
                                 )
                                 page.goto(
                                     search_url,
-                                    timeout=30000,
+                                    timeout=60000,
                                     wait_until="domcontentloaded",
                                 )
-                                page.wait_for_load_state("networkidle", timeout=30000)
+                                page.wait_for_load_state("networkidle", timeout=10000)
 
-                            # Get all matching elements
-                            elements = page.query_selector_all(link_selector)
+                            # Get all matching elements with error handling
+                            try:
+                                elements = page.query_selector_all(link_selector)
 
-                            if debug:
-                                logger.info(f"Total elements found: {len(elements)}")
+                                if debug:
+                                    logger.info(
+                                        f"Total elements found: {len(elements)}"
+                                    )
+                                    # Log page content for debugging if no elements found
+                                    if len(elements) == 0:
+                                        logger.info("Page content:")
+                                        logger.info(page.content())
+                                        logger.info("Page URL:")
+                                        logger.info(page.url)
+                            except Exception as e:
+                                logger.error(f"Error querying elements: {str(e)}")
+                                elements = []
 
+                            # Process found elements
                             for element in elements[:max_results_per_keyword]:
                                 try:
                                     href = element.get_attribute("href")
