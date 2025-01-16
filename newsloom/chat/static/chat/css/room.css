@@ -23,8 +23,14 @@
     margin: 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
     align-items: center;
+}
+
+.sidebar-header h3 {
+    flex: 1;
+    min-width: 100px;
 }
 
 .sidebar-header h3 {
