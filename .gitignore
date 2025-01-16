@@ -88,3 +88,4 @@ npm-debug.log
 newsloom/supervisord.pid
 nginx.conf
 scripts/deploy.sh
+credentials.json

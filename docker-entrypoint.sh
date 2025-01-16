@@ -16,6 +16,10 @@ python manage.py makemigrations
 echo "Applying database migrations..."
 python manage.py migrate
 
+# Setup crawl4ai
+echo "Setting up crawl4ai..."
+crawl4ai-setup
+
 # Start supervisor
 echo "Starting supervisor..."
 /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
