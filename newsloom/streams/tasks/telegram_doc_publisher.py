@@ -2,6 +2,7 @@ import logging
 import time
 from typing import Dict
 
+from django.utils import timezone
 from sources.models import Doc
 from streams.models import TelegramDocPublishLog
 
@@ -57,9 +58,10 @@ def telegram_doc_publisher(
             # Log the publication
             TelegramDocPublishLog.objects.create(doc=doc, media=stream.media)
 
-            # Update doc status
-            doc.status = "publish"
-            doc.save()
+            # Update doc status and set published timestamp
+            doc.status = "publish"  # Using correct status from Doc.STATUS_CHOICES
+            doc.published_at = timezone.now()
+            doc.save(update_fields=["status", "published_at"])
 
             processed += 1
 
@@ -70,7 +72,7 @@ def telegram_doc_publisher(
         except Exception as e:
             logger.error(f"Failed to publish doc {doc.id}: {e}")
             doc.status = "failed"
-            doc.save()
+            doc.save(update_fields=["status"])
             failed += 1
 
     return {"processed": processed, "failed": failed, "total": len(docs)}
