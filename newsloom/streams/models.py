@@ -50,6 +50,7 @@ class Stream(models.Model):
         ("google_doc_creator", "Google Doc Creator"),
         ("telegram_doc_publisher", "Telegram Doc Publisher"),
         ("articlean", "Articlean Processor"),
+        ("web_scraper", "Web Content Scraper"),
     ]
 
     FREQUENCY_CHOICES = [

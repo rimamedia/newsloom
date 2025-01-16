@@ -214,6 +214,31 @@ Configuration example:
 Web Scraping Tasks
 ----------------
 
+web_scraper
+~~~~~~~~~~
+A task for scraping content from news articles with empty text using crawl4ai. Features:
+
+* Automatic content extraction using crawl4ai
+* Batch processing of empty articles
+* Markdown output format
+* Error handling and logging
+
+.. important::
+   This task processes existing news articles that have empty text content.
+   It does not create new articles but updates existing ones with their content.
+
+Required Setup:
+    1. Create a Stream in the admin panel
+    2. Configure the stream with the settings below
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "batch_size": 10  # Number of empty articles to process in each run
+    }
+
 playwright
 ~~~~~~~~~
 A task for extracting links from web pages using Playwright. Features:

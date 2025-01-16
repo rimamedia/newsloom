@@ -11,6 +11,7 @@ from .sitemap import BaseSitemapConfig
 from .telegram import TelegramBulkParserConfig, TelegramConfig, TelegramPublishConfig
 from .telegram_doc_publisher import TelegramDocPublisherConfig
 from .web_article import WebArticleConfig
+from .web_scraper import WebScraperConfig
 
 STREAM_CONFIG_SCHEMAS = {
     "sitemap_news": BaseSitemapConfig,
@@ -29,4 +30,5 @@ STREAM_CONFIG_SCHEMAS = {
     "google_doc_creator": GoogleDocCreatorConfig,
     "telegram_doc_publisher": TelegramDocPublisherConfig,
     "articlean": ArticleanConfiguration,
+    "web_scraper": WebScraperConfig,
 }

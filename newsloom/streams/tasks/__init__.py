@@ -15,6 +15,7 @@ from .telegram_bulk_parser import run_telegram_parser
 from .telegram_doc_publisher import telegram_doc_publisher
 from .telegram_publisher import publish_to_telegram
 from .web import scrape_web_article
+from .web_scraper import web_scraper
 
 # Map stream types to their corresponding task functions
 # TODO: add llm rewrite task
@@ -35,6 +36,7 @@ TASK_MAPPING = {
     "google_doc_creator": google_doc_creator,
     "telegram_doc_publisher": telegram_doc_publisher,
     "articlean": articlean,
+    "web_scraper": web_scraper,
 }
 
 
@@ -150,6 +152,9 @@ TASK_CONFIG_EXAMPLES = {
         "message_template": "{title}\n\n{google_doc_link}",  # Message template
         "batch_size": 10,  # Process up to 10 docs at a time
         "delay_between_messages": 2,  # Delay between messages in seconds
+    },
+    "web_scraper": {
+        "batch_size": 10,  # Process 10 empty news articles at a time
     },
 }
 

@@ -366,7 +366,9 @@ def process_news_stream(
 
         if not news_items:
             logger.info(
-                "No news items found in the last %d minutes", time_window_minutes
+                "No relevant news items found in the last %d minutes for stream_id=%d. Skipping processing.",  # noqa: E501
+                time_window_minutes,
+                stream_id,
             )
             return {
                 "processed": 0,
@@ -472,13 +474,24 @@ def process_news_stream(
                             pass
 
         logger.info(
-            "Received response from Bedrock with %d characters", len(processed_text)
+            "Received response from Bedrock with %d characters. Model output: %s",
+            len(processed_text),
+            (
+                processed_text[:500] + "..."
+                if len(processed_text) > 500
+                else processed_text
+            ),
         )
 
         logger.info(
-            "Completed processing with %d items processed and %d docs saved",
+            "Completed processing with %d items processed and %d docs saved. Final model response: %s",  # noqa: E501
             processed_count,
             saved_count,
+            (
+                processed_text[:500] + "..."
+                if len(processed_text) > 500
+                else processed_text
+            ),
         )
         return {
             "processed": processed_count,
