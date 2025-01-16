@@ -160,12 +160,11 @@ MEDIA AND SOURCE ASSOCIATION RULES:
    • Track the most recently created media in the conversation
    • Assume new sources created immediately after media creation should be associated
    with that media
-   • Always confirm media association before proceeding
 
 2. Source Creation Workflow:
    • When creating sources after new media:
      - Store the media ID/name as active context
-     - Automatically associate new sources with this media
+     - ALWAYS automatically associate new sources with this media, IT IS VERY IMPORTANT
      - Confirm associations with user
    • Include media association check in source creation confirmation
 
