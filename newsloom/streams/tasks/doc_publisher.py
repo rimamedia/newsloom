@@ -68,11 +68,7 @@ def publish_docs(
                     # Title in bold
                     message = f"<b>{doc.title}</b>"
                     if doc.text:
-                        # Add text with proper line breaks
-                        truncated_text = (
-                            doc.text[:250] + "..." if len(doc.text) > 250 else doc.text
-                        )
-                        message += f"\n\n{truncated_text}"
+                        message += f"\n\n{doc.text}"
                     if doc.link:
                         # Add link on new line
                         message += f"\n\n{doc.link}"
