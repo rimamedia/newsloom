@@ -47,6 +47,8 @@ class Stream(models.Model):
         ("telegram_bulk_parser", "Telegram Bulk Parser"),
         ("news_stream", "News Stream Processor"),
         ("doc_publisher", "Doc Publisher"),
+        ("google_doc_creator", "Google Doc Creator"),
+        ("telegram_doc_publisher", "Telegram Doc Publisher"),
         ("articlean", "Articlean Processor"),
     ]
 

@@ -65,6 +65,7 @@ class Doc(models.Model):
         "mediamanager.Media", on_delete=models.CASCADE, related_name="docs"
     )
     link = models.URLField(unique=True)
+    google_doc_link = models.URLField(blank=True, null=True)
     title = models.CharField(max_length=255, blank=True, null=True)
     text = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="new")

@@ -4,6 +4,7 @@ from .article_searcher import search_articles
 from .articlean import articlean
 from .bing_search import search_bing
 from .doc_publisher import publish_docs
+from .google_doc_creator import google_doc_creator
 from .google_search import search_google
 from .news_stream import process_news_stream
 from .playwright import extract_links
@@ -11,6 +12,7 @@ from .rss import parse_rss_feed
 from .sitemap import parse_sitemap
 from .telegram import monitor_telegram_channel
 from .telegram_bulk_parser import run_telegram_parser
+from .telegram_doc_publisher import telegram_doc_publisher
 from .telegram_publisher import publish_to_telegram
 from .web import scrape_web_article
 
@@ -30,6 +32,8 @@ TASK_MAPPING = {
     "telegram_bulk_parser": run_telegram_parser,
     "news_stream": process_news_stream,
     "doc_publisher": publish_docs,
+    "google_doc_creator": google_doc_creator,
+    "telegram_doc_publisher": telegram_doc_publisher,
     "articlean": articlean,
 }
 
@@ -136,6 +140,16 @@ TASK_CONFIG_EXAMPLES = {
         "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",  # Telegram bot token
         "time_window_minutes": 60,  # Look back 1 hour
         "batch_size": 10,  # Process up to 10 docs at a time
+    },
+    "google_doc_creator": {
+        "template_id": "your-template-doc-id",  # Google Doc template ID
+        "folder_id": "your-folder-id",  # Google Drive folder ID
+        "service_account_path": "credentials.json",  # Path to service account credentials
+    },
+    "telegram_doc_publisher": {
+        "message_template": "{title}\n\n{google_doc_link}",  # Message template
+        "batch_size": 10,  # Process up to 10 docs at a time
+        "delay_between_messages": 2,  # Delay between messages in seconds
     },
 }
 

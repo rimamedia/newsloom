@@ -183,6 +183,152 @@ Example of a Telegram channel monitoring task:
 
         return posts
 
+Google Doc Tasks
+-------------
+
+Example of creating Google Docs from database documents:
+
+.. code-block:: python
+
+    def google_doc_creator(stream_id, folder_id, template_id=None, service_account_path="credentials.json"):
+        # Initialize Google services
+        credentials = service_account.Credentials.from_service_account_file(
+            service_account_path, scopes=['https://www.googleapis.com/auth/drive.file']
+        )
+        drive_service = build('drive', 'v3', credentials=credentials)
+        docs_service = build('docs', 'v1', credentials=credentials)
+
+        # Get stream and docs
+        stream = Stream.objects.get(id=stream_id)
+        docs = Doc.objects.filter(
+            status='new',
+            media=stream.media,
+            google_doc_link__isnull=True
+        ).order_by('created_at')
+
+        processed = 0
+        failed = 0
+
+        for doc in docs:
+            try:
+                if template_id:
+                    # Copy template
+                    file = drive_service.files().copy(
+                        fileId=template_id,
+                        body={'name': doc.title or "Untitled", 'parents': [folder_id]}
+                    ).execute()
+                else:
+                    # Create new empty document
+                    file = drive_service.files().create(
+                        body={
+                            'name': doc.title or "Untitled",
+                            'mimeType': 'application/vnd.google-apps.document',
+                            'parents': [folder_id]
+                        }
+                    ).execute()
+                
+                doc_id = file.get('id')
+                
+                # Update document content
+                docs_service.documents().batchUpdate(
+                    documentId=doc_id,
+                    body={
+                        'requests': [{
+                            'insertText': {
+                                'location': {'index': 1},
+                                'text': doc.text or ""
+                            }
+                        }]
+                    }
+                ).execute()
+                
+                # Update doc with link
+                doc.google_doc_link = f"https://docs.google.com/document/d/{doc_id}/edit"
+                doc.status = 'edit'
+                doc.published_at = timezone.now()
+                doc.save()
+                
+                processed += 1
+                time.sleep(1)  # Rate limiting
+                
+            except Exception as e:
+                logger.error(f"Failed to process doc {doc.id}: {e}")
+                doc.status = 'failed'
+                doc.save()
+                failed += 1
+
+        return {
+            "processed": processed,
+            "failed": failed,
+            "total": len(docs)
+        }
+
+Example of publishing Google Doc links to Telegram:
+
+.. code-block:: python
+
+    def telegram_doc_publisher(stream_id, message_template="{title}\n\n{google_doc_link}",
+                             batch_size=10, delay_between_messages=2):
+        stream = Stream.objects.get(id=stream_id)
+        
+        if not stream.media or not stream.media.telegram_chat_id:
+            raise ValueError("Stream media must have a telegram_chat_id configured")
+        
+        # Get docs ready for publishing
+        docs = Doc.objects.filter(
+            status='edit',
+            media=stream.media,
+            google_doc_link__isnull=False
+        ).exclude(
+            id__in=TelegramDocPublishLog.objects.filter(
+                media=stream.media
+            ).values_list('doc_id', flat=True)
+        ).order_by('created_at')[:batch_size]
+        
+        processed = 0
+        failed = 0
+        
+        for doc in docs:
+            try:
+                # Format message
+                message = message_template.format(
+                    title=doc.title or "Untitled",
+                    google_doc_link=doc.google_doc_link
+                )
+                
+                # Send to Telegram
+                send_telegram_message(
+                    chat_id=stream.media.telegram_chat_id,
+                    message=message
+                )
+                
+                # Log publication
+                TelegramDocPublishLog.objects.create(
+                    doc=doc,
+                    media=stream.media
+                )
+                
+                # Update status
+                doc.status = 'publish'
+                doc.save()
+                
+                processed += 1
+                
+                if processed < len(docs):
+                    time.sleep(delay_between_messages)
+                
+            except Exception as e:
+                logger.error(f"Failed to publish doc {doc.id}: {e}")
+                doc.status = 'failed'
+                doc.save()
+                failed += 1
+        
+        return {
+            "processed": processed,
+            "failed": failed,
+            "total": len(docs)
+        }
+
 These examples demonstrate the current implementation patterns used in NewLoom, including:
 
 * Playwright for web automation and scraping
