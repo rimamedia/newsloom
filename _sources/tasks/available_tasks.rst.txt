@@ -108,6 +108,38 @@ Configuration example:
 Content Publishing Tasks
 ---------------------
 
+google_doc_creator
+~~~~~~~~~~~~~~~
+A task for creating Google Docs from documents in the database. Features:
+
+* Uses Google Drive API to create documents
+* Supports both template-based and direct document creation
+* Batch processing
+* Error handling and logging
+
+.. important::
+   This task requires:
+   
+   * A Google Cloud service account credentials file (credentials.json)
+   * A Google Drive folder to store created documents
+
+Required Setup:
+    1. Set up a Google Cloud project and create a service account
+    2. Download the service account credentials as credentials.json
+    3. Create a Google Drive folder and share it with the service account
+    4. Create a Stream in the admin panel
+    5. Configure the stream with the settings below
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "folder_id": "your-folder-id",
+        "service_account_path": "credentials.json",
+        "template_id": "your-template-doc-id"  # Optional: only if you want to use a template
+    }
+
 doc_publisher
 ~~~~~~~~~~~
 A task for publishing documents to Telegram channels. Features:
@@ -126,6 +158,34 @@ Configuration example:
         "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
         "time_window_minutes": 60,
         "batch_size": 10
+    }
+
+telegram_doc_publisher
+~~~~~~~~~~~~~~~~~~
+A task for publishing Google Doc links to Telegram channels. Features:
+
+* Customizable message templates
+* Batch processing
+* Rate limiting with configurable delays
+* Error handling and logging
+
+.. important::
+   The stream **must** have an associated media configured in the admin panel with a telegram_chat_id.
+   Without proper media configuration, the task will fail to run.
+
+Required Setup:
+    1. Create a Media in the admin panel with a configured telegram_chat_id
+    2. Create a Stream and select the created media
+    3. Configure the stream with the settings below
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "message_template": "{title}\n\n{google_doc_link}",
+        "batch_size": 10,
+        "delay_between_messages": 2
     }
 
 News Processing Tasks
@@ -153,6 +213,31 @@ Configuration example:
 
 Web Scraping Tasks
 ----------------
+
+web_scraper
+~~~~~~~~~~
+A task for scraping content from news articles with empty text using crawl4ai. Features:
+
+* Automatic content extraction using crawl4ai
+* Batch processing of empty articles
+* Markdown output format
+* Error handling and logging
+
+.. important::
+   This task processes existing news articles that have empty text content.
+   It does not create new articles but updates existing ones with their content.
+
+Required Setup:
+    1. Create a Stream in the admin panel
+    2. Configure the stream with the settings below
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "batch_size": 10  # Number of empty articles to process in each run
+    }
 
 playwright
 ~~~~~~~~~
