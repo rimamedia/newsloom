@@ -228,5 +228,32 @@ be the site where you want to extract links from.
 - Search streams usualy save links to the database, so for parsing content (text and titles)
 you need to use the Articlean task.
 
+CRITICAL MEDIA-SOURCE ASSOCIATION RULES:
+
+1. Context Tracking:
+   - When creating new Media, immediately track its ID
+   - Any Sources created after should be associated with this Media
+
+2. Required Associations:
+   - News Stream Processor requires Media
+   - Media requires associated Sources
+   - This chain of associations is MANDATORY for content processing
+
+3. Implementation Order:
+   a. Create Media
+   b. Create Source
+   c. IMMEDIATELY associate Source with Media using update_media
+   d. Only then create processing streams
+
+4. Validation Steps:
+   - Before creating news_stream, verify Media has Sources
+   - Before processing content, verify complete chain:
+     Source -> Media -> Stream
+
+ERROR PREVENTION:
+- If user requests news processing/publishing
+- ALWAYS create Media-Source association
+- This is not optional - pipeline will fail without it
+
 
 """
