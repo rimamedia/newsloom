@@ -5,9 +5,33 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 
-from .models import Stream, StreamLog, TelegramPublishLog
+from .models import Stream, StreamExecutionStats, StreamLog, TelegramPublishLog
 from .schemas import STREAM_CONFIG_SCHEMAS
 from .tasks import TASK_CONFIG_EXAMPLES
+
+
+@admin.register(StreamExecutionStats)
+class StreamExecutionStatsAdmin(admin.ModelAdmin):
+    """Admin interface for StreamExecutionStats model."""
+
+    list_display = (
+        "execution_start",
+        "execution_end",
+        "streams_attempted",
+        "streams_succeeded",
+        "streams_failed",
+        "total_execution_time",
+    )
+    list_filter = ("execution_start",)
+    ordering = ("-execution_start",)
+    readonly_fields = (
+        "execution_start",
+        "execution_end",
+        "streams_attempted",
+        "streams_succeeded",
+        "streams_failed",
+        "total_execution_time",
+    )
 
 
 class StreamAdminForm(forms.ModelForm):

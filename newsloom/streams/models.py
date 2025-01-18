@@ -276,6 +276,34 @@ class TelegramDocPublishLog(models.Model):
         unique_together = [("doc", "media")]
 
 
+class StreamExecutionStats(models.Model):
+    """Statistics for stream execution runs."""
+
+    execution_start = models.DateTimeField(auto_now_add=True)
+    execution_end = models.DateTimeField(null=True)
+    streams_attempted = models.IntegerField(default=0)
+    streams_succeeded = models.IntegerField(default=0)
+    streams_failed = models.IntegerField(default=0)
+    total_execution_time = models.DurationField(null=True)
+
+    class Meta:
+        """Meta configuration for StreamExecutionStats model."""
+
+        ordering = ["-execution_start"]
+        indexes = [
+            models.Index(fields=["execution_start"]),
+        ]
+
+    def __str__(self):
+        return f"Stream Execution at {self.execution_start}"
+
+    def calculate_stats(self):
+        """Calculate total execution time."""
+        if self.execution_end:
+            self.total_execution_time = self.execution_end - self.execution_start
+            self.save(update_fields=["total_execution_time"])
+
+
 class StreamLog(models.Model):
     """Logs for stream task executions."""
 
