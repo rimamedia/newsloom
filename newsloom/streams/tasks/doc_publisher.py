@@ -73,23 +73,50 @@ def publish_docs(
                         # Add link on new line
                         message += f"\n\n{doc.link}"
 
-                    # Send message to Telegram with HTML parsing
-                    await bot.send_message(
-                        chat_id=channel_id, text=message, parse_mode=ParseMode.HTML
+                    # Add debug logging before sending
+                    logger.info(
+                        f"Attempting to send message for doc {doc.id} to channel {channel_id}"
                     )
+                    logger.debug(f"Message content: {message}")
+
+                    try:
+                        # Send message to Telegram with HTML parsing
+                        await bot.send_message(
+                            chat_id=channel_id, text=message, parse_mode=ParseMode.HTML
+                        )
+                        logger.info(f"Successfully sent message for doc {doc.id}")
+                    except Exception as send_error:
+                        logger.error(
+                            f"Telegram send error for doc {doc.id}: {str(send_error)}"
+                        )
+                        raise send_error
                     result["published_count"] += 1
                     result["published_doc_ids"].append(doc.id)
 
                     # Update doc status to publish and set published timestamp
                     now = timezone.now()
-                    await sync_to_async(Doc.objects.filter(id=doc.id).update)(
-                        status="publish", published_at=now
-                    )
+                    try:
+                        await sync_to_async(Doc.objects.filter(id=doc.id).update)(
+                            status="publish", published_at=now
+                        )
+                        logger.info(f"Updated doc {doc.id} status to publish")
+                    except Exception as update_error:
+                        logger.error(
+                            f"Failed to update doc {doc.id} status: {str(update_error)}"
+                        )
+                        raise update_error
 
                     # Create publish log
-                    await sync_to_async(TelegramPublishLog.objects.create)(
-                        doc=doc, media=stream.media
-                    )
+                    try:
+                        await sync_to_async(TelegramPublishLog.objects.create)(
+                            doc=doc, media=stream.media
+                        )
+                        logger.info(f"Created publish log for doc {doc.id}")
+                    except Exception as log_error:
+                        logger.error(
+                            f"Failed to create publish log for doc {doc.id}: {str(log_error)}"
+                        )
+                        raise log_error
 
                     logger.info(f"Successfully published doc {doc.id}")
 

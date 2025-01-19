@@ -145,6 +145,12 @@ class Stream(models.Model):
         except Exception as e:
             raise ValidationError(str(e))
 
+    @classmethod
+    def reactivate_failed_streams(cls):
+        """Reactivate all failed streams and set their next run time."""
+        now = timezone.now()
+        cls.objects.filter(status="failed").update(status="active", next_run=now)
+
     def save(self, *args, **kwargs):
         """Save the stream instance."""
         skip_validation = kwargs.pop("skip_validation", False)
@@ -161,17 +167,18 @@ class Stream(models.Model):
                 self.configuration = current_config
                 raise e
 
-        # Set next_run to now when:
-        # 1. Creating a new stream
-        # 2. Changing status to active
-        if not update_fields or "next_run" in (update_fields or []):
-            if not self.id or (
-                self.id
-                and "status" in (update_fields or [])
-                and self.status == "active"
-                and Stream.objects.get(id=self.id).status != "active"
-            ):
-                self.next_run = timezone.now()
+        # Handle next_run updates
+        if not self.id:  # New stream
+            self.next_run = timezone.now()
+        elif not update_fields or "status" in (update_fields or []):
+            # If status is being changed to active and it wasn't active before
+            if self.id and self.status == "active":
+                try:
+                    current_status = Stream.objects.get(id=self.id).status
+                    if current_status != "active":
+                        self.next_run = timezone.now()
+                except Stream.DoesNotExist:
+                    pass
 
         super().save(*args, **kwargs)
 
@@ -199,7 +206,13 @@ class Stream(models.Model):
         """Execute the stream task directly."""
         from .tasks import get_task_function  # Lazy import to avoid circular dependency
 
+        # First update the stream's status to processing
+        self.status = "processing"
+        self.save(update_fields=["status"])
+
+        # Create a new log entry
         stream_log = StreamLog.objects.create(stream=self, status="running")
+        now = timezone.now()
 
         try:
             # Get task function
@@ -209,27 +222,35 @@ class Stream(models.Model):
                     f"No task function found for stream type: {self.stream_type}"
                 )
                 logger.error(error_msg)
+
+                # Update log
                 stream_log.status = "failed"
                 stream_log.error_message = error_msg
-                stream_log.completed_at = timezone.now()
+                stream_log.completed_at = now
                 stream_log.save()
+
+                # Update stream
+                self.status = "failed"
+                self.last_run = now
+                self.next_run = self.get_next_run_time()
+                self.save(update_fields=["status", "last_run", "next_run"])
                 return
 
             # Execute task
             result = task_function(stream_id=self.id, **self.configuration)
             logger.debug(f"Task executed with result: {result}")
 
-            # Update stream log
+            # Update log for success
             stream_log.status = "success"
             stream_log.result = result
-            stream_log.completed_at = timezone.now()
+            stream_log.completed_at = now
             stream_log.save()
 
-            # Update stream timing
-            now = timezone.now()
+            # Update stream for success
+            self.status = "active"  # Reset to active
             self.last_run = now
             self.next_run = self.get_next_run_time()
-            self.save(update_fields=["last_run", "next_run"])
+            self.save(update_fields=["status", "last_run", "next_run"])
 
             return result
 
@@ -237,13 +258,23 @@ class Stream(models.Model):
             error_msg = f"Error executing task for stream {self.id}: {str(e)}"
             logger.error(error_msg, exc_info=True)
 
-            stream_log.status = "failed"
-            stream_log.error_message = str(e)
-            stream_log.completed_at = timezone.now()
-            stream_log.save()
+            try:
+                # Update log for failure
+                stream_log.status = "failed"
+                stream_log.error_message = str(e)
+                stream_log.completed_at = now
+                stream_log.save()
+            except Exception as log_error:
+                logger.error(f"Failed to update stream log: {log_error}")
 
-            self.status = "failed"
-            self.save(update_fields=["status"])
+            try:
+                # Update stream for failure
+                self.status = "failed"
+                self.last_run = now
+                self.next_run = self.get_next_run_time()
+                self.save(update_fields=["status", "last_run", "next_run"])
+            except Exception as save_error:
+                logger.error(f"Failed to update stream status: {save_error}")
 
             raise e
 
