@@ -1,20 +1,67 @@
 import logging
+import multiprocessing
 import time
-from typing import List, Optional
+from typing import List
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import connections
 from django.utils import timezone
 from streams.models import Stream, StreamExecutionStats
 
 logger = logging.getLogger(__name__)
 
 # Default configuration
-DEFAULT_SLEEP_INTERVAL = 60  # seconds
-DEFAULT_ERROR_SLEEP = 5  # seconds
-DEFAULT_BATCH_SIZE = 10
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 300  # 5 minutes
+
+
+def calculate_retry_delay(retry_count: int) -> int:
+    """Calculate exponential backoff delay."""
+    return min(DEFAULT_RETRY_DELAY * (2 ** (retry_count - 1)), 3600)  # Max 1 hour
+
+
+def process_single_stream(stream_id: int, stats_id: int, max_retries: int) -> None:
+    """Process a single stream with retry logic."""
+    # Close any existing database connections before starting
+    for conn in connections.all():
+        conn.close_if_unusable_or_obsolete()
+
+    try:
+        # Get fresh instances from the database
+        stream = Stream.objects.get(id=stream_id)
+        stats = StreamExecutionStats.objects.get(id=stats_id)
+
+        retry_count = 0
+        while retry_count <= max_retries:
+            try:
+                # Execute the task directly without transaction wrapping
+                stream.execute_task()
+                stats.streams_succeeded += 1
+                stats.save(update_fields=["streams_succeeded"])
+                logger.info(f"Stream {stream.name} executed successfully")
+                break
+            except Exception as e:
+                retry_count += 1
+                if retry_count <= max_retries:
+                    retry_delay = calculate_retry_delay(retry_count)
+                    logger.warning(
+                        f"Retry {retry_count}/{max_retries} for stream {stream.name} "
+                        f"after {retry_delay} seconds. Error: {str(e)}"
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(
+                        f"Stream {stream.name} failed after {max_retries} retries: {str(e)}",
+                        exc_info=True,
+                    )
+                    stats.streams_failed += 1
+                    stats.save(update_fields=["streams_failed"])
+    except Exception as e:
+        logger.error(f"Error processing stream {stream_id}: {e}")
+    finally:
+        # Close database connections after processing
+        for conn in connections.all():
+            conn.close()
 
 
 class Command(BaseCommand):
@@ -22,39 +69,25 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--sleep-interval",
-            type=int,
-            default=getattr(
-                settings, "STREAM_SCHEDULER_SLEEP_INTERVAL", DEFAULT_SLEEP_INTERVAL
-            ),
-            help="Sleep interval between checks in seconds",
-        )
-        parser.add_argument(
-            "--batch-size",
-            type=int,
-            default=getattr(
-                settings, "STREAM_SCHEDULER_BATCH_SIZE", DEFAULT_BATCH_SIZE
-            ),
-            help="Number of streams to process in parallel",
-        )
-        parser.add_argument(
             "--max-retries",
             type=int,
-            default=getattr(
-                settings, "STREAM_SCHEDULER_MAX_RETRIES", DEFAULT_MAX_RETRIES
-            ),
+            default=DEFAULT_MAX_RETRIES,
             help="Maximum number of retries for failed streams",
         )
         parser.add_argument(
             "--retry-delay",
             type=int,
-            default=getattr(
-                settings, "STREAM_SCHEDULER_RETRY_DELAY", DEFAULT_RETRY_DELAY
-            ),
+            default=DEFAULT_RETRY_DELAY,
             help="Delay between retries in seconds",
         )
+        parser.add_argument(
+            "--processes",
+            type=int,
+            default=multiprocessing.cpu_count(),
+            help="Number of processes to use for parallel execution",
+        )
 
-    def get_due_streams(self, batch_size: int) -> List[Stream]:
+    def get_due_streams(self) -> List[Stream]:
         """Get streams that are due for execution."""
         now = timezone.now()
 
@@ -66,7 +99,7 @@ class Command(BaseCommand):
                 next_run__lte=now,
             )
             .select_related("source", "media")
-            .order_by("next_run")[:batch_size]
+            .order_by("next_run")
         )
 
         # Log information about found streams
@@ -95,131 +128,84 @@ class Command(BaseCommand):
 
         return due_streams
 
-    def process_single_stream(
-        self, stream: Stream, stats: StreamExecutionStats, max_retries: int
-    ) -> None:
-        """Process a single stream with retry logic."""
-        retry_count = 0
-        while retry_count <= max_retries:
-            try:
-                # Execute the task directly without transaction wrapping
-                stream.execute_task()
-                stats.streams_succeeded += 1
-                stats.save(update_fields=["streams_succeeded"])
-                logger.info(f"Stream {stream.name} executed successfully")
-                break
-            except Exception as e:
-                retry_count += 1
-                if retry_count <= max_retries:
-                    retry_delay = self.calculate_retry_delay(retry_count)
-                    logger.warning(
-                        f"Retry {retry_count}/{max_retries} for stream {stream.name} "
-                        f"after {retry_delay} seconds. Error: {str(e)}"
-                    )
-                    time.sleep(retry_delay)
-                else:
-                    logger.error(
-                        f"Stream {stream.name} failed after {max_retries} retries: {str(e)}",
-                        exc_info=True,
-                    )
-                    stats.streams_failed += 1
-                    stats.save(update_fields=["streams_failed"])
-
     def process_streams(
-        self, streams: List[Stream], stats: StreamExecutionStats, max_retries: int
+        self,
+        streams: List[Stream],
+        stats: StreamExecutionStats,
+        max_retries: int,
+        num_processes: int,
     ) -> None:
-        """Process a batch of streams."""
-        for stream in streams:
-            self.process_single_stream(stream, stats, max_retries)
+        """Process streams in parallel using multiprocessing."""
+        if not streams:
+            return
 
-    def calculate_retry_delay(self, retry_count: int) -> int:
-        """Calculate exponential backoff delay."""
-        return min(DEFAULT_RETRY_DELAY * (2 ** (retry_count - 1)), 3600)  # Max 1 hour
+        # Close database connections before forking
+        for conn in connections.all():
+            conn.close()
 
-    def check_scheduler_health(self) -> Optional[str]:
-        """Check scheduler health based on recent execution stats."""
-        one_hour_ago = timezone.now() - timezone.timedelta(hours=1)
-        recent_stats = StreamExecutionStats.objects.filter(
-            execution_start__gte=one_hour_ago
-        ).order_by("-execution_start")[:10]
+        # Prepare arguments for multiprocessing - only pass IDs
+        stream_args = [(stream.id, stats.id, max_retries) for stream in streams]
 
-        if not recent_stats.exists():
-            return "No recent executions found"
-
-        failure_rate = sum(s.streams_failed for s in recent_stats) / max(
-            sum(s.streams_attempted for s in recent_stats), 1
-        )
-        if failure_rate > 0.5:  # More than 50% failure rate
-            return f"High failure rate: {failure_rate:.2%}"
-
-        return None
+        # Use multiprocessing Pool for parallel execution
+        with multiprocessing.Pool(processes=num_processes) as pool:
+            pool.starmap(process_single_stream, stream_args)
 
     def handle(self, *args, **options):
-        self.stdout.write("Starting stream scheduler with improved configuration...")
-        logger.info("Stream scheduler started")
+        self.stdout.write("Starting one-time parallel stream execution...")
+        logger.info("Stream execution started")
 
-        # Log timezone information to help diagnose timing issues
+        # Log timezone information
         logger.info(f"Current timezone: {timezone.get_current_timezone_name()}")
         logger.info(f"Current time: {timezone.now()}")
 
-        # Reactivate any failed streams on startup
+        # Reactivate any failed streams
         Stream.reactivate_failed_streams()
         logger.info("Reactivated failed streams")
 
-        sleep_interval = options["sleep_interval"]
-        batch_size = options["batch_size"]
         max_retries = options["max_retries"]
-
+        num_processes = options["processes"]
         logger.info(
-            f"Scheduler configuration: sleep_interval={sleep_interval}s, "
-            f"batch_size={batch_size}, max_retries={max_retries}"
+            f"Configuration: max_retries={max_retries}, processes={num_processes}"
         )
 
-        while True:
-            try:
-                # Create execution stats
-                stats = StreamExecutionStats.objects.create()
-                logger.info(f"Starting execution cycle at {stats.execution_start}")
+        try:
+            # Create execution stats
+            stats = StreamExecutionStats.objects.create()
+            logger.info(f"Starting execution at {stats.execution_start}")
 
-                # Get due streams
-                due_streams = self.get_due_streams(batch_size)
+            # Get all due streams
+            due_streams = self.get_due_streams()
 
-                if due_streams:
-                    # Update stats before processing
-                    stats.streams_attempted = len(due_streams)
-                    stats.save()
-
-                    # Process the streams
-                    self.process_streams(due_streams, stats, max_retries)
-
-                    # Log final results
-                    total = stats.streams_succeeded + stats.streams_failed
-                    logger.info(
-                        f"Stream execution results:\n"
-                        f"Total streams picked up: {stats.streams_attempted}\n"
-                        f"Successfully completed: {stats.streams_succeeded}\n"
-                        f"Failed: {stats.streams_failed}\n"
-                        f"Total processed: {total}"
-                    )
-
-                # Update stats
-                stats.execution_end = timezone.now()
+            if due_streams:
+                # Update stats before processing
+                stats.streams_attempted = len(due_streams)
                 stats.save()
-                stats.calculate_stats()
 
-                duration = stats.execution_end - stats.execution_start
+                # Process all streams in parallel
+                self.process_streams(due_streams, stats, max_retries, num_processes)
+
+                # Log final results
+                total = stats.streams_succeeded + stats.streams_failed
                 logger.info(
-                    f"Execution cycle completed in {duration.total_seconds():.2f} seconds"
+                    f"Stream execution results:\n"
+                    f"Total streams processed: {stats.streams_attempted}\n"
+                    f"Successfully completed: {stats.streams_succeeded}\n"
+                    f"Failed: {stats.streams_failed}\n"
+                    f"Total processed: {total}"
                 )
+            else:
+                logger.info("No due streams found")
 
-                # Check scheduler health
-                health_issue = self.check_scheduler_health()
-                if health_issue:
-                    logger.warning(f"Scheduler health check: {health_issue}")
+            # Update stats
+            stats.execution_end = timezone.now()
+            stats.save()
+            stats.calculate_stats()
 
-                # Sleep until next check
-                time.sleep(sleep_interval)
+            duration = stats.execution_end - stats.execution_start
+            logger.info(
+                f"Execution completed in {duration.total_seconds():.2f} seconds"
+            )
 
-            except Exception as e:
-                logger.exception(f"Critical error in stream scheduler: {e}")
-                time.sleep(DEFAULT_ERROR_SLEEP)
+        except Exception as e:
+            logger.exception(f"Critical error in stream execution: {e}")
+            raise
