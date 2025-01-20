@@ -5,9 +5,33 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 
-from .models import Stream, StreamLog, TelegramPublishLog
+from .models import Stream, StreamExecutionStats, StreamLog, TelegramPublishLog
 from .schemas import STREAM_CONFIG_SCHEMAS
 from .tasks import TASK_CONFIG_EXAMPLES
+
+
+@admin.register(StreamExecutionStats)
+class StreamExecutionStatsAdmin(admin.ModelAdmin):
+    """Admin interface for StreamExecutionStats model."""
+
+    list_display = (
+        "execution_start",
+        "execution_end",
+        "streams_attempted",
+        "streams_succeeded",
+        "streams_failed",
+        "total_execution_time",
+    )
+    list_filter = ("execution_start",)
+    ordering = ("-execution_start",)
+    readonly_fields = (
+        "execution_start",
+        "execution_end",
+        "streams_attempted",
+        "streams_succeeded",
+        "streams_failed",
+        "total_execution_time",
+    )
 
 
 class StreamAdminForm(forms.ModelForm):
@@ -31,7 +55,7 @@ class StreamAdminForm(forms.ModelForm):
 class StreamAdmin(admin.ModelAdmin):
     """Admin interface configuration for Stream model."""
 
-    actions = ["pause_streams", "activate_streams"]
+    actions = ["pause_streams", "activate_streams", "run_streams"]
 
     list_display = (
         "name",
@@ -131,6 +155,11 @@ class StreamAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.copy_stream),
                 name="stream-copy",
             ),
+            path(
+                "run-all/",
+                self.admin_site.admin_view(self.run_all_streams),
+                name="streams_stream_run-all-streams",
+            ),
         ]
         return custom_urls + urls
 
@@ -178,6 +207,92 @@ class StreamAdmin(admin.ModelAdmin):
         self.message_user(request, f"{updated} streams were successfully activated.")
 
     activate_streams.short_description = "Activate selected streams"
+
+    def run_streams(self, request, queryset):
+        """Run selected streams."""
+        import os
+        import subprocess
+        import sys
+
+        from django.contrib import messages
+
+        # Create a list of stream IDs
+        stream_ids = list(queryset.values_list("id", flat=True))
+
+        try:
+            # Get the Python executable path
+            python_executable = sys.executable
+
+            # Get the manage.py path
+            manage_py = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "manage.py"
+            )
+
+            # Get the project root directory
+            project_dir = os.path.dirname(os.path.dirname(__file__))
+
+            # Start the command in background
+            subprocess.Popen(
+                [python_executable, manage_py, "run_streams"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                cwd=project_dir,
+                start_new_session=True,
+            )
+            messages.success(
+                request,
+                f"Successfully started execution of {len(stream_ids)} streams in background.",
+            )
+        except Exception as e:
+            messages.error(request, f"Error starting streams: {str(e)}")
+
+    run_streams.short_description = "Run selected streams"
+
+    def changelist_view(self, request, extra_context=None):
+        """Add run all due streams button to changelist view."""
+        extra_context = extra_context or {}
+        extra_context["show_run_all_button"] = True
+        return super().changelist_view(request, extra_context)
+
+    def run_all_streams(self, request):
+        """Run all due streams."""
+        import os
+        import subprocess
+        import sys
+
+        from django.contrib import messages
+        from django.shortcuts import redirect
+
+        try:
+            # Get the Python executable path
+            python_executable = sys.executable
+
+            # Get the manage.py path
+            manage_py = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "manage.py"
+            )
+
+            # Get the project root directory
+            project_dir = os.path.dirname(os.path.dirname(__file__))
+
+            # Start the command in background
+            subprocess.Popen(
+                [python_executable, manage_py, "run_streams"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                cwd=project_dir,
+                start_new_session=True,
+            )
+            messages.success(
+                request,
+                "Successfully started execution of all due streams in background.",
+            )
+        except Exception as e:
+            messages.error(request, f"Error starting streams: {str(e)}")
+
+        return redirect("admin:streams_stream_changelist")
 
     def save_model(self, request, obj, form, change):
         """Override save_model to handle validation."""

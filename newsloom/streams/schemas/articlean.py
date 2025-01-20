@@ -6,7 +6,8 @@ class ArticleanConfiguration(BaseConfig):
 
     Note:
         This task requires the following environment variables to be set:
-        - ARTICLEAN_API_KEY: API key for authentication
+        - ARTICLEAN_USERNAME: Username for authentication
+        - ARTICLEAN_PASSWORD: Password for authentication
         - ARTICLEAN_API_URL: Endpoint URL for the Articlean service
     """
 

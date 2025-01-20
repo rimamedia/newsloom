@@ -31,8 +31,12 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
         EnvironmentError: If required environment variables are not set
     """
     # Check required environment variables
-    if not os.getenv("ARTICLEAN_API_KEY") or not os.getenv("ARTICLEAN_API_URL"):
-        raise EnvironmentError("Missing required environment variables")
+    required_vars = ["ARTICLEAN_API_KEY", "ARTICLEAN_API_URL"]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    if missing_vars:
+        raise EnvironmentError(
+            f"Missing required environment variables: {', '.join(missing_vars)}"
+        )
 
     # Get stream to access its source
     stream = Stream.objects.get(id=stream_id)
@@ -51,18 +55,28 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
     # Process each article
     for article in articles:
         try:
-            # Prepare request
+            # Get access token
+            # OAuth2 password flow requires form data
+            # Prepare request using API key as Bearer token
             payload = json.dumps({"url": article.link})
             headers = {
-                "x-api-key": os.getenv("ARTICLEAN_API_KEY"),
+                "Authorization": f"Bearer {os.getenv('ARTICLEAN_API_KEY')}",
                 "Content-Type": "application/json",
             }
+            logger.info(f"Using headers: {headers}")
 
             # Send request
-            response = requests.request(
-                "POST", os.getenv("ARTICLEAN_API_URL"), headers=headers, data=payload
+            response = requests.post(
+                f"{os.getenv('ARTICLEAN_API_URL')}/process-url",
+                headers=headers,
+                data=payload,
+                timeout=30,  # Add 30 second timeout to prevent hanging
             )
-            response.raise_for_status()
+
+            if response.status_code != 200:
+                logger.error(f"Process URL failed with status {response.status_code}")
+                logger.error(f"Response content: {response.text}")
+                response.raise_for_status()
 
             # Parse response
             data = response.json()

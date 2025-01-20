@@ -196,6 +196,16 @@ LOGGING = {
     },
 }
 
+# Stream Scheduler Settings
+STREAM_SCHEDULER_SLEEP_INTERVAL = int(
+    os.environ.get("STREAM_SCHEDULER_SLEEP_INTERVAL", "60")
+)  # seconds
+STREAM_SCHEDULER_BATCH_SIZE = int(os.environ.get("STREAM_SCHEDULER_BATCH_SIZE", "10"))
+STREAM_SCHEDULER_MAX_RETRIES = int(os.environ.get("STREAM_SCHEDULER_MAX_RETRIES", "3"))
+STREAM_SCHEDULER_RETRY_DELAY = int(
+    os.environ.get("STREAM_SCHEDULER_RETRY_DELAY", "300")
+)  # 5 minutes
+
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
