@@ -38,6 +38,8 @@ Add the source Telegram channels:
    * Type: "Telegram Channel"
    * Link: Channel username/ID
 
+Important: Ensure that you associate sources with the media profile created in Step 1.
+
 Step 3: Input Stream (Telegram Parser)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
