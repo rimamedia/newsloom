@@ -25,6 +25,8 @@ class Chat(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     title = models.CharField(max_length=200, blank=True)
+    slack_channel_id = models.CharField(max_length=100, null=True, blank=True)
+    slack_thread_ts = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:
         """
@@ -82,6 +84,7 @@ class ChatMessage(models.Model):
     message = models.TextField()
     response = models.TextField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+    slack_ts = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:
         """
