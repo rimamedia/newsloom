@@ -66,6 +66,12 @@ Core Functionality
     - Automated scheduling
     - Publishing status tracking
 
+* **Chat Interface**
+    - Web-based chat interface
+    - Slack integration
+    - Thread-based conversations
+    - Context-aware responses
+
 Technical Architecture
 --------------------
 
@@ -80,6 +86,7 @@ Technical Architecture
     - RSS feed parsing
     - Telegram API integration
     - Customizable source adapters
+    - Slack bot integration
 
 .. toctree::
    :maxdepth: 2
@@ -89,6 +96,7 @@ Technical Architecture
    schemas/index
    agents/index
    cases/index
+   chat/slack_integration
 
 Quick Links
 ----------
@@ -97,6 +105,7 @@ Quick Links
 * :doc:`schemas/creating_schemas`
 * :doc:`tasks/examples`
 * :doc:`schemas/examples`
+* :doc:`chat/slack_integration`
 
 Indices and tables
 ==================

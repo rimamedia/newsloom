@@ -5,7 +5,7 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 from sources.models import Doc
-from streams.models import Stream, TelegramPublishLog
+from streams.models import Stream, TelegramDocPublishLog
 from telegram import Bot
 from telegram.constants import ParseMode
 
@@ -108,7 +108,7 @@ def publish_docs(
 
                     # Create publish log
                     try:
-                        await sync_to_async(TelegramPublishLog.objects.create)(
+                        await sync_to_async(TelegramDocPublishLog.objects.create)(
                             doc=doc, media=stream.media
                         )
                         logger.info(f"Created publish log for doc {doc.id}")
