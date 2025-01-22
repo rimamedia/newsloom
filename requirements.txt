@@ -40,7 +40,7 @@ psycopg2-binary==2.9.10
 pyaes==1.6.1
 pyasn1==0.6.1
 pydantic==2.10.2
-pydantic_core==2.27.2
+pydantic_core==2.27.1
 pyee==12.0.0
 Pygments==2.18.0
 python-daemon==3.1.0

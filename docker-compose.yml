@@ -28,7 +28,7 @@ services:
       - ./docs:/app/docs  # Mount docs directory
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
-      - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+      - ./supervisord.docker.conf:/etc/supervisor/conf.d/supervisord.conf
       - ./.env:/app/.env  # Mount .env file into container
       - ./dev-nginx.conf:/etc/nginx/conf.d/default.conf  # Mount development nginx config
       - ./credentials.json:/app/newsloom/credentials.json  # Mount Google credentials file
