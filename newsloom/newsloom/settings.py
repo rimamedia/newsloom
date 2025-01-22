@@ -49,7 +49,19 @@ INSTALLED_APPS = [
     "streams",
     "agents",
     "chat",
+    "rest_framework",
+    "frontend",
 ]
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+}
 
 # Channels
 ASGI_APPLICATION = "newsloom.asgi.application"
