@@ -4,7 +4,7 @@ from typing import Dict
 
 from django.utils import timezone
 from sources.models import Doc
-from streams.models import TelegramDocPublishLog
+from streams.models import Stream, TelegramDocPublishLog
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,6 @@ def telegram_doc_publisher(
     delay_between_messages: int = 2,
 ) -> Dict:
     """Publish Google Doc links to Telegram channel."""
-    from streams.models import Stream
     from streams.tasks.telegram import send_telegram_message
 
     stream = Stream.objects.get(id=stream_id)

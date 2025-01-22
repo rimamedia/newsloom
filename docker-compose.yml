@@ -20,6 +20,9 @@ services:
       - BEDROCK_AWS_ACCESS_KEY_ID=${BEDROCK_AWS_ACCESS_KEY_ID}
       - BEDROCK_AWS_SECRET_ACCESS_KEY=${BEDROCK_AWS_SECRET_ACCESS_KEY}
       - BEDROCK_AWS_REGION=${BEDROCK_AWS_REGION}
+      # Slack Credentials
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
     volumes:
       - ./newsloom:/app/newsloom
       - ./docs:/app/docs  # Mount docs directory
@@ -28,6 +31,7 @@ services:
       - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
       - ./.env:/app/.env  # Mount .env file into container
       - ./dev-nginx.conf:/etc/nginx/conf.d/default.conf  # Mount development nginx config
+      - ./credentials.json:/app/newsloom/credentials.json  # Mount Google credentials file
     depends_on:
       - db
     healthcheck:

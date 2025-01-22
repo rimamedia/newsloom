@@ -5,7 +5,7 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 from sources.models import Doc
-from streams.models import Stream, TelegramPublishLog
+from streams.models import Stream, TelegramDocPublishLog
 from telegram import Bot
 from telegram.constants import ParseMode
 
@@ -53,43 +53,39 @@ def publish_docs(
         async def publish_messages(
             bot, stream, channel_id, time_threshold, batch_size, result
         ):
-            # Get docs from media within time window
+            # Get docs from media within time window with new or failed status
             docs = await sync_to_async(list)(
                 Doc.objects.filter(
                     media=stream.media,
                     created_at__gte=time_threshold,
-                    status="new",  # Only process new docs
+                    status__in=["new", "failed"],  # Process both new and failed docs
                 ).order_by("created_at")[:batch_size]
             )
 
             for doc in docs:
+                # Build message with title and text
+                # Title in bold
+                message = f"<b>{doc.title}</b>"
+                if doc.text:
+                    message += f"\n\n{doc.text}"
+                if doc.link:
+                    # Add link on new line
+                    message += f"\n\n{doc.link}"
+
+                # Add debug logging before sending
+                logger.info(
+                    f"Attempting to send message for doc {doc.id} to channel {channel_id}"
+                )
+                logger.debug(f"Message content: {message}")
+
                 try:
-                    # Build message with title and text
-                    # Title in bold
-                    message = f"<b>{doc.title}</b>"
-                    if doc.text:
-                        message += f"\n\n{doc.text}"
-                    if doc.link:
-                        # Add link on new line
-                        message += f"\n\n{doc.link}"
-
-                    # Add debug logging before sending
-                    logger.info(
-                        f"Attempting to send message for doc {doc.id} to channel {channel_id}"
+                    # Try to send message to Telegram
+                    await bot.send_message(
+                        chat_id=channel_id, text=message, parse_mode=ParseMode.HTML
                     )
-                    logger.debug(f"Message content: {message}")
+                    logger.info(f"Successfully sent message for doc {doc.id}")
 
-                    try:
-                        # Send message to Telegram with HTML parsing
-                        await bot.send_message(
-                            chat_id=channel_id, text=message, parse_mode=ParseMode.HTML
-                        )
-                        logger.info(f"Successfully sent message for doc {doc.id}")
-                    except Exception as send_error:
-                        logger.error(
-                            f"Telegram send error for doc {doc.id}: {str(send_error)}"
-                        )
-                        raise send_error
+                    # Message sent successfully, mark as published
                     result["published_count"] += 1
                     result["published_doc_ids"].append(doc.id)
 
@@ -104,11 +100,11 @@ def publish_docs(
                         logger.error(
                             f"Failed to update doc {doc.id} status: {str(update_error)}"
                         )
-                        raise update_error
+                        # Don't raise the error, just log it
 
-                    # Create publish log
+                    # Try to create publish log
                     try:
-                        await sync_to_async(TelegramPublishLog.objects.create)(
+                        await sync_to_async(TelegramDocPublishLog.objects.create)(
                             doc=doc, media=stream.media
                         )
                         logger.info(f"Created publish log for doc {doc.id}")
@@ -116,18 +112,19 @@ def publish_docs(
                         logger.error(
                             f"Failed to create publish log for doc {doc.id}: {str(log_error)}"
                         )
-                        raise log_error
+                        # Don't raise the error, just log it
 
                     logger.info(f"Successfully published doc {doc.id}")
 
                 except Exception as e:
-                    error_msg = f"Failed to publish doc {doc.id}: {str(e)}"
+                    # Only mark as failed if Telegram message sending fails
+                    error_msg = f"Failed to publish doc {doc.id} to Telegram: {str(e)}"
                     logger.error(error_msg)
                     result["failed_count"] += 1
                     result["failed_doc_ids"].append(doc.id)
                     result["errors"].append(error_msg)
 
-                    # Update doc status to failed
+                    # Update doc status to failed only if message sending failed
                     await sync_to_async(Doc.objects.filter(id=doc.id).update)(
                         status="failed"
                     )

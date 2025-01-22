@@ -55,12 +55,9 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
     # Process each article
     for article in articles:
         try:
-            # Get access token
-            # OAuth2 password flow requires form data
-            # Prepare request using API key as Bearer token
             payload = json.dumps({"url": article.link})
             headers = {
-                "Authorization": f"Bearer {os.getenv('ARTICLEAN_API_KEY')}",
+                "x-api-key": os.getenv("ARTICLEAN_API_KEY"),
                 "Content-Type": "application/json",
             }
             logger.info(f"Using headers: {headers}")
