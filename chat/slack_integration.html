@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Slack Integration &#8212; NewsLoom  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=0f75aaca" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Use Cases" href="../cases/index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">NewsLoom</a></h1>
+
+
+
+<p class="blurb">A Django-based web scraping and content aggregation system</p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=rimamedia&repo=newsloom&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../agents/index.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cases/index.html">Use Cases</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Slack Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#setup">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-it-works">How It Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security">Security</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#monitoring">Monitoring</a></li>
+</ul>
+</li>
+</ul>
+
+
+<hr />
+<ul>
+    
+    <li class="toctree-l1"><a href="https://docs.djangoproject.com/">Django Documentation</a></li>
+    
+    <li class="toctree-l1"><a href="https://playwright.dev/python/">Playwright Documentation</a></li>
+    
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../cases/index.html" title="previous chapter">Use Cases</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="slack-integration">
+<h1>Slack Integration<a class="headerlink" href="#slack-integration" title="Link to this heading">¶</a></h1>
+<p>The Newsloom chat interface can be accessed through Slack, allowing you to interact with the system directly from your Slack workspace.</p>
+<section id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Link to this heading">¶</a></h2>
+<section id="create-a-slack-app">
+<h3>1. Create a Slack App<a class="headerlink" href="#create-a-slack-app" title="Link to this heading">¶</a></h3>
+<p>First, you need to create a Slack app and configure it:</p>
+<ol class="arabic simple">
+<li><p>Go to <a class="reference external" href="https://api.slack.com/apps">https://api.slack.com/apps</a></p></li>
+<li><p>Click “Create New App”</p></li>
+<li><p>Choose “From scratch”</p></li>
+<li><p>Name your app (e.g., “Newsloom”) and select your workspace</p></li>
+<li><p>Click “Create App”</p></li>
+</ol>
+</section>
+<section id="configure-app-permissions">
+<h3>2. Configure App Permissions<a class="headerlink" href="#configure-app-permissions" title="Link to this heading">¶</a></h3>
+<p>Configure the necessary OAuth scopes:</p>
+<ol class="arabic simple">
+<li><p>Go to “OAuth &amp; Permissions” in your app settings</p></li>
+<li><p>Under “Bot Token Scopes”, add these scopes:
+- <code class="docutils literal notranslate"><span class="pre">app_mentions:read</span></code> - To receive mention events
+- <code class="docutils literal notranslate"><span class="pre">chat:write</span></code> - To send messages
+- <code class="docutils literal notranslate"><span class="pre">users:read</span></code> - To get user information
+- <code class="docutils literal notranslate"><span class="pre">users:read.email</span></code> - To get user email addresses</p></li>
+</ol>
+</section>
+<section id="enable-socket-mode">
+<h3>3. Enable Socket Mode<a class="headerlink" href="#enable-socket-mode" title="Link to this heading">¶</a></h3>
+<p>Socket Mode is required for receiving events:</p>
+<ol class="arabic simple">
+<li><p>Go to “Socket Mode” in your app settings</p></li>
+<li><p>Enable Socket Mode</p></li>
+<li><p>Create an app-level token with <code class="docutils literal notranslate"><span class="pre">connections:write</span></code> scope</p></li>
+<li><p>Save the app-level token - you’ll need it later</p></li>
+</ol>
+</section>
+<section id="enable-events">
+<h3>4. Enable Events<a class="headerlink" href="#enable-events" title="Link to this heading">¶</a></h3>
+<p>Configure event subscriptions:</p>
+<ol class="arabic simple">
+<li><p>Go to “Event Subscriptions”</p></li>
+<li><p>Enable events</p></li>
+<li><p>Subscribe to bot events:
+- <code class="docutils literal notranslate"><span class="pre">app_mention</span></code> - For receiving &#64;mentions
+- <code class="docutils literal notranslate"><span class="pre">message.channels</span></code> - For receiving channel messages</p></li>
+</ol>
+</section>
+<section id="install-the-app">
+<h3>5. Install the App<a class="headerlink" href="#install-the-app" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p>Go to “Install App” in your app settings</p></li>
+<li><p>Click “Install to Workspace”</p></li>
+<li><p>Authorize the app</p></li>
+</ol>
+</section>
+<section id="configure-environment-variables">
+<h3>6. Configure Environment Variables<a class="headerlink" href="#configure-environment-variables" title="Link to this heading">¶</a></h3>
+<p>Add these variables to your <code class="docutils literal notranslate"><span class="pre">.env</span></code> file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">SLACK_BOT_TOKEN</span><span class="o">=</span>xoxb-your-bot-token
+<span class="nv">SLACK_APP_TOKEN</span><span class="o">=</span>xapp-your-app-token
+</pre></div>
+</div>
+</section>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
+<section id="starting-the-bot">
+<h3>Starting the Bot<a class="headerlink" href="#starting-the-bot" title="Link to this heading">¶</a></h3>
+<p>Run the Slack listener management command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>manage.py<span class="w"> </span>run_slack_listener
+</pre></div>
+</div>
+<p>This will start the Socket Mode client and begin listening for Slack events.</p>
+</section>
+<section id="interacting-with-the-bot">
+<h3>Interacting with the Bot<a class="headerlink" href="#interacting-with-the-bot" title="Link to this heading">¶</a></h3>
+<p>There are two ways to interact with the bot:</p>
+<ol class="arabic simple">
+<li><p>Direct Mentions
+- Mention the bot using &#64;BotName in any channel it’s invited to
+- The bot will create a new thread for the conversation
+- Example: “&#64;Newsloom what’s the latest news?”</p></li>
+<li><p>Thread Replies
+- Once a thread is started, you can reply in the thread without mentioning the bot
+- The bot will maintain conversation context within the thread
+- All messages and responses in the thread are saved and used for context</p></li>
+</ol>
+</section>
+</section>
+<section id="how-it-works">
+<h2>How It Works<a class="headerlink" href="#how-it-works" title="Link to this heading">¶</a></h2>
+<section id="architecture">
+<h3>Architecture<a class="headerlink" href="#architecture" title="Link to this heading">¶</a></h3>
+<p>The Slack integration uses these components:</p>
+<ol class="arabic simple">
+<li><p>Socket Mode Client
+- Connects to Slack’s WebSocket API
+- Receives real-time events
+- Handles authentication and reconnection</p></li>
+<li><p>Event Handlers
+- <code class="docutils literal notranslate"><span class="pre">app_mention</span></code> - Handles direct mentions of the bot
+- <code class="docutils literal notranslate"><span class="pre">message</span></code> - Handles thread replies in existing conversations</p></li>
+<li><p>Database Integration
+- Each Slack thread becomes a Chat instance
+- Messages and responses are saved as ChatMessage instances
+- Thread history is maintained for context</p></li>
+</ol>
+</section>
+<section id="message-flow">
+<h3>Message Flow<a class="headerlink" href="#message-flow" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p>Initial Mention:
+- User mentions bot
+- New Chat is created with slack_channel_id and slack_thread_ts
+- Bot processes message and responds in thread</p></li>
+<li><p>Thread Reply:
+- User replies in thread
+- Existing Chat is found using thread_ts
+- Previous messages provide context
+- Bot responds in same thread</p></li>
+</ol>
+</section>
+<section id="data-model">
+<h3>Data Model<a class="headerlink" href="#data-model" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>Chat Model Extensions:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">slack_channel_id</span></code>: ID of the Slack channel</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">slack_thread_ts</span></code>: Timestamp of the thread’s parent message</p></li>
+</ul>
+</dd>
+<dt>ChatMessage Model Extensions:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">slack_ts</span></code>: Timestamp of the individual message</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+</section>
+<section id="security">
+<h2>Security<a class="headerlink" href="#security" title="Link to this heading">¶</a></h2>
+<p>The integration includes several security features:</p>
+<ol class="arabic simple">
+<li><p>User Management
+- Slack users are mapped to Django users
+- Email addresses are used for user matching
+- New users are created as needed</p></li>
+<li><p>Authentication
+- Bot token for API operations
+- App-level token for Socket Mode
+- Tokens are kept secure in environment variables</p></li>
+<li><p>Access Control
+- Bot only responds in channels it’s invited to
+- Thread history is isolated per conversation
+- User permissions are respected</p></li>
+</ol>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">¶</a></h2>
+<p>Common Issues:</p>
+<ol class="arabic simple">
+<li><p>Bot Not Responding
+- Check if the run_slack_listener command is running
+- Verify bot and app tokens in .env
+- Ensure bot is invited to the channel</p></li>
+<li><p>Missing Messages
+- Check database for Chat and ChatMessage entries
+- Verify thread_ts values match
+- Look for error messages in logs</p></li>
+<li><p>Context Loss
+- Ensure thread_ts is being passed correctly
+- Check if Chat exists for the thread
+- Verify message history is loading</p></li>
+</ol>
+</section>
+<section id="monitoring">
+<h2>Monitoring<a class="headerlink" href="#monitoring" title="Link to this heading">¶</a></h2>
+<p>The integration includes detailed logging:</p>
+<ol class="arabic simple">
+<li><p>Event Logging
+- Incoming events
+- Message processing
+- Response generation</p></li>
+<li><p>Error Tracking
+- Connection issues
+- Message processing failures
+- Database errors</p></li>
+<li><p>Performance Metrics
+- Message counts
+- Response times
+- Thread activity</p></li>
+</ol>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, RimaMedia.
+      
+      |
+      <a href="../_sources/chat/slack_integration.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Telegram Integration &#8212; NewsLoom  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=0f75aaca" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">NewsLoom</a></h1>
+
+
+
+<p class="blurb">A Django-based web scraping and content aggregation system</p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=rimamedia&repo=newsloom&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../agents/index.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cases/index.html">Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="slack_integration.html">Slack Integration</a></li>
+</ul>
+
+
+<hr />
+<ul>
+    
+    <li class="toctree-l1"><a href="https://docs.djangoproject.com/">Django Documentation</a></li>
+    
+    <li class="toctree-l1"><a href="https://playwright.dev/python/">Playwright Documentation</a></li>
+    
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="telegram-integration">
+<h1>Telegram Integration<a class="headerlink" href="#telegram-integration" title="Link to this heading">¶</a></h1>
+<p>The Telegram integration allows you to interact with Claude through a Telegram bot in group chats.</p>
+<section id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Link to this heading">¶</a></h2>
+<section id="create-a-telegram-bot">
+<h3>1. Create a Telegram Bot<a class="headerlink" href="#create-a-telegram-bot" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p>Open Telegram and search for <code class="docutils literal notranslate"><span class="pre">&#64;BotFather</span></code></p></li>
+<li><p>Start a chat with BotFather and use the <code class="docutils literal notranslate"><span class="pre">/newbot</span></code> command</p></li>
+<li><p>Follow the prompts to:
+- Set a name for your bot
+- Set a username for your bot (must end in ‘bot’)</p></li>
+<li><p>BotFather will provide you with a token. Save this token as you’ll need it for configuration.</p></li>
+</ol>
+</section>
+<section id="configure-environment-variables">
+<h3>2. Configure Environment Variables<a class="headerlink" href="#configure-environment-variables" title="Link to this heading">¶</a></h3>
+<p>Add the following to your <code class="docutils literal notranslate"><span class="pre">.env</span></code> file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">TELEGRAM_BOT_TOKEN</span><span class="o">=</span>your_bot_token_here
+</pre></div>
+</div>
+</section>
+<section id="add-bot-to-group">
+<h3>3. Add Bot to Group<a class="headerlink" href="#add-bot-to-group" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p>Create a new Telegram group or use an existing one</p></li>
+<li><p>Add your bot to the group by:
+- Click group name to open group info
+- Click “Add members”
+- Search for your bot’s username and add it</p></li>
+<li><p>(Optional) Make the bot an admin if you want it to see all messages</p></li>
+</ol>
+</section>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
+<p>There are two ways to interact with the bot in a group:</p>
+<section id="mention-the-bot">
+<h3>1. Mention the bot<a class="headerlink" href="#mention-the-bot" title="Link to this heading">¶</a></h3>
+<p>Mention the bot using its username to start a new conversation:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>@your_bot_name Hello, can you help me with something?
+</pre></div>
+</div>
+</section>
+<section id="reply-to-bot-s-messages">
+<h3>2. Reply to bot’s messages<a class="headerlink" href="#reply-to-bot-s-messages" title="Link to this heading">¶</a></h3>
+<p>Reply directly to any of the bot’s previous messages to continue the conversation in that thread.</p>
+</section>
+</section>
+<section id="features">
+<h2>Features<a class="headerlink" href="#features" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Thread-based conversations</p></li>
+<li><p>Persistent chat history</p></li>
+<li><p>Tool execution support</p></li>
+<li><p>Error handling and logging</p></li>
+<li><p>User management (automatic mapping between Telegram and Django users)</p></li>
+</ul>
+</section>
+<section id="management-command">
+<h2>Management Command<a class="headerlink" href="#management-command" title="Link to this heading">¶</a></h2>
+<p>The Telegram bot runs as a Django management command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>manage.py<span class="w"> </span>run_telegram_listener
+</pre></div>
+</div>
+<p>In production, this command is managed by supervisord and starts automatically with the application.</p>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Bot not responding to messages:
+- Ensure the bot is added to the group
+- Check if the bot token is correctly set in environment variables
+- Verify the bot has necessary permissions in the group
+- Check application logs for errors</p></li>
+<li><p>Database errors:
+- Ensure migrations are applied: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">manage.py</span> <span class="pre">migrate</span></code>
+- Check database connectivity
+- Verify Django user permissions</p></li>
+<li><p>Common error messages:
+- “Bot not found”: Check if bot token is valid
+- “Not enough rights”: Bot needs admin rights in group
+- “Database error”: Check Django database configuration</p></li>
+</ol>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, RimaMedia.
+      
+      |
+      <a href="../_sources/chat/telegram_integration.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
