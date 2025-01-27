@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 from duckduckgo_search import DDGS
 from sources.models import News
+from streams.models import Stream
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,17 @@ def duckduckgo_search(
     results: List[Dict] = []
 
     try:
+        # Get stream and its associated source first
+        stream = Stream.objects.get(id=stream_id)
+        if not stream.source:
+            logger.error(f"No source found for stream {stream_id}")
+            return {
+                "total_results": 0,
+                "new_articles": 0,
+                "results": [],
+                "error": "No source found for stream",
+            }
+
         with DDGS() as ddgs:
             search_results = ddgs.news(
                 keywords,
@@ -48,26 +60,31 @@ def duckduckgo_search(
             )
 
             for result in search_results:
-                # Create News object for each result
-                news_data = {
-                    "title": result.get("title"),
-                    "link": result.get("url"),
-                    "description": result.get("body"),
-                    "published_at": datetime.fromisoformat(
-                        result.get("date").replace("Z", "+00:00")
-                    ),
-                    "source_name": result.get("source"),
-                    "stream_id": stream_id,
-                }
+
+                url = result.get("url")
+                title = result.get("title")
+                body = result.get("body")
+                published_date = result.get("date")
 
                 # Skip if required fields are missing
-                if not all([news_data["title"], news_data["link"]]):
+                if not all([title, url]):
                     continue
 
+                # Create news article with correct fields and stream's source
+                news_data = {
+                    "title": title,
+                    "link": url,
+                    "text": body,  # Using 'text' instead of 'description'
+                    "source": stream.source,  # Using stream's source
+                    "published_at": (
+                        datetime.fromisoformat(published_date.replace("Z", "+00:00"))
+                        if published_date
+                        else datetime.now()
+                    ),
+                }
+
                 # Create or update news article
-                news, created = News.objects.get_or_create(
-                    link=news_data["link"], defaults=news_data
-                )
+                news, created = News.objects.get_or_create(link=url, defaults=news_data)
 
                 if created:
                     created_count += 1

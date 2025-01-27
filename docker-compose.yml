@@ -25,17 +25,16 @@ services:
       - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
     volumes:
       - ./newsloom:/app/newsloom
-      - ./docs:/app/docs  # Mount docs directory
+      - ./docs:/app/docs # Mount docs directory
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
       - ./supervisord.docker.conf:/etc/supervisor/conf.d/supervisord.conf
-      - ./.env:/app/.env  # Mount .env file into container
-      - ./dev-nginx.conf:/etc/nginx/conf.d/default.conf  # Mount development nginx config
-      - ./credentials.json:/app/newsloom/credentials.json  # Mount Google credentials file
+      - ./.env:/app/.env # Mount .env file into container
+      - ./dev-nginx.conf:/etc/nginx/conf.d/default.conf # Mount development nginx config
     depends_on:
       - db
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "80"]
+      test: [ "CMD", "nc", "-z", "localhost", "80" ]
       interval: 30s
       timeout: 10s
       retries: 3
