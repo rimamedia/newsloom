@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import traceback
 from typing import Optional
 
@@ -348,20 +349,39 @@ class Command(BaseCommand):
                 self.style.SUCCESS(f"Bot token prefix: {bot_token[:10]}...")
             )
 
-            # Create application and add handlers
-            application = Application.builder().token(bot_token).build()
+            while True:
+                try:
+                    # Create application and add handlers
+                    application = Application.builder().token(bot_token).build()
 
-            # Add message handler for text messages and commands
-            application.add_handler(MessageHandler(filters.TEXT, self.handle_message))
+                    # Add message handler for text messages and commands
+                    application.add_handler(
+                        MessageHandler(filters.TEXT, self.handle_message)
+                    )
 
-            # Enable logging
-            logging.basicConfig(
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                level=logging.INFO,
-            )
+                    # Enable logging
+                    logging.basicConfig(
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                        level=logging.INFO,
+                    )
 
-            self.stdout.write(self.style.SUCCESS("Starting Telegram bot..."))
-            application.run_polling(allowed_updates=["message"])
+                    self.stdout.write(self.style.SUCCESS("Starting Telegram bot..."))
+                    # Set shorter polling timeout and enable automatic reconnection
+                    application.run_polling(
+                        allowed_updates=["message"],
+                        poll_interval=1.0,
+                        timeout=5,
+                        drop_pending_updates=True,  # Don't process old updates on restart
+                        close_loop=False,  # Keep the event loop running
+                    )
+                except Exception as e:
+                    self.stderr.write(
+                        self.style.ERROR(f"Telegram connection error: {str(e)}")
+                    )
+                    logger.error(f"Telegram connection error: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    logger.info("Waiting 5 seconds before reconnecting...")
+                    time.sleep(5)
 
         except Exception as e:
             self.stderr.write(

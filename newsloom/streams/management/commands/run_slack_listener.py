@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import traceback
 
 from anthropic import AnthropicBedrock
@@ -364,14 +365,23 @@ class Command(BaseCommand):
                 )
                 return
 
-            # Initialize Socket Mode Handler
-            self.stdout.write(self.style.SUCCESS("Initializing Socket Mode Handler..."))
-            handler = SocketModeHandler(app=self.app, app_token=app_token)
+            while True:
+                try:
+                    # Initialize and start Socket Mode Handler
+                    self.stdout.write(
+                        self.style.SUCCESS("Starting Slack event listener...")
+                    )
+                    handler = SocketModeHandler(app=self.app, app_token=app_token)
+                    handler.start()
 
-            self.stdout.write(self.style.SUCCESS("Starting Slack event listener..."))
-
-            # Start the Socket Mode Handler
-            handler.start()
+                except Exception as e:
+                    self.stderr.write(
+                        self.style.ERROR(f"Slack connection error: {str(e)}")
+                    )
+                    logger.error(f"Slack connection error: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    logger.info("Waiting 5 seconds before reconnecting...")
+                    time.sleep(5)
 
         except Exception as e:
             self.stderr.write(
