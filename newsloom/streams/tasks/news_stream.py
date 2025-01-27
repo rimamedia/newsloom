@@ -109,7 +109,7 @@ def invoke_bedrock_anthropic(
     Args:
         system_prompt: The system prompt that defines behavior
         user_prompt: The user prompt with content to process
-        stream: Stream object for saving posts
+        stream: Stream object for saving documents
         client: Optional pre-configured boto3 client
 
     Returns:
@@ -119,38 +119,38 @@ def invoke_bedrock_anthropic(
         if client is None:
             client = get_bedrock_client()
 
-        # Define the create_posts tool
+        # Define the create_documents tool
         tools = [
             {
-                "name": "create_posts",
-                "description": "Create a list of posts from the analyzed news content",
+                "name": "create_documents",
+                "description": "Create a list of documents from the analyzed news content",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "topic": {
                             "type": "string",
-                            "description": "The main topic or theme of the posts",
+                            "description": "The main topic or theme of the documents",
                         },
-                        "posts": {
+                        "documents": {
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "properties": {
                                     "text": {
                                         "type": "string",
-                                        "description": "The text content of the post",
+                                        "description": "The text content of the document",
                                     },
                                     "url": {
                                         "type": "string",
-                                        "description": "The source URL for the post",
+                                        "description": "The source URL for the document",
                                     },
                                 },
                                 "required": ["text", "url"],
                             },
-                            "description": "Array of posts to create",
+                            "description": "Array of documents to create",
                         },
                     },
-                    "required": ["topic", "posts"],
+                    "required": ["topic", "documents"],
                 },
             }
         ]
@@ -222,42 +222,42 @@ def invoke_bedrock_anthropic(
             for content in tool_calls:
                 logger.info(f"Processing tool call: {content.get('name')}")
                 try:
-                    if content.get("name") == "create_posts":
+                    if content.get("name") == "create_documents":
                         tool_input = content.get("input", {})
                         logger.info(
                             "Successfully extracted tool input: %s",
                             json.dumps(tool_input, indent=2),
                         )
 
-                        # Save posts to database
+                        # Save documents to database
                         try:
-                            posts = tool_input.get("posts", [])
+                            documents = tool_input.get("documents", [])
                             topic = tool_input.get("topic", "Untitled")
                             saved_count = 0
 
                             if stream is None:
                                 raise ValueError(
-                                    "Stream object is required for saving posts"
+                                    "Stream object is required for saving documents"
                                 )
 
-                            for post in posts:
+                            for document in documents:
                                 doc = Doc.objects.create(
                                     media=stream.media,
-                                    link=post.get("url", ""),
+                                    link=document.get("url", ""),
                                     title=topic,
-                                    text=post.get("text", ""),
+                                    text=document.get("text", ""),
                                     status="new",
                                 )
                                 saved_count += 1
-                                logger.info("Created doc %d for post", doc.id)
+                                logger.info("Created doc %d", doc.id)
 
                             result = {
                                 "success": True,
-                                "message": f"Successfully saved {saved_count} posts",
+                                "message": f"Successfully saved {saved_count} documents",
                                 "saved_count": saved_count,
                             }
                         except Exception as e:
-                            error_msg = f"Error saving posts: {str(e)}"
+                            error_msg = f"Error saving documents: {str(e)}"
                             logger.error(error_msg)
                             result = {
                                 "success": False,
@@ -461,7 +461,7 @@ def process_news_stream(
         processed_text = response.get("completion", "").strip()
         processed_count = len(news_items)
 
-        # Calculate total saved posts from tool results
+        # Calculate total saved documents from tool results
         saved_count = 0
         for message in response.get("message_history", []):
             if message.get("role") == "user" and message.get("content"):

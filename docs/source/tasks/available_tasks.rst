@@ -176,10 +176,10 @@ doc_publisher
 ~~~~~~~~~~~
 A task for publishing documents to Telegram channels. Features:
 
-* Batch processing of documents
-* Time window filtering
-* HTML formatting support
-* Error handling and logging
+* Batch processing of unpublished documents
+* HTML formatting support (bold titles, formatted text)
+* Comprehensive error handling and logging
+* Automatic status tracking and publish logs
 
 Configuration example:
 
@@ -188,8 +188,7 @@ Configuration example:
     {
         "channel_id": "-100123456789",
         "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
-        "time_window_minutes": 60,
-        "batch_size": 10
+        "batch_size": 10  # Maximum number of docs to process in one batch
     }
 
 telegram_doc_publisher
