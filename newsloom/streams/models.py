@@ -51,6 +51,7 @@ class Stream(models.Model):
         ("telegram_doc_publisher", "Telegram Doc Publisher"),
         ("articlean", "Articlean Processor"),
         ("web_scraper", "Web Content Scraper"),
+        ("duckduckgo_search", "DuckDuckGo News Search"),
     ]
 
     FREQUENCY_CHOICES = [

@@ -35,8 +35,9 @@ In this environment, you have access to a set of tools to help answer user quest
 String and scalar parameters should be specified as is, while lists and objects should use
 JSON format. Note that spaces for string values are not stripped.
 The output is not expected to be valid XML and is parsed with regular expressions.
-Here are the functions available in JSONSchema format:
+Here are the tools available in JSONSchema format:
 
+TOOLS:
 ```
 {TOOLS}
 ```
@@ -254,6 +255,43 @@ ERROR PREVENTION:
 - If user requests news processing/publishing
 - ALWAYS create Media-Source association
 - This is not optional - pipeline will fail without it
+
+DUPLICATE PREVENTION RULES:
+1. General Rule:
+   - ALWAYS check for existing items before creating new ones
+   - This applies to ALL item types: Media, Sources, Agents, Streams
+
+2. Media Checks:
+   - Search for existing media by name/title
+   - Check media configuration matches requirements
+   - Only create new if no suitable match exists
+
+3. Source Checks:
+   - For Telegram: verify channel URL not already added
+   - For Web Sources: check domain/URL combinations
+   - For Search Sources: verify search configuration uniqueness
+
+4. Agent Checks:
+   - Search for agents with similar prompts/configurations
+   - Check if existing agent can be reused/modified
+   - Create new only if functionality differs significantly
+
+5. Stream Checks:
+   - Verify no duplicate stream types for same source
+   - Check existing stream configurations
+   - For parsers: ensure no overlapping source coverage
+
+6. Implementation Steps:
+   a. Query existing items first
+   b. Compare configurations
+   c. Reuse/modify existing if possible
+   d. Only create new as last resort
+
+7. Validation Process:
+   - Use list/search tools to find existing items
+   - Compare configurations thoroughly
+   - Document why new item is needed if creating
+   - Prevent redundant setups
 
 
 """

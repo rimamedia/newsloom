@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from datetime import timedelta
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
@@ -14,7 +13,6 @@ def publish_docs(
     stream_id,
     channel_id,
     bot_token,
-    time_window_minutes=60,
     batch_size=10,
     **kwargs,  # Accept any additional configuration parameters
 ):
@@ -25,7 +23,6 @@ def publish_docs(
         stream_id (int): ID of the stream
         channel_id (str): Telegram channel ID
         bot_token (str): Telegram bot token
-        time_window_minutes (int): Time window in minutes to look back for docs in query
         batch_size (int): Maximum number of docs to process
 
     Returns:
@@ -50,14 +47,11 @@ def publish_docs(
 
         bot = Bot(token=bot_token)
 
-        async def publish_messages(
-            bot, stream, channel_id, time_threshold, batch_size, result
-        ):
-            # Get docs from media within time window with new or failed status
+        async def publish_messages(bot, stream, channel_id, batch_size, result):
+            # Get unpublished docs from media (new or failed status)
             docs = await sync_to_async(list)(
                 Doc.objects.filter(
                     media=stream.media,
-                    created_at__gte=time_threshold,
                     status__in=["new", "failed"],  # Process both new and failed docs
                 ).order_by("created_at")[:batch_size]
             )
@@ -133,12 +127,8 @@ def publish_docs(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            # Use time_window_minutes only for querying docs
-            time_threshold = timezone.now() - timedelta(minutes=time_window_minutes)
             loop.run_until_complete(
-                publish_messages(
-                    bot, stream, channel_id, time_threshold, batch_size, result
-                )
+                publish_messages(bot, stream, channel_id, batch_size, result)
             )
         finally:
             loop.close()

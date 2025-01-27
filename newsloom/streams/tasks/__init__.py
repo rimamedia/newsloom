@@ -4,6 +4,7 @@ from .article_searcher import search_articles
 from .articlean import articlean
 from .bing_search import search_bing
 from .doc_publisher import publish_docs
+from .duckduckgo_search import duckduckgo_search
 from .google_doc_creator import google_doc_creator
 from .google_search import search_google
 from .news_stream import process_news_stream
@@ -37,6 +38,7 @@ TASK_MAPPING = {
     "telegram_doc_publisher": telegram_doc_publisher,
     "articlean": articlean,
     "web_scraper": web_scraper,
+    "duckduckgo_search": duckduckgo_search,
 }
 
 
@@ -155,6 +157,13 @@ TASK_CONFIG_EXAMPLES = {
     },
     "web_scraper": {
         "batch_size": 10,  # Process 10 empty news articles at a time
+    },
+    "duckduckgo_search": {
+        "keywords": "artificial intelligence news",
+        "max_results": 10,
+        "region": "wt-wt",
+        "time_range": "d",
+        "safesearch": "moderate",
     },
 }
 

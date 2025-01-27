@@ -77,3 +77,4 @@ wcwidth==0.2.13
 google-api-python-client
 crawl4ai
 slack-bolt==1.22.0
+duckduckgo_search==7.3.0

@@ -57,7 +57,7 @@ USER_AGENTS = [
 ]
 
 
-def extract_links(stream_id, url, link_selector, max_links=100):
+def extract_links(stream_id, url, link_selector, max_links=100, **kwargs):
     logger = logging.getLogger(__name__)
     result = {
         "extracted_count": 0,
@@ -88,8 +88,8 @@ def extract_links(stream_id, url, link_selector, max_links=100):
                     page = context.new_page()
                     try:
                         stealth_sync(page)
-                        # Reduced timeout and added waitUntil option
-                        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+                        # Reduced timeout with default wait_until option
+                        page.goto(url, timeout=30000)
                         # Reduced timeout for network idle
                         page.wait_for_load_state("networkidle", timeout=30000)
 
