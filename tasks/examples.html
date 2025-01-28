@@ -282,6 +282,68 @@
 </pre></div>
 </div>
 </section>
+<section id="document-publishing-tasks">
+<h2>Document Publishing Tasks<a class="headerlink" href="#document-publishing-tasks" title="Link to this heading">¶</a></h2>
+<p>Example of publishing documents to Telegram:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">doc_publisher</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">,</span> <span class="n">bot_token</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="c1"># Get stream and validate media</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">Stream</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">stream_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stream</span><span class="o">.</span><span class="n">media</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Stream must have an associated media&quot;</span><span class="p">)</span>
+
+    <span class="n">bot</span> <span class="o">=</span> <span class="n">Bot</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="n">bot_token</span><span class="p">)</span>
+
+    <span class="c1"># Get unpublished docs from media</span>
+    <span class="n">docs</span> <span class="o">=</span> <span class="n">Doc</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+        <span class="n">media</span><span class="o">=</span><span class="n">stream</span><span class="o">.</span><span class="n">media</span><span class="p">,</span>
+        <span class="n">status__in</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;new&quot;</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">]</span>  <span class="c1"># Process both new and failed docs</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">)[:</span><span class="n">batch_size</span><span class="p">]</span>
+
+    <span class="n">processed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">failed</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Format message with title in bold</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;b&gt;</span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2">&lt;/b&gt;&quot;</span>
+            <span class="k">if</span> <span class="n">doc</span><span class="o">.</span><span class="n">text</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="n">doc</span><span class="o">.</span><span class="n">link</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">link</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="c1"># Send to Telegram</span>
+            <span class="n">bot</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span>
+                <span class="n">chat_id</span><span class="o">=</span><span class="n">channel_id</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+                <span class="n">parse_mode</span><span class="o">=</span><span class="n">ParseMode</span><span class="o">.</span><span class="n">HTML</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Update status and create log</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">published_at</span> <span class="o">=</span> <span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+            <span class="n">TelegramDocPublishLog</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+                <span class="n">doc</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span>
+                <span class="n">media</span><span class="o">=</span><span class="n">stream</span><span class="o">.</span><span class="n">media</span>
+            <span class="p">)</span>
+
+            <span class="n">processed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to publish doc </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            <span class="n">failed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;processed&quot;</span><span class="p">:</span> <span class="n">processed</span><span class="p">,</span>
+        <span class="s2">&quot;failed&quot;</span><span class="p">:</span> <span class="n">failed</span><span class="p">,</span>
+        <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+</section>
 <section id="google-doc-tasks">
 <h2>Google Doc Tasks<a class="headerlink" href="#google-doc-tasks" title="Link to this heading">¶</a></h2>
 <p>Example of creating Google Docs from database documents:</p>
