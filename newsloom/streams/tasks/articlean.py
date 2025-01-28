@@ -55,48 +55,91 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
     # Process each article
     for article in articles:
         try:
+            logger.info(f"Processing article ID {article.id} with URL: {article.link}")
+
             payload = json.dumps({"url": article.link})
             headers = {
                 "x-api-key": os.getenv("ARTICLEAN_API_KEY"),
                 "Content-Type": "application/json",
             }
-            logger.info(f"Using headers: {headers}")
+            logger.info(f"Making request to Articlean API with payload: {payload}")
+
+            api_url = f"{os.getenv('ARTICLEAN_API_URL')}/process-url"
+            logger.info(f"Sending request to: {api_url}")
 
             # Send request
             response = requests.post(
-                f"{os.getenv('ARTICLEAN_API_URL')}/process-url",
+                api_url,
                 headers=headers,
                 data=payload,
                 timeout=30,  # Add 30 second timeout to prevent hanging
             )
 
+            logger.info(f"Received response with status code: {response.status_code}")
+            logger.debug(f"Response headers: {dict(response.headers)}")
+
             if response.status_code != 200:
                 logger.error(f"Process URL failed with status {response.status_code}")
                 logger.error(f"Response content: {response.text}")
+                logger.error(f"Request URL: {api_url}")
+                logger.error(f"Request headers: {headers}")
                 response.raise_for_status()
 
             # Parse response
-            data = response.json()
+            try:
+                data = response.json()
+                logger.debug(f"Parsed response data: {data}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {str(e)}")
+                logger.error(f"Raw response content: {response.text}")
+                failed_count += 1
+                continue
 
             if not data.get("result", {}).get("is_success"):
+                error_msg = data.get("result", {}).get("error", "Unknown error")
                 logger.error(
-                    f"Articlean processing failed for {article.link}: "
-                    f"{data.get('result', {}).get('error')}"
+                    f"Articlean processing failed for article {article.id}:\n"
+                    f"URL: {article.link}\n"
+                    f"Error: {error_msg}\n"
+                    f"Full response: {data}"
                 )
                 failed_count += 1
                 continue
 
             result = data["result"]
+            logger.info(f"Successfully parsed article {article.id} data from Articlean")
+            logger.debug(
+                f"Article data: Title length: {len(result.get('title', ''))}, "
+                f"Text length: {len(result.get('plain_text', ''))}"
+            )
 
             # Update article with received data
-            with transaction.atomic():
-                article.title = result.get("title", article.title)
-                article.text = result.get("plain_text", "")
-                article.save()
-                processed_count += 1
+            try:
+                with transaction.atomic():
+                    article.title = result.get("title", article.title)
+                    article.text = result.get("plain_text", "")
+                    article.save()
+                    processed_count += 1
+                    logger.info(
+                        f"Successfully updated article {article.id} in database"
+                    )
+            except Exception as e:
+                logger.error(f"Database error updating article {article.id}: {str(e)}")
+                failed_count += 1
 
+        except requests.RequestException as e:
+            logger.error(
+                f"Network error processing article {article.id}:\n"
+                f"URL: {article.link}\n"
+                f"Error: {str(e)}"
+            )
+            failed_count += 1
         except Exception as e:
-            logger.exception(f"Failed to process article {article.link}: {str(e)}")
+            logger.exception(
+                f"Unexpected error processing article {article.id}:\n"
+                f"URL: {article.link}\n"
+                f"Error: {str(e)}"
+            )
             failed_count += 1
 
     return {
