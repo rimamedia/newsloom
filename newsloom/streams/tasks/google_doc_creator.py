@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from typing import Dict
 
@@ -93,9 +94,24 @@ def google_doc_creator(
     stream_id: int,
     folder_id: str,
     template_id: str | None = None,
-    service_account_path: str = "credentials.json",
+    service_account_path: str | None = None,
 ) -> Dict:
-    """Process docs and create Google Docs for them."""
+    """Process docs and create Google Docs for them.
+
+    The credentials file path is resolved in the following order:
+    1. Explicitly provided service_account_path parameter
+    2. GOOGLE_APPLICATION_CREDENTIALS environment variable
+    3. Default path relative to project root (newsloom/credentials.json)
+    """
+    # Get credentials path from environment variable or use provided path or default
+    credentials_path = (
+        service_account_path
+        or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        or os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "credentials.json",
+        )
+    )
     from streams.models import Stream
 
     logger.info(f"Starting Google Doc creator for stream ID: {stream_id}")
@@ -116,8 +132,10 @@ def google_doc_creator(
         logger.info("No new docs to process")
         return {"message": "No new docs to process"}
 
-    logger.debug("Initializing Google services")
-    drive_service, docs_service = get_google_services(service_account_path)
+    logger.debug(
+        f"Initializing Google services with credentials path: {credentials_path}"
+    )
+    drive_service, docs_service = get_google_services(credentials_path)
     processed = 0
     failed = 0
 

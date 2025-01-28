@@ -44,7 +44,6 @@ RUN playwright install-deps chromium
 
 # Copy the Django project and credentials
 COPY newsloom /app/newsloom
-COPY credentials.json /app/newsloom/credentials.json
 
 # Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

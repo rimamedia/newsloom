@@ -20,6 +20,8 @@ services:
       - BEDROCK_AWS_ACCESS_KEY_ID=${BEDROCK_AWS_ACCESS_KEY_ID}
       - BEDROCK_AWS_SECRET_ACCESS_KEY=${BEDROCK_AWS_SECRET_ACCESS_KEY}
       - BEDROCK_AWS_REGION=${BEDROCK_AWS_REGION}
+      # Google Credentials
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/newsloom/credentials.json
       # Slack Credentials
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
       - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
