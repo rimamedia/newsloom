@@ -24,8 +24,11 @@ phases:
       - echo Build started on `date`
       - echo Building the Docker image...
       - docker build -f ./Dockerfile.ecs --cache-from $REPOSITORY_URI:latest -t $REPOSITORY_URI:latest .
+      
   post_build:
     commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
       - docker push $REPOSITORY_URI:latest
+      - printf '[{"name":"newsloom","imageUri":"%s"}]' $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest > imagedefinitions.json
+
+artifacts:
+  files: imagedefinitions.json
