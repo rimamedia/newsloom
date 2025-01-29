@@ -78,3 +78,7 @@ google-api-python-client
 crawl4ai
 slack-bolt==1.22.0
 duckduckgo_search==7.3.0
+djangorestframework
+markdown
+django-filter
+django-cors-headers
