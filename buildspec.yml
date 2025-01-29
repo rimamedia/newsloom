@@ -17,18 +17,18 @@ phases:
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME
       - BRANCH_NAME=${BranchName}
-      - echo "BRANCH_NAME is $BRANCH_NAME"
-      - IMAGE_TAG=$BRANCH_NAME
-      - echo "IMAGE_TAG is $IMAGE_TAG"
       - echo Pull started on `date`
-      - docker pull $REPOSITORY_URI:$IMAGE_TAG || true
+      - docker pull $REPOSITORY_URI:latest || true
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -f ./Dockerfile.ecs --cache-from $REPOSITORY_URI:$IMAGE_TAG -t $REPOSITORY_URI:$IMAGE_TAG .
+      - docker build -f ./Dockerfile.ecs --cache-from $REPOSITORY_URI:latest -t $REPOSITORY_URI:latest .
+      
   post_build:
     commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
+      - printf '[{"name":"newsloom","imageUri":"%s"}]' $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest > imagedefinitions.json
+
+artifacts:
+  files: imagedefinitions.json
