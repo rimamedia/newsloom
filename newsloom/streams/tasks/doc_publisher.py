@@ -52,7 +52,11 @@ def publish_docs(
             docs = await sync_to_async(list)(
                 Doc.objects.filter(
                     media=stream.media,
-                    status__in=["new", "failed"],  # Process both new and failed docs
+                    status__in=[
+                        "new",
+                        "failed",
+                        "edit",
+                    ],  # Process both new and failed docs
                 ).order_by("created_at")[:batch_size]
             )
 

@@ -13,25 +13,63 @@ logger = logging.getLogger(__name__)
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 
-def get_google_services(service_account_path: str):
-    """Initialize Google Drive and Docs API services."""
-    logger.info(
-        f"Initializing Google services using credentials from: {service_account_path}"
+def get_credentials_from_env():
+    """Get Google credentials from environment variables."""
+    logger.debug("Loading service account credentials from environment variables")
+
+    credentials_dict = {
+        "type": "service_account",
+        "project_id": os.environ.get("GOOGLE_PROJECT_ID"),
+        "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID"),
+        "private_key": os.environ.get("GOOGLE_PRIVATE_KEY").replace("\\n", "\n"),
+        "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL"),
+        "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL"),
+        "universe_domain": "googleapis.com",
+    }
+
+    return service_account.Credentials.from_service_account_info(
+        credentials_dict, scopes=SCOPES
     )
+
+
+def get_google_services(service_account_path: str = None):
+    """Initialize Google Drive and Docs API services."""
     try:
-        logger.debug("Loading service account credentials")
-        credentials = service_account.Credentials.from_service_account_file(
-            service_account_path, scopes=SCOPES
-        )
+        logger.debug("Attempting to get credentials from environment variables")
+        credentials = get_credentials_from_env()
+
         logger.debug("Building Drive service")
         drive_service = build("drive", "v3", credentials=credentials)
         logger.debug("Building Docs service")
         docs_service = build("docs", "v1", credentials=credentials)
-        logger.info("Successfully initialized Google services")
+        logger.info(
+            "Successfully initialized Google services from environment variables"
+        )
         return drive_service, docs_service
     except Exception as e:
-        logger.error(f"Failed to initialize Google services: {e}", exc_info=True)
-        raise
+        if service_account_path:
+            logger.info(f"Falling back to service account file: {service_account_path}")
+            try:
+                credentials = service_account.Credentials.from_service_account_file(
+                    service_account_path, scopes=SCOPES
+                )
+                drive_service = build("drive", "v3", credentials=credentials)
+                docs_service = build("docs", "v1", credentials=credentials)
+                logger.info("Successfully initialized Google services from file")
+                return drive_service, docs_service
+            except Exception as file_error:
+                logger.error(
+                    f"Failed to initialize Google services from file: {file_error}",
+                    exc_info=True,
+                )
+                raise
+        else:
+            logger.error(f"Failed to initialize Google services: {e}", exc_info=True)
+            raise
 
 
 def create_google_doc(
@@ -98,20 +136,12 @@ def google_doc_creator(
 ) -> Dict:
     """Process docs and create Google Docs for them.
 
-    The credentials file path is resolved in the following order:
-    1. Explicitly provided service_account_path parameter
-    2. GOOGLE_APPLICATION_CREDENTIALS environment variable
-    3. Default path relative to project root (newsloom/credentials.json)
+    The credentials are resolved in the following order:
+    1. Environment variables (GOOGLE_* variables)
+    2. Explicitly provided service_account_path parameter
+    3. GOOGLE_APPLICATION_CREDENTIALS environment variable
+    4. Default path relative to project root (newsloom/credentials.json)
     """
-    # Get credentials path from environment variable or use provided path or default
-    credentials_path = (
-        service_account_path
-        or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        or os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "credentials.json",
-        )
-    )
     from streams.models import Stream
 
     logger.info(f"Starting Google Doc creator for stream ID: {stream_id}")
@@ -120,22 +150,20 @@ def google_doc_creator(
     stream = Stream.objects.get(id=stream_id)
     logger.debug(f"Found stream: {stream.name} (media: {stream.media})")
 
-    # Get docs that need processing (status='new')
+    # Get all docs without Google Doc links
     docs = Doc.objects.filter(
-        status="new", media=stream.media, google_doc_link__isnull=True
+        media=stream.media, google_doc_link__isnull=True
     ).order_by("created_at")
 
     doc_count = docs.count()
-    logger.info(f"Found {doc_count} new docs to process")
+    logger.info(f"Found {doc_count} docs without Google Doc links to process")
 
     if not docs.exists():
-        logger.info("No new docs to process")
-        return {"message": "No new docs to process"}
+        logger.info("No docs without Google Doc links to process")
+        return {"message": "No docs without Google Doc links to process"}
 
-    logger.debug(
-        f"Initializing Google services with credentials path: {credentials_path}"
-    )
-    drive_service, docs_service = get_google_services(credentials_path)
+    logger.debug("Initializing Google services")
+    drive_service, docs_service = get_google_services(service_account_path)
     processed = 0
     failed = 0
 
@@ -152,10 +180,12 @@ def google_doc_creator(
                 template_id=template_id,
             )
 
-            # Update doc with Google Doc link and status
-            logger.debug(f"Updating doc {doc.id} with Google Doc link and status")
+            # Update doc with Google Doc link
+            logger.debug(f"Updating doc {doc.id} with Google Doc link")
             doc.google_doc_link = google_doc_link
-            doc.status = "edit"
+            # Only update status if doc was new
+            if doc.status == "new":
+                doc.status = "edit"
             doc.published_at = timezone.now()
             doc.save()
             logger.info(
