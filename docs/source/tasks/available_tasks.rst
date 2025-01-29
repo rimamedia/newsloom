@@ -105,6 +105,38 @@ Configuration example:
         "debug": False
     }
 
+duckduckgo_search
+~~~~~~~~~~~~~~~
+A task for searching news articles using DuckDuckGo's search engine. Features:
+
+* Privacy-focused news search
+* Region-based search customization
+* Time limit filtering (d: last 24 hours, w: last week, m: last month)
+* SafeSearch options
+* Configurable result limits
+
+.. important::
+   To save found articles, the stream **must** have a source configured in the admin panel. 
+   Without a configured source, the task will find articles but won't be able to save them 
+   to the database.
+
+Required Setup:
+    1. Create a Source in the admin panel (e.g., "DuckDuckGo News")
+    2. Create a Stream and select the created source
+    3. Configure the stream with the settings below
+
+Configuration example:
+
+.. code-block:: python
+
+    {
+        "keywords": "artificial intelligence news",
+        "max_results": 10,
+        "region": "wt-wt",
+        "time_range": "d",  # Last 24 hours
+        "safesearch": "moderate"
+    }
+
 Content Publishing Tasks
 ---------------------
 
@@ -144,10 +176,10 @@ doc_publisher
 ~~~~~~~~~~~
 A task for publishing documents to Telegram channels. Features:
 
-* Batch processing of documents
-* Time window filtering
-* HTML formatting support
-* Error handling and logging
+* Batch processing of unpublished documents
+* HTML formatting support (bold titles, formatted text)
+* Comprehensive error handling and logging
+* Automatic status tracking and publish logs
 
 Configuration example:
 
@@ -156,8 +188,7 @@ Configuration example:
     {
         "channel_id": "-100123456789",
         "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
-        "time_window_minutes": 60,
-        "batch_size": 10
+        "batch_size": 10  # Maximum number of docs to process in one batch
     }
 
 telegram_doc_publisher

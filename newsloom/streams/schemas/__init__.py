@@ -2,6 +2,7 @@ from .article_searcher import ArticleSearcherConfig
 from .articlean import ArticleanConfiguration
 from .bing_search import BingSearchConfig
 from .doc_publisher import DocPublisherConfig
+from .duckduckgo_search import DuckDuckGoSearchConfig
 from .google_doc_creator import GoogleDocCreatorConfig
 from .google_search import GoogleSearchConfig
 from .news_stream import NewsStreamConfig
@@ -31,4 +32,5 @@ STREAM_CONFIG_SCHEMAS = {
     "telegram_doc_publisher": TelegramDocPublisherConfig,
     "articlean": ArticleanConfiguration,
     "web_scraper": WebScraperConfig,
+    "duckduckgo_search": DuckDuckGoSearchConfig,
 }

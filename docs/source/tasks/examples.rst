@@ -183,6 +183,70 @@ Example of a Telegram channel monitoring task:
 
         return posts
 
+Document Publishing Tasks
+----------------------
+
+Example of publishing documents to Telegram:
+
+.. code-block:: python
+
+    def doc_publisher(stream_id, channel_id, bot_token, batch_size=10):
+        # Get stream and validate media
+        stream = Stream.objects.get(id=stream_id)
+        if not stream.media:
+            raise ValueError("Stream must have an associated media")
+
+        bot = Bot(token=bot_token)
+        
+        # Get unpublished docs from media
+        docs = Doc.objects.filter(
+            media=stream.media,
+            status__in=["new", "failed"]  # Process both new and failed docs
+        ).order_by("created_at")[:batch_size]
+        
+        processed = 0
+        failed = 0
+        
+        for doc in docs:
+            try:
+                # Format message with title in bold
+                message = f"<b>{doc.title}</b>"
+                if doc.text:
+                    message += f"\n\n{doc.text}"
+                if doc.link:
+                    message += f"\n\n{doc.link}"
+                
+                # Send to Telegram
+                bot.send_message(
+                    chat_id=channel_id,
+                    text=message,
+                    parse_mode=ParseMode.HTML
+                )
+                
+                # Update status and create log
+                doc.status = "publish"
+                doc.published_at = timezone.now()
+                doc.save()
+                
+                TelegramDocPublishLog.objects.create(
+                    doc=doc,
+                    media=stream.media
+                )
+                
+                processed += 1
+                
+            except Exception as e:
+                logger.error(f"Failed to publish doc {doc.id}: {e}")
+                doc.status = "failed"
+                doc.save()
+                failed += 1
+        
+        return {
+            "processed": processed,
+            "failed": failed,
+            "total": len(docs)
+        }
+
 Google Doc Tasks
 -------------
 
