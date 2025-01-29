@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     "agents",
     "chat",
     "rest_framework",
+    "rest_framework.authtoken",
+    "corsheaders",
     "frontend",
 ]
 
@@ -59,9 +61,16 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
 }
+
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = (
+    True  # For development only, configure specific origins in production
+)
+CORS_ALLOW_CREDENTIALS = True
 
 # Channels
 ASGI_APPLICATION = "newsloom.asgi.application"
@@ -70,6 +79,7 @@ CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

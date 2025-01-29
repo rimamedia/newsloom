@@ -97,6 +97,7 @@ Technical Architecture
    agents/index
    cases/index
    chat/slack_integration
+   api/index
 
 Quick Links
 ----------
@@ -106,6 +107,7 @@ Quick Links
 * :doc:`tasks/examples`
 * :doc:`schemas/examples`
 * :doc:`chat/slack_integration`
+* :doc:`api/authentication`
 
 Indices and tables
 ==================
