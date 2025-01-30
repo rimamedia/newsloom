@@ -385,4 +385,24 @@ TOOLS = [
             },
         },
     },
+    {
+        "name": "get_link_classes",
+        "description": "Get CSS classes from links on a webpage to help configure link selectors",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL of the webpage to analyze",
+                },
+                "max_links": {
+                    "type": "integer",
+                    "description": "Maximum number of links to analyze (default 100)",
+                    "minimum": 1,
+                    "maximum": 1000,
+                },
+            },
+            "required": ["url"],
+        },
+    },
 ]

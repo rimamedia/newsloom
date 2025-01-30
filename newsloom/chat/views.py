@@ -1,7 +1,7 @@
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import get_object_or_404, render
 
-from .models import Chat
+from .models import Chat, ChatMessageDetail
 
 
 @login_required
@@ -29,3 +29,19 @@ def chat_room(request, chat_id=None):
     }
 
     return render(request, "chat/room.html", context)
+
+
+@user_passes_test(lambda u: u.is_staff)
+def chat_details_admin(request, chat_id):
+    """Admin view to display all ChatMessageDetail records for a specific chat."""
+    chat = get_object_or_404(Chat, id=chat_id)
+    chat_details = ChatMessageDetail.objects.filter(chat=chat).order_by(
+        "sequence_number"
+    )
+
+    context = {
+        "chat": chat,
+        "chat_details": chat_details,
+    }
+
+    return render(request, "chat/chat_details.html", context)

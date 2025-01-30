@@ -78,26 +78,36 @@ def get_bedrock_client():
 
 def validate_prompt_template(
     template: str, available_vars: Dict[str, str]
-) -> List[str]:
+) -> Tuple[List[str], str]:
     """
-    Validate that all variables in the template exist in available_vars.
+    Validate prompt template and handle undefined variables by keeping them as text.
 
     Args:
         template: The prompt template string
         available_vars: Dictionary of available variables
 
     Returns:
-        List of missing variables if any
+        Tuple of (list of undefined variables, formatted template with undefined vars preserved)
     """
-    try:
-        # Test format the template with a dict comprehension of all possible variables
-        test_vars = {key: "{" + key + "}" for key in available_vars.keys()}
-        template.format(**test_vars)
-        return []
-    except KeyError as e:
-        # Extract the missing key from the KeyError message
-        missing_key = str(e).strip("'")
-        return [missing_key]
+    undefined_vars = []
+    formatted_template = template
+
+    # Find all variables in the template using a basic format string pattern
+    import re
+
+    var_pattern = r"\{([^}]+)\}"
+    template_vars = re.findall(var_pattern, template)
+
+    # Check which variables are undefined
+    for var in template_vars:
+        if var not in available_vars:
+            undefined_vars.append(var)
+            # Replace undefined variable placeholder with escaped version
+            formatted_template = formatted_template.replace(
+                f"{{{var}}}", f"{{{{raw_{var}}}}}"
+            )
+
+    return undefined_vars, formatted_template
 
 
 def invoke_bedrock_anthropic(
@@ -402,32 +412,39 @@ def process_news_stream(
             "now": now,
         }
 
-        # Validate templates before formatting
+        # Validate and format templates
         logger.debug(
             "Validating prompt templates with available variables: %s",
             list(template_vars.keys()),
         )
 
-        system_missing_vars = validate_prompt_template(
+        system_undefined_vars, system_formatted = validate_prompt_template(
             agent.system_prompt, template_vars
         )
-        if system_missing_vars:
-            error_msg = f"System prompt template contains undefined variables: {system_missing_vars}"  # noqa: E501
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+        if system_undefined_vars:
+            logger.warning(
+                "System prompt contains undefined variables that will be preserved as text: %s",
+                system_undefined_vars,
+            )
 
-        user_missing_vars = validate_prompt_template(
+        user_undefined_vars, user_formatted = validate_prompt_template(
             agent.user_prompt_template, template_vars
         )
-        if user_missing_vars:
-            error_msg = f"User prompt template contains undefined variables: {user_missing_vars}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+        if user_undefined_vars:
+            logger.warning(
+                "User prompt contains undefined variables that will be preserved as text: %s",
+                user_undefined_vars,
+            )
+
+        # Add raw_ prefixed keys for undefined variables to preserve them in text
+        format_vars = template_vars.copy()
+        for var in system_undefined_vars + user_undefined_vars:
+            format_vars[f"raw_{var}"] = f"{{{var}}}"
 
         # Format prompts with validated templates
         try:
-            system_prompt = agent.system_prompt.format(**template_vars)
-            user_prompt = agent.user_prompt_template.format(**template_vars)
+            system_prompt = system_formatted.format(**format_vars)
+            user_prompt = user_formatted.format(**format_vars)
 
             logger.debug(
                 "Successfully formatted prompts - System prompt length: %d, User prompt length: %d",
