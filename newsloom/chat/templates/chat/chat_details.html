@@ -1,0 +1,121 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="chat-details">
+    <h1>Chat Details: {{ chat.title }}</h1>
+
+    <div class="module">
+        <h2>Chat Information</h2>
+        <table>
+            <tr>
+                <th>User:</th>
+                <td>{{ chat.user.username }}</td>
+            </tr>
+            <tr>
+                <th>Created:</th>
+                <td>{{ chat.created_at }}</td>
+            </tr>
+            <tr>
+                <th>Last Updated:</th>
+                <td>{{ chat.updated_at }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="module">
+        <h2>Message Details</h2>
+        {% for detail in chat_details %}
+            <div class="message-detail {% if detail.role == 'user' %}user-message{% else %}assistant-message{% endif %}">
+                <div class="detail-header">
+                    <span class="role">{{ detail.get_role_display }}</span>
+                    <span class="timestamp">{{ detail.timestamp }}</span>
+                    <span class="sequence">#{{ detail.sequence_number }}</span>
+                </div>
+
+                <div class="detail-content">
+                    {% if detail.content_type == 'text' %}
+                        <pre>{{ detail.content.text }}</pre>
+                    {% elif detail.content_type == 'tool_call' %}
+                        <div class="tool-call">
+                            <strong>Tool:</strong> {{ detail.tool_name }}
+                            <br>
+                            <strong>Tool ID:</strong> {{ detail.tool_id }}
+                            <br>
+                            <strong>Input:</strong>
+                            <pre>{{ detail.content.input|pprint }}</pre>
+                        </div>
+                    {% elif detail.content_type == 'tool_result' %}
+                        <div class="tool-result">
+                            <strong>Tool Result:</strong>
+                            <pre>{{ detail.content.content }}</pre>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .chat-details {
+        padding: 20px;
+    }
+
+    .message-detail {
+        margin: 10px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .user-message {
+        background-color: #f8f9fa;
+    }
+
+    .assistant-message {
+        background-color: #e9ecef;
+    }
+
+    .detail-header {
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .detail-header span {
+        margin-right: 15px;
+    }
+
+    .role {
+        font-weight: bold;
+    }
+
+    .timestamp {
+        color: #666;
+    }
+
+    .sequence {
+        color: #999;
+    }
+
+    .detail-content {
+        margin-top: 10px;
+    }
+
+    .detail-content pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        background-color: #fff;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 5px 0;
+    }
+
+    .tool-call, .tool-result {
+        background-color: #fff;
+        padding: 10px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}

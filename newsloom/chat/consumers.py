@@ -10,10 +10,10 @@ from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-from . import tool_functions
-from .models import Chat, ChatMessage
+from .models import Chat, ChatMessage, ChatMessageDetail
 from .system_prompt import SYSTEM_PROMPT
-from .tools import TOOLS
+from .tools import tool_functions
+from .tools.tools_descriptions import TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -436,7 +436,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                             # Execute the tool asynchronously
                             try:
-                                tool_func = getattr(tool_functions, tool_name)
+                                # Get tool function from dictionary
+                                tool_func = tool_functions.get(tool_name)
+                                if tool_func is None:
+                                    raise ValueError(f"Unknown tool: {tool_name}")
+
                                 # Wrap tool execution in shield to ensure it can be cancelled
                                 tool_result = await asyncio.shield(
                                     sync_to_async(tool_func)(**tool_input)
@@ -519,9 +523,72 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, message, response):
-        ChatMessage.objects.create(
+        # Create the main chat message
+        chat_message = ChatMessage.objects.create(
             chat=self.chat, user=self.scope["user"], message=message, response=response
         )
+
+        # Save detailed message flow
+        sequence = 0
+
+        # Save user's initial message
+        ChatMessageDetail.objects.create(
+            chat_message=chat_message,
+            chat=self.chat,
+            sequence_number=sequence,
+            role="user",
+            content_type="text",
+            content={"text": message},
+        )
+        sequence += 1
+
+        # Save all intermediate messages from chat_history
+        for msg in self.chat_history[
+            1:
+        ]:  # Skip first message as it's the user's initial message
+            if msg["role"] == "assistant":
+                if isinstance(msg["content"], list):
+                    # Handle tool calls
+                    for content in msg["content"]:
+                        if content["type"] == "tool_use":
+                            ChatMessageDetail.objects.create(
+                                chat_message=chat_message,
+                                chat=self.chat,
+                                sequence_number=sequence,
+                                role="assistant",
+                                content_type="tool_call",
+                                content=content,
+                                tool_name=content["name"],
+                                tool_id=content["id"],
+                            )
+                            sequence += 1
+                else:
+                    # Handle text response
+                    ChatMessageDetail.objects.create(
+                        chat_message=chat_message,
+                        chat=self.chat,
+                        sequence_number=sequence,
+                        role="assistant",
+                        content_type="text",
+                        content={"text": msg["content"]},
+                    )
+                    sequence += 1
+            elif msg["role"] == "user" and isinstance(msg["content"], list):
+                # Handle tool results
+                for content in msg["content"]:
+                    if content["type"] == "tool_result":
+                        ChatMessageDetail.objects.create(
+                            chat_message=chat_message,
+                            chat=self.chat,
+                            sequence_number=sequence,
+                            role="user",
+                            content_type="tool_result",
+                            content=content,
+                            tool_id=content["tool_use_id"],
+                        )
+                        sequence += 1
+
+        return chat_message
 
     @database_sync_to_async
     def rename_chat(self, chat_id, new_title):

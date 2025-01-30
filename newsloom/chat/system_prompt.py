@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from .tools import TOOLS
+from .tools.tools_descriptions import TOOLS
 
 # Import available tasks documentation
 AVAILABLE_TASKS_DOC = (
