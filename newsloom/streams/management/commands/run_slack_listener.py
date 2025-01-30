@@ -396,3 +396,7 @@ class Command(BaseCommand):
             logger.error(f"Slack listener error: {str(e)}")
             logger.error(traceback.format_exc())
             raise
+
+
+# TODO: add general class for chat
+# TODO: verify user's email
