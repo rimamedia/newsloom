@@ -156,12 +156,33 @@ class StreamAdmin(admin.ModelAdmin):
                 name="stream-copy",
             ),
             path(
+                "<path:object_id>/run-now/",
+                self.admin_site.admin_view(self.run_stream_now),
+                name="stream-run-now",
+            ),
+            path(
                 "run-all/",
                 self.admin_site.admin_view(self.run_all_streams),
                 name="streams_stream_run-all-streams",
             ),
         ]
         return custom_urls + urls
+
+    def run_stream_now(self, request, object_id):
+        """Run a stream immediately."""
+        from django.contrib import messages
+        from django.shortcuts import get_object_or_404, redirect
+
+        stream = get_object_or_404(Stream, id=object_id)
+        try:
+            stream.execute_task()
+            messages.success(
+                request, f'Stream "{stream.name}" was successfully executed.'
+            )
+        except Exception as e:
+            messages.error(request, f'Error executing stream "{stream.name}": {str(e)}')
+
+        return redirect("admin:streams_stream_change", object_id)
 
     def copy_stream(self, request, object_id):
         from django.contrib import messages
@@ -185,11 +206,14 @@ class StreamAdmin(admin.ModelAdmin):
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
         extra_context["show_copy_button"] = True
+        extra_context["show_run_now_button"] = True
         return super().change_view(request, object_id, form_url, extra_context)
 
     def response_change(self, request, obj):
         if "_copy_stream" in request.POST:
             return self.copy_stream(request, obj.id)
+        if "_run_now" in request.POST:
+            return self.run_stream_now(request, obj.id)
         return super().response_change(request, obj)
 
     def pause_streams(self, request, queryset):
@@ -231,8 +255,10 @@ class StreamAdmin(admin.ModelAdmin):
             # Get the project root directory
             project_dir = os.path.dirname(os.path.dirname(__file__))
 
-            # Start the command in background
-            subprocess.Popen(
+            # Start the command in background using subprocess for async execution
+            # We use subprocess.Popen here specifically to run the management command
+            # asynchronously with its own session, which can't be done with call_command
+            subprocess.Popen(  # nosec B603
                 [python_executable, manage_py, "run_streams"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -276,8 +302,10 @@ class StreamAdmin(admin.ModelAdmin):
             # Get the project root directory
             project_dir = os.path.dirname(os.path.dirname(__file__))
 
-            # Start the command in background
-            subprocess.Popen(
+            # Start the command in background using subprocess for async execution
+            # We use subprocess.Popen here specifically to run the management command
+            # asynchronously with its own session, which can't be done with call_command
+            subprocess.Popen(  # nosec B603
                 [python_executable, manage_py, "run_streams"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

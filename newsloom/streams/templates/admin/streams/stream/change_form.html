@@ -5,7 +5,12 @@
     {{ block.super }}
     {% if show_copy_button %}
         <div class="submit-row">
-            <input type="submit" value="{% trans 'Copy stream' %}" name="_copy_stream">
+            <input type="submit" value="{% trans 'Copy Stream' %}" name="_copy_stream">
+        </div>
+    {% endif %}
+    {% if show_run_now_button %}
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Run Now' %}" name="_run_now" style="background: #28a745;">
         </div>
     {% endif %}
 {% endblock %}
