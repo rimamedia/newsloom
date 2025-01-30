@@ -171,3 +171,6 @@ TASK_CONFIG_EXAMPLES = {
 def get_task_config_example(stream_type):
     """Get the example configuration for a given stream type."""
     return TASK_CONFIG_EXAMPLES.get(stream_type, {})
+
+
+# TODO: add name conventions for tasks
