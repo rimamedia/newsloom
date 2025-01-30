@@ -35,9 +35,14 @@ router.register(r"media", views.MediaViewSet)
 router.register(r"examples", views.ExamplesViewSet)
 
 urlpatterns = [
-    path("api/", include(router.urls)),
-    path("api-auth/", include("rest_framework.urls")),
-    path("api/login/", permission_classes([AllowAny])(views.login_view), name="login"),
+    # API endpoints
+    path("", include(router.urls)),
+    path("auth/", include("rest_framework.urls")),
+    path(
+        "token/",
+        permission_classes([AllowAny])(views.login_view),
+        name="api_token_login",
+    ),  # Renamed to clarify purpose
     # Swagger UI
     path(
         "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
