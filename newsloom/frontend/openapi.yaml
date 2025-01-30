@@ -343,7 +343,7 @@ components:
           readOnly: true
 
 paths:
-  /api/login/:
+  /api/token/:
     post:
       tags:
         - Authentication

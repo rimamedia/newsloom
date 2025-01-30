@@ -383,7 +383,7 @@ def process_news_stream(
             return {
                 "processed": 0,
                 "saved": 0,
-                "error": None,
+                "error": f"None of the news items found in the last {time_window_minutes} minutes for stream_id={stream_id}",  # noqa: E501
                 "bedrock_response": {"full_response": None, "message_history": []},
             }
 
