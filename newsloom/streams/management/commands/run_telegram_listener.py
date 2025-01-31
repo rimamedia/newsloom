@@ -13,8 +13,8 @@ from django.core.management.base import BaseCommand
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
-from newsloom.chat.tools import tool_functions
-from newsloom.chat.tools.tools_descriptions import TOOLS
+from chat.tools import tool_functions
+from chat.tools.tools_descriptions import TOOLS
 
 logger = logging.getLogger(__name__)
 

@@ -12,8 +12,8 @@ from django.core.management.base import BaseCommand
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from newsloom.chat.tools import tool_functions
-from newsloom.chat.tools.tools_descriptions import TOOLS
+from chat.tools import tool_functions
+from chat.tools.tools_descriptions import TOOLS
 
 logger = logging.getLogger(__name__)
 
