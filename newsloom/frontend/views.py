@@ -4,7 +4,8 @@ from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
 from rest_framework import permissions, status, viewsets
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from sources.models import Doc, News, Source
 from streams.models import (
@@ -35,6 +36,7 @@ from .serializers import (
 
 
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def login_view(request):
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():

@@ -2,8 +2,6 @@ from django.urls import include, path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
-from rest_framework.decorators import permission_classes
-from rest_framework.permissions import AllowAny
 from rest_framework.routers import DefaultRouter
 
 from . import views
@@ -39,10 +37,8 @@ urlpatterns = [
     path("", include(router.urls)),
     path("auth/", include("rest_framework.urls")),
     path(
-        "token/",
-        permission_classes([AllowAny])(views.login_view),
-        name="api_token_login",
-    ),  # Renamed to clarify purpose
+        "token/", views.login_view, name="api_token_login"
+    ),  # Token generation endpoint
     # Swagger UI
     path(
         "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
