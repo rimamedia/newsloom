@@ -2,10 +2,13 @@ import json
 import logging
 import os
 from datetime import timedelta
+from datetime import timezone as datetime_timezone
 from typing import Dict, List, Optional, Tuple
 
 import boto3
 from agents.models import Agent
+from django.conf import settings
+from django.db import connection
 from django.utils import timezone
 from dotenv import load_dotenv
 from mediamanager.models import Examples
@@ -365,9 +368,34 @@ def process_news_stream(
             )
             raise ValueError("Only Bedrock provider is currently supported")
 
-        # Calculate time window
-        time_threshold = timezone.now() - timedelta(minutes=time_window_minutes)
-        logger.debug("Using time threshold: %s", time_threshold)
+        # Verify timezone settings
+        if not settings.USE_TZ:
+            logger.error("Django timezone support is not enabled")
+            raise ValueError(
+                "Django timezone support must be enabled for proper UTC handling"
+            )
+
+        if settings.TIME_ZONE != "UTC":
+            logger.warning("Django TIME_ZONE is not UTC: %s", settings.TIME_ZONE)
+
+        # Verify database timezone
+        with connection.cursor() as cursor:
+            if connection.vendor == "postgresql":
+                cursor.execute("SHOW timezone;")
+                db_timezone = cursor.fetchone()[0]
+                if db_timezone != "UTC":
+                    logger.error("PostgreSQL timezone is not UTC: %s", db_timezone)
+                    raise ValueError("Database timezone must be UTC")
+            elif connection.vendor == "sqlite":
+                logger.info("Using SQLite - ensuring all datetime operations use UTC")
+
+        # Ensure we're working with UTC
+        current_time = timezone.now()
+        if current_time.tzinfo != datetime_timezone.utc:
+            current_time = current_time.astimezone(datetime_timezone.utc)
+
+        time_threshold = current_time - timedelta(minutes=time_window_minutes)
+        logger.debug("Using time threshold (UTC): %s", time_threshold)
 
         # Get recent news items from the stream's media sources
         news_items = News.objects.filter(
@@ -401,8 +429,11 @@ def process_news_stream(
         )
         logger.debug("Prepared news content with %d characters", len(news_content))
 
-        # Format the prompts with variables
-        now = timezone.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Format the prompts with variables using explicit UTC time
+        current_time = timezone.now()
+        if current_time.tzinfo != datetime_timezone.utc:
+            current_time = current_time.astimezone(datetime_timezone.utc)
+        now = current_time.strftime("%Y-%m-%d %H:%M:%S UTC")
 
         # Prepare variables for template formatting
         template_vars = {
