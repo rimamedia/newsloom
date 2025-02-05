@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import random
 import time
 from typing import List
 
@@ -16,29 +17,35 @@ DEFAULT_RETRY_DELAY = 300  # 5 minutes
 
 
 def calculate_retry_delay(retry_count: int) -> int:
-    """Calculate exponential backoff delay."""
-    return min(DEFAULT_RETRY_DELAY * (2 ** (retry_count - 1)), 3600)  # Max 1 hour
+    """Calculate exponential backoff delay with jitter."""
+    base_delay = DEFAULT_RETRY_DELAY * (2 ** (retry_count - 1))
+    jitter = random.uniform(0.8, 1.2)  # ±20% jitter
+    return min(int(base_delay * jitter), 3600)  # Max 1 hour
 
 
-def process_single_stream(stream_id: int, stats_id: int, max_retries: int) -> None:
+def process_single_stream(stream_id: int, max_retries: int) -> bool:
     """Process a single stream with retry logic."""
     # Close any existing database connections before starting
     for conn in connections.all():
         conn.close_if_unusable_or_obsolete()
 
-    try:
-        # Get fresh instances from the database
-        stream = Stream.objects.get(id=stream_id)
-        stats = StreamExecutionStats.objects.get(id=stats_id)
+    success = False
 
+    try:
+        # Get fresh instance from the database
+        stream = Stream.objects.get(id=stream_id)
         retry_count = 0
+
         while retry_count <= max_retries:
             try:
                 # Execute the task directly without transaction wrapping
                 stream.execute_task()
-                stats.streams_succeeded += 1
-                stats.save(update_fields=["streams_succeeded"])
-                logger.info(f"Stream {stream.name} executed successfully")
+                # Refresh from db since execute_task updates the stream
+                stream.refresh_from_db()
+                logger.info(
+                    f"Stream {stream.name} executed successfully (Next run: {stream.next_run})"
+                )
+                success = True
                 break
             except Exception as e:
                 retry_count += 1
@@ -54,14 +61,14 @@ def process_single_stream(stream_id: int, stats_id: int, max_retries: int) -> No
                         f"Stream {stream.name} failed after {max_retries} retries: {str(e)}",
                         exc_info=True,
                     )
-                    stats.streams_failed += 1
-                    stats.save(update_fields=["streams_failed"])
     except Exception as e:
         logger.error(f"Error processing stream {stream_id}: {e}")
-    finally:
-        # Close database connections after processing
-        for conn in connections.all():
-            conn.close()
+
+    # Close database connections after processing
+    for conn in connections.all():
+        conn.close()
+
+    return success
 
 
 class Command(BaseCommand):
@@ -144,11 +151,26 @@ class Command(BaseCommand):
             conn.close()
 
         # Prepare arguments for multiprocessing - only pass IDs
-        stream_args = [(stream.id, stats.id, max_retries) for stream in streams]
+        stream_args = [(stream.id, max_retries) for stream in streams]
 
         # Use multiprocessing Pool for parallel execution
-        with multiprocessing.Pool(processes=num_processes) as pool:
-            pool.starmap(process_single_stream, stream_args)
+        try:
+            with multiprocessing.Pool(processes=num_processes) as pool:
+                results = pool.starmap(process_single_stream, stream_args)
+
+                # Update stats based on results
+                succeeded = sum(1 for result in results if result)
+                failed = sum(1 for result in results if not result)
+
+                stats.streams_succeeded = succeeded
+                stats.streams_failed = failed
+                stats.save(update_fields=["streams_succeeded", "streams_failed"])
+
+        except KeyboardInterrupt:
+            logger.info("Gracefully shutting down worker processes...")
+            pool.terminate()
+            pool.join()
+            raise
 
     def handle(self, *args, **options):
         self.stdout.write("Starting one-time parallel stream execution...")
