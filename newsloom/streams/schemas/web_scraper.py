@@ -10,7 +10,7 @@ class WebScraperConfig(BaseConfig):
         """Pydantic configuration class for WebScraperConfig."""
 
         title = "Web Scraper Configuration"
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "batch_size": 10,  # Process 10 empty news articles at a time
             }
