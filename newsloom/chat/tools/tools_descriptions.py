@@ -3,10 +3,22 @@
 TOOLS = [
     {
         "name": "list_media",
-        "description": "Get a list of all media entries from the database",
+        "description": "Get a paginated list of media entries from the database",
         "input_schema": {
             "type": "object",
-            "properties": {},
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of entries to return (default 50)",
+                    "minimum": 1,
+                    "maximum": 1000,
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Number of entries to skip (default 0)",
+                    "minimum": 0,
+                },
+            },
         },
     },
     {
@@ -55,10 +67,22 @@ TOOLS = [
     },
     {
         "name": "list_sources",
-        "description": "Get a list of all source entries from the database",
+        "description": "Get a paginated list of source entries from the database",
         "input_schema": {
             "type": "object",
-            "properties": {},
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of entries to return (default 50)",
+                    "minimum": 1,
+                    "maximum": 1000,
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Number of entries to skip (default 0)",
+                    "minimum": 0,
+                },
+            },
         },
     },
     {
@@ -131,7 +155,7 @@ TOOLS = [
     },
     {
         "name": "list_streams",
-        "description": "Get a list of all stream entries from the database",
+        "description": "Get a paginated list of stream entries from the database",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -139,6 +163,17 @@ TOOLS = [
                     "type": "string",
                     "enum": ["active", "paused", "failed", "processing"],
                     "description": "Optional status to filter streams by",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of entries to return (default 50)",
+                    "minimum": 1,
+                    "maximum": 1000,
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Number of entries to skip (default 0)",
+                    "minimum": 0,
                 },
             },
         },
@@ -274,13 +309,24 @@ TOOLS = [
     },
     {
         "name": "list_agents",
-        "description": "Get a list of all agent entries from the database",
+        "description": "Get a paginated list of agent entries from the database",
         "input_schema": {
             "type": "object",
             "properties": {
                 "is_active": {
                     "type": "boolean",
                     "description": "Optional flag to filter agents by active status",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of entries to return (default 50)",
+                    "minimum": 1,
+                    "maximum": 1000,
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Number of entries to skip (default 0)",
+                    "minimum": 0,
                 },
             },
         },

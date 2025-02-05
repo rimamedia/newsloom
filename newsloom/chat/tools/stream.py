@@ -10,20 +10,33 @@ from streams.models import Stream, StreamLog
 logger = logging.getLogger(__name__)
 
 
-def list_streams(status: Optional[str] = None) -> List[Dict]:
-    """Get a list of all stream entries from the database.
+def list_streams(
+    status: Optional[str] = None, limit: Optional[int] = 50, offset: Optional[int] = 0
+) -> Dict:
+    """Get a paginated list of stream entries from the database.
 
     Args:
         status: Optional status to filter streams by
+        limit: Maximum number of entries to return (default 50)
+        offset: Number of entries to skip (default 0)
 
     Returns:
-        List[Dict]: List of stream entries with their properties
+        Dict containing:
+            items: List of stream entries with their properties
+            total: Total number of streams matching the filter
+            limit: Limit used for query
+            offset: Offset used for query
     """
+    # Build base queryset
     queryset = Stream.objects.all()
     if status:
         queryset = queryset.filter(status=status)
 
-    return [
+    # Get total count
+    total = queryset.count()
+
+    # Get paginated results
+    items = [
         {
             "id": stream.id,
             "name": stream.name,
@@ -38,8 +51,10 @@ def list_streams(status: Optional[str] = None) -> List[Dict]:
             "created_at": stream.created_at.isoformat(),
             "updated_at": stream.updated_at.isoformat(),
         }
-        for stream in queryset
+        for stream in queryset[offset : offset + limit]
     ]
+
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 def add_stream(

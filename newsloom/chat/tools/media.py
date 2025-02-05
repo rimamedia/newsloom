@@ -7,13 +7,25 @@ from sources.models import Source
 logger = logging.getLogger(__name__)
 
 
-def list_media() -> List[Dict]:
-    """Get a list of all media entries from the database.
+def list_media(limit: Optional[int] = 50, offset: Optional[int] = 0) -> Dict:
+    """Get a paginated list of media entries from the database.
+
+    Args:
+        limit: Maximum number of entries to return (default 50)
+        offset: Number of entries to skip (default 0)
 
     Returns:
-        List[Dict]: List of media entries with their properties
+        Dict containing:
+            items: List of media entries with their properties
+            total: Total number of media entries
+            limit: Limit used for query
+            offset: Offset used for query
     """
-    return [
+    # Get total count
+    total = Media.objects.count()
+
+    # Get paginated results
+    items = [
         {
             "id": media.id,
             "name": media.name,
@@ -21,8 +33,10 @@ def list_media() -> List[Dict]:
             "created_at": media.created_at.isoformat(),
             "updated_at": media.updated_at.isoformat(),
         }
-        for media in Media.objects.all()
+        for media in Media.objects.all()[offset : offset + limit]
     ]
+
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 def add_media(name: str, source_ids: Optional[List[int]] = None) -> Media:

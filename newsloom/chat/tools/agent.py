@@ -1,27 +1,42 @@
 """Functions implementing database operations through Claude API."""
 
 import logging
-from typing import Dict, List, Literal, Optional
+from typing import Dict, Literal, Optional
 
 from agents.models import Agent
 
 logger = logging.getLogger(__name__)
 
 
-def list_agents(is_active: Optional[bool] = None) -> List[Dict]:
-    """Get a list of all agent entries from the database.
+def list_agents(
+    is_active: Optional[bool] = None,
+    limit: Optional[int] = 50,
+    offset: Optional[int] = 0,
+) -> Dict:
+    """Get a paginated list of agent entries from the database.
 
     Args:
         is_active: Optional flag to filter agents by active status
+        limit: Maximum number of entries to return (default 50)
+        offset: Number of entries to skip (default 0)
 
     Returns:
-        List[Dict]: List of agent entries with their properties
+        Dict containing:
+            items: List of agent entries with their properties
+            total: Total number of agents matching the filter
+            limit: Limit used for query
+            offset: Offset used for query
     """
+    # Build base queryset
     queryset = Agent.objects.all()
     if is_active is not None:
         queryset = queryset.filter(is_active=is_active)
 
-    return [
+    # Get total count
+    total = queryset.count()
+
+    # Get paginated results
+    items = [
         {
             "id": agent.id,
             "name": agent.name,
@@ -33,8 +48,10 @@ def list_agents(is_active: Optional[bool] = None) -> List[Dict]:
             "created_at": agent.created_at.isoformat(),
             "updated_at": agent.updated_at.isoformat(),
         }
-        for agent in queryset
+        for agent in queryset[offset : offset + limit]
     ]
+
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 def add_agent(

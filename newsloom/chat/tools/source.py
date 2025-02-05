@@ -1,20 +1,32 @@
 """Functions implementing database operations through Claude API."""
 
 import logging
-from typing import Dict, List, Literal, Optional
+from typing import Dict, Literal, Optional
 
 from sources.models import Source
 
 logger = logging.getLogger(__name__)
 
 
-def list_sources() -> List[Dict]:
-    """Get a list of all source entries from the database.
+def list_sources(limit: Optional[int] = 50, offset: Optional[int] = 0) -> Dict:
+    """Get a paginated list of source entries from the database.
+
+    Args:
+        limit: Maximum number of entries to return (default 50)
+        offset: Number of entries to skip (default 0)
 
     Returns:
-        List[Dict]: List of source entries with their properties
+        Dict containing:
+            items: List of source entries with their properties
+            total: Total number of source entries
+            limit: Limit used for query
+            offset: Offset used for query
     """
-    return [
+    # Get total count
+    total = Source.objects.count()
+
+    # Get paginated results
+    items = [
         {
             "id": source.id,
             "name": source.name,
@@ -23,8 +35,10 @@ def list_sources() -> List[Dict]:
             "created_at": source.created_at.isoformat(),
             "updated_at": source.updated_at.isoformat(),
         }
-        for source in Source.objects.all()
+        for source in Source.objects.all()[offset : offset + limit]
     ]
+
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 def add_source(
