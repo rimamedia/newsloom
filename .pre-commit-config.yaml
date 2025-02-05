@@ -57,13 +57,3 @@ repos:
                 .*/migrations/.*\.py$|
                 docs/source/conf\.py$
             )
-
--   repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-    -   id: isort
-        exclude: |
-            (?x)^(
-                .*/migrations/.*\.py$|
-                docs/source/conf\.py$
-            )
