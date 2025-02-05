@@ -28,7 +28,48 @@ components:
       scheme: bearer
       bearerFormat: Token
 
+  parameters:
+    PageNumber:
+      name: page
+      in: query
+      description: Page number for pagination
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    PageSize:
+      name: page_size
+      in: query
+      description: Number of items per page
+      required: false
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+
   schemas:
+    PaginatedResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Total number of items across all pages
+        next:
+          type: string
+          nullable: true
+          description: URL to fetch the next page
+        previous:
+          type: string
+          nullable: true
+          description: URL to fetch the previous page
+        results:
+          type: array
+          description: List of items for the current page
+          items:
+            type: object
+
     LoginRequest:
       type: object
       required:
@@ -372,15 +413,23 @@ paths:
       summary: List all users
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of users
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
 
   /api/chats/:
     get:
@@ -389,15 +438,23 @@ paths:
       summary: List user's chats
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of chats
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Chat'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Chat'
     post:
       tags:
         - Chats
@@ -425,15 +482,23 @@ paths:
       summary: List user's chat messages
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of messages
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ChatMessage'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ChatMessage'
     post:
       tags:
         - Messages
@@ -461,15 +526,23 @@ paths:
       summary: List all streams
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of streams
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Stream'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Stream'
     post:
       tags:
         - Streams
@@ -524,6 +597,8 @@ paths:
       security:
         - TokenAuth: []
       parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
         - name: stream
           in: query
           schema:
@@ -535,9 +610,14 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/StreamLog'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamLog'
 
   /api/stream-stats/:
     get:
@@ -546,15 +626,23 @@ paths:
       summary: List stream execution statistics
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of stream execution stats
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/StreamExecutionStats'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamExecutionStats'
 
   /api/sources/:
     get:
@@ -563,15 +651,23 @@ paths:
       summary: List all sources
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of sources
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Source'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Source'
     post:
       tags:
         - Sources
@@ -599,15 +695,23 @@ paths:
       summary: List all news
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of news
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/News'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/News'
     post:
       tags:
         - News
@@ -635,15 +739,23 @@ paths:
       summary: List all docs
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of docs
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Doc'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Doc'
     post:
       tags:
         - Docs
@@ -672,6 +784,8 @@ paths:
       security:
         - TokenAuth: []
       parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
         - name: active_only
           in: query
           schema:
@@ -683,9 +797,14 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Agent'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Agent'
     post:
       tags:
         - Agents
@@ -713,15 +832,23 @@ paths:
       summary: List all media
       security:
         - TokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
           description: List of media
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Media'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Media'
     post:
       tags:
         - Media
@@ -820,6 +947,8 @@ paths:
       security:
         - TokenAuth: []
       parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
         - name: media
           in: query
           schema:
@@ -831,9 +960,14 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Examples'
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Examples'
     post:
       tags:
         - Examples
