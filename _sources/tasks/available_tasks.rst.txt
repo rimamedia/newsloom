@@ -150,15 +150,19 @@ A task for creating Google Docs from documents in the database. Features:
 * Error handling and logging
 
 .. important::
-   This task requires:
+   This task requires the following environment variables:
    
-   * A Google Cloud service account credentials file (credentials.json)
-   * A Google Drive folder to store created documents
+   * GOOGLE_PROJECT_ID: Your Google Cloud project ID
+   * GOOGLE_PRIVATE_KEY_ID: Service account private key ID
+   * GOOGLE_PRIVATE_KEY: Service account private key
+   * GOOGLE_CLIENT_EMAIL: Service account client email
+   * GOOGLE_CLIENT_ID: Service account client ID
+   * GOOGLE_CLIENT_X509_CERT_URL: Service account cert URL
 
 Required Setup:
     1. Set up a Google Cloud project and create a service account
-    2. Download the service account credentials as credentials.json
-    3. Create a Google Drive folder and share it with the service account
+    2. Configure environment variables with service account details
+    3. Create a Google Drive folder and share it with the service account email
     4. Create a Stream in the admin panel
     5. Configure the stream with the settings below
 
@@ -168,7 +172,6 @@ Configuration example:
 
     {
         "folder_id": "your-folder-id",
-        "service_account_path": "credentials.json",
         "template_id": "your-template-doc-id"  # Optional: only if you want to use a template
     }
 
