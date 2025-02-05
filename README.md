@@ -13,39 +13,48 @@ NewLoom is a comprehensive news monitoring, aggregation, and publishing platform
 - **Content Processing**: Customizable processing pipelines for content transformation
 - **Multi-Channel Publishing**: Automated distribution of processed content to various platforms
 
-The system leverages Django's powerful ORM and admin interface for configuration management, while a built-in scheduler handles task execution. This combination enables reliable handling of large-scale news monitoring and distribution workflows.
-
-## Key Components
-
-- **Source Management**: Configure and manage multiple news sources (websites, RSS feeds, Telegram channels)
-- **Stream Processing**: Define custom processing workflows using stream tasks
-- **Content Storage**: Efficient storage and indexing of news content using Django models
-- **Publishing System**: Automated content distribution to configured channels
-- **Monitoring Dashboard**: Track processing status and system health through Django admin
-
 ## Architecture
 
-NewLoom is built on two main pillars:
+NewLoom is built on three main pillars:
 
-1. **Django Backend**: Handles data models, API endpoints, and admin interface
-2. **Stream Scheduler**: Manages task scheduling and execution
-3. **Playwright Integration**: Enables reliable scraping of JavaScript-heavy websites
+1. **Django Backend**
+   - Core data models and business logic
+   - REST API endpoints using Django REST framework
+   - WebSocket support via Django Channels
+   - Admin interface for configuration
 
-## Features
+2. **Stream Scheduler**
+   - Custom task scheduling and execution
+   - Configurable processing pipelines
+   - Error handling and retry mechanisms
+   - Execution statistics tracking
 
-- Multiple source type support (Web, Telegram, RSS, etc.)
-- Configurable stream scheduling
-- Built-in task scheduling and execution
-- Playwright support for JavaScript-heavy websites
-- Automatic content extraction and storage
+3. **Integration Layer**
+   - Playwright for JavaScript-heavy websites
+   - Telegram API integration
+   - Slack bot integration
+   - Articlean content processing
 
 ## Prerequisites
 
 - Python 3.8+
 - Django 5.1.3
+- PostgreSQL (recommended) or SQLite
 - Playwright
-- PostgreSQL
-- Redis (optional, for caching)
+- Additional requirements:
+  - Django Channels (for WebSocket support)
+  - Django REST framework (for API endpoints)
+  - Django CORS headers (for cross-origin support)
+
+## Features
+
+- Multiple source type support (Web, Telegram, RSS, etc.)
+- Real-time WebSocket communication
+- RESTful API endpoints
+- Configurable stream scheduling
+- Built-in task scheduling and execution
+- Playwright support for JavaScript-heavy websites
+- Automatic content extraction and storage
 
 ## Installation
 
@@ -72,14 +81,66 @@ NewLoom is built on two main pillars:
    playwright install
    ```
 
-5. Run migrations:
+5. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+6. Run migrations:
    ```bash
    python manage.py migrate
    ```
 
-6. Create a superuser:
+7. Create a superuser:
    ```bash
    python manage.py createsuperuser
+   ```
+
+## Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+1. Django Settings:
+   - DJANGO_SECRET_KEY
+   - DEBUG
+   - ALLOWED_HOSTS
+
+2. Database Configuration:
+   - DB_NAME
+   - DB_USER
+   - DB_PASSWORD
+   - DB_HOST
+   - DB_PORT
+
+3. Security Settings:
+   - CSRF_TRUSTED_ORIGINS
+   - CSRF_COOKIE_SECURE
+   - CSRF_USE_SESSIONS
+
+4. Integration Settings (as needed):
+   - AWS credentials
+   - Articlean API settings
+   - Slack/Telegram tokens
+
+### CORS Configuration
+
+1. Add allowed origins in settings.py or .env:
+   ```python
+   CORS_ALLOWED_ORIGINS = [
+       "http://localhost:8000",
+       "http://127.0.0.1:8000",
+   ]
+   ```
+
+2. Configure CORS middleware:
+   ```python
+   MIDDLEWARE = [
+       'corsheaders.middleware.CorsMiddleware',
+       # ... other middleware
+   ]
    ```
 
 ## Running the Project
@@ -93,6 +154,22 @@ NewLoom is built on two main pillars:
    ```bash
    python manage.py run_streams
    ```
+
+## API Documentation
+
+The API documentation is available at:
+- Swagger UI: `/api/docs/`
+- ReDoc: `/api/redoc/`
+
+Authentication is required for most endpoints using:
+- Token Authentication
+- Session Authentication
+
+## WebSocket Support
+
+WebSocket endpoints are available for real-time updates:
+- Chat: `ws://localhost:8000/ws/chat/`
+- Stream Status: `ws://localhost:8000/ws/streams/`
 
 ## Docker Deployment
 
@@ -124,121 +201,26 @@ NewLoom is built on two main pillars:
 2. Click "Add Stream"
 3. Configure the stream:
    - Name
-   - Stream Type (sitemap_news, playwright_link_extractor, etc.)
-   - Source (select from previously created sources)
+   - Stream Type
+   - Source
    - Frequency
    - Configuration (JSON format)
 
-### Stream Configuration Examples
-
-#### Sitemap News Parser Configuration
-```json
-{
-    "sitemap_url": "https://example.com/sitemap.xml",
-    "max_links": 100,
-    "follow_next": false
-}
-```
-
-#### Playwright Link Extractor Configuration
-```json
-{
-    "url": "https://example.com",
-    "link_selector": "article a.headline",
-    "max_links": 100
-}
-```
-
-#### RSS Feed Parser Configuration
-```json
-{
-    "feed_url": "https://example.com/feed.xml",
-    "max_entries": 100
-}
-```
-
-## Monitoring
-
-- Stream status and logs can be viewed in the Django admin interface
-- Stream execution logs are stored in the StreamLog model
-- Check the console output of the run_streams command for real-time processing information
-
 ## Error Handling
 
-- Failed tasks are automatically logged in the StreamLog model
-- Streams with failed tasks are marked with 'failed' status
-- The scheduler will attempt to retry failed tasks based on configuration
-
-## Development Notes
-
-1. Add new task types:
-   - Create a new task function in streams/tasks/
-   - Add the task type to Stream.TYPE_CHOICES
-   - Create a configuration schema in streams/schemas/
-   - Register the task in TASK_MAPPING in streams/tasks/__init__.py
-
-2. Custom task implementation should include:
-   - Task parameters (stream_id, configuration)
-   - Task function implementation
-   - Proper error handling
-   - Task completion logging
+- Failed tasks are automatically logged
+- Configurable retry mechanisms
+- Detailed error reporting in admin interface
+- Stream execution statistics tracking
 
 ## Security Notes
 
-- The project includes Django's default security middleware
-- Ensure to update SECRET_KEY and set DEBUG=False in production
-- Configure proper database credentials in production
-- Use environment variables for sensitive configuration
-- Implement proper authentication for production deployment
-- Regular security updates for all dependencies
-- Proper rate limiting for web scraping tasks
-- Secure storage of sensitive configuration data
-
-## Best Practices
-
-1. Source Management:
-   - Verify source URLs before creation
-   - Set appropriate update frequencies
-   - Monitor source reliability
-
-2. Stream Configuration:
-   - Start with conservative scraping limits
-   - Test configurations in development first
-   - Monitor resource usage
-
-3. Task Scheduling:
-   - Avoid overlapping task schedules
-   - Set reasonable retry intervals
-   - Monitor task completion times
-
-4. Error Management:
-   - Regular log review
-   - Set up error notifications
-   - Document error resolution steps
-
-## License
-
-MIT License
-
-Copyright (c) 2024 RimaMedia
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+- Set DEBUG=False in production
+- Configure proper CORS settings
+- Use HTTPS in production
+- Set secure cookie settings
+- Configure CSRF protection
+- Use environment variables for sensitive data
 
 ## Contributing
 
@@ -248,69 +230,12 @@ SOFTWARE.
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## License
+
+MIT License - see LICENSE file for details
+
 ## Contact
 
 RimaMedia - [@rimamedia](https://github.com/rimamedia)
 
 Project Link: [https://github.com/rimamedia/newsloom](https://github.com/rimamedia/newsloom)
-
-This README provides a basic guide to get started with NewLoom. For production deployment, additional configuration and security measures should be implemented based on specific requirements and environment.
-
-## Development Setup
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/rimamedia/newsloom.git
-   cd newsloom
-   ```
-
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Unix
-   venv\Scripts\activate     # Windows
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Install Playwright browsers:
-   ```bash
-   playwright install
-   ```
-
-5. Set up environment variables:
-   - Copy `.env.example` to `.env`
-   - Update variables as needed
-   ```bash
-   cp .env.example .env
-   ```
-
-6. Run migrations:
-   ```bash
-   python manage.py migrate
-   ```
-
-7. Create a superuser:
-   ```bash
-   python manage.py createsuperuser
-   ```
-
-8. Start development servers:
-   ```bash
-   # Terminal 1: Django server
-   python manage.py runserver
-
-   # Terminal 2: Stream scheduler
-   python manage.py run_streams
-   ```
-
-9. Access the application:
-   - Admin interface: http://localhost:8000/admin
-   - Home page: http://localhost:8000
-
-For more detailed information, refer to:
-- [Django Documentation](https://docs.djangoproject.com/)
-- [Playwright Python Documentation](https://playwright.dev/python/)

@@ -4,17 +4,36 @@ Creating Stream Schemas
 Schema Development Guide
 ---------------------
 
-NewLoom uses Pydantic for schema validation. Here's how to create and implement new schemas:
+NewLoom uses Pydantic v2 for schema validation. All stream configuration schemas inherit from a base configuration class that provides common functionality.
+
+Base Configuration
+---------------
+
+All stream schemas inherit from BaseConfig:
+
+.. code-block:: python
+
+    from pydantic import BaseModel
+
+    class BaseConfig(BaseModel):
+        """Base configuration class for all stream configurations."""
+        
+        model_config = {
+            "extra": "ignore"  # Allow but ignore any extra fields
+        }
 
 Basic Schema Structure
 -------------------
 
+Create new schemas by inheriting from BaseConfig:
+
 .. code-block:: python
 
-    from pydantic import BaseModel, HttpUrl, Field
+    from pydantic import HttpUrl, Field
     from typing import Optional, Dict, List
+    from .base_model import BaseConfig
 
-    class MyNewSchema(BaseModel):
+    class MyNewSchema(BaseConfig):
         """Schema description"""
         
         # Required fields
@@ -23,9 +42,6 @@ Basic Schema Structure
         
         # Optional fields
         custom_field: Optional[str] = None
-        
-        class Config:
-            extra = 'forbid'  # Prevent additional fields
 
 Schema Components
 --------------
@@ -41,21 +57,22 @@ Common field types:
 - ``Dict``: For nested configurations
 - ``List``: For arrays
 - ``bool``: For flags
+- ``Optional``: For optional fields
 
 2. Validation
 ~~~~~~~~~~~
 
-Add field validators:
+Add field validators using Pydantic v2 syntax:
 
 .. code-block:: python
 
     from pydantic import field_validator
     
-    class MySchema(BaseModel):
+    class MySchema(BaseConfig):
         field_name: str
         
         @field_validator('field_name')
-        def validate_field(cls, v):
+        def validate_field(cls, v: str) -> str:
             if not v.startswith('valid_'):
                 raise ValueError("Field must start with 'valid_'")
             return v
@@ -63,20 +80,20 @@ Add field validators:
 3. Configuration
 ~~~~~~~~~~~~~
 
-Set schema configuration:
+Schema configuration is handled through model_config:
 
 .. code-block:: python
 
-    class Config:
-        extra = 'forbid'  # Prevent additional fields
-        arbitrary_types_allowed = True  # Allow custom types
-        json_schema_extra = {
-            "examples": [
-                {
-                    "url": "https://example.com",
-                    "max_items": 100
-                }
-            ]
+    class MySchema(BaseConfig):
+        model_config = {
+            "json_schema_extra": {
+                "examples": [
+                    {
+                        "url": "https://example.com",
+                        "max_items": 100
+                    }
+                ]
+            }
         }
 
 Registering Schemas
@@ -124,4 +141,4 @@ Best Practices
 3. Testing
    - Test valid configurations
    - Test invalid configurations
-   - Test edge cases 
+   - Test edge cases
