@@ -23,6 +23,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+load_dotenv()
+
 
 class BedrockProcessor:
     """Handles interactions with Amazon Bedrock using the Anthropic SDK."""
