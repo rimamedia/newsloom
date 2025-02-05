@@ -233,15 +233,48 @@
 </section>
 <section id="data-model">
 <h3>Data Model<a class="headerlink" href="#data-model" title="Link to this heading">¶</a></h3>
-<dl class="simple">
+<dl>
 <dt>Chat Model Extensions:</dt><dd><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">slack_channel_id</span></code>: ID of the Slack channel</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">slack_thread_ts</span></code>: Timestamp of the thread’s parent message</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">title</span></code>: Auto-generated chat title based on first message</p></li>
 </ul>
 </dd>
 <dt>ChatMessage Model Extensions:</dt><dd><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">slack_ts</span></code>: Timestamp of the individual message</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">chat</span></code>: Reference to the parent Chat instance</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">response</span></code>: Bot’s response to the message</p></li>
 </ul>
+</dd>
+<dt>ChatMessageDetail Model:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">chat_message</span></code>: Reference to the parent ChatMessage</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">chat</span></code>: Reference to the parent Chat (for efficient querying)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sequence_number</span></code>: Order of the message in conversation flow</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">role</span></code>: Message sender role (user/assistant)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">content_type</span></code>: Type of content (text/tool_call/tool_result)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">content</span></code>: Actual message content (JSON)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tool_name</span></code>: Name of the tool if content_type is tool_call</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tool_id</span></code>: ID of the tool call for linking calls with results</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code>: When this detail was created</p></li>
+</ul>
+</dd>
+<dt>Message Flow Details:</dt><dd><ol class="arabic">
+<li><p>User Message Processing:
+- Creates ChatMessage record
+- Generates ChatMessageDetail records for:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Initial user message</p></li>
+<li><p>Tool calls and results</p></li>
+<li><p>Final assistant response</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Thread Context:
+- All ChatMessageDetails are ordered by sequence_number
+- Tool calls and results are linked by tool_id
+- Complete conversation flow is preserved</p></li>
+</ol>
 </dd>
 </dl>
 </section>

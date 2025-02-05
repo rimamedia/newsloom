@@ -539,9 +539,11 @@ to the database.</p>
 <p>A task for processing articles through the Articlean service. Features:</p>
 <ul class="simple">
 <li><p>Extracts article content and title from URLs</p></li>
-<li><p>Automatic error handling and retry logic</p></li>
-<li><p>Batch processing support</p></li>
-<li><p>Transaction-safe database updates</p></li>
+<li><p>Comprehensive error handling with detailed logging</p></li>
+<li><p>Database transaction safety for atomic updates</p></li>
+<li><p>Automatic filtering of unprocessed articles</p></li>
+<li><p>Request timeout protection (30 seconds)</p></li>
+<li><p>Source-specific article processing</p></li>
 </ul>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
@@ -551,12 +553,44 @@ to the database.</p>
 <li><p>ARTICLEAN_API_URL: Endpoint URL for the Articlean service</p></li>
 </ul>
 </div>
-<dl class="simple">
+<dl>
 <dt>Required Setup:</dt><dd><ol class="arabic simple">
 <li><p>Set up the required environment variables in your .env file</p></li>
 <li><p>Create a Stream in the admin panel</p></li>
 <li><p>Configure the stream (no additional configuration required)</p></li>
 </ol>
+</dd>
+<dt>Error Handling:</dt><dd><p>The task implements comprehensive error handling:</p>
+<ul class="simple">
+<li><p>Environment variable validation</p></li>
+<li><p>Network request timeouts (30 seconds)</p></li>
+<li><p>API response validation</p></li>
+<li><p>JSON parsing errors</p></li>
+<li><p>Database transaction errors</p></li>
+<li><p>Detailed error logging with context</p></li>
+</ul>
+</dd>
+<dt>Logging:</dt><dd><p>Extensive logging is implemented at various levels:</p>
+<ul class="simple">
+<li><p>INFO: Processing status, successful operations</p></li>
+<li><p>ERROR: API failures, network issues, database errors</p></li>
+<li><p>DEBUG: Request/response details, data parsing</p></li>
+</ul>
+</dd>
+<dt>Return Value:</dt><dd><p>The task returns execution statistics:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;processed_count&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>  <span class="c1"># Successfully processed articles</span>
+    <span class="s2">&quot;failed_count&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>     <span class="c1"># Failed article processing attempts</span>
+    <span class="s2">&quot;total_count&quot;</span><span class="p">:</span> <span class="nb">int</span>       <span class="c1"># Total articles attempted</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt>Article Selection:</dt><dd><p>The task processes articles that meet these criteria:</p>
+<ul class="simple">
+<li><p>Text field is NULL or empty (“”)</p></li>
+<li><p>Belongs to the stream’s source (if source is configured)</p></li>
+</ul>
 </dd>
 </dl>
 </section>

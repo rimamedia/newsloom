@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>WebSocket API &#8212; NewsLoom  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=0f75aaca" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="REST API Endpoints" href="rest_endpoints.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">NewsLoom</a></h1>
+
+
+
+<p class="blurb">A Django-based web scraping and content aggregation system</p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=rimamedia&repo=newsloom&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../agents/index.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cases/index.html">Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chat/slack_integration.html">Slack Integration</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="authentication.html">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html">REST API Endpoints</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">WebSocket API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#api-versioning">API Versioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#rate-limiting">Rate Limiting</a></li>
+</ul>
+</li>
+</ul>
+
+
+<hr />
+<ul>
+    
+    <li class="toctree-l1"><a href="https://docs.djangoproject.com/">Django Documentation</a></li>
+    
+    <li class="toctree-l1"><a href="https://playwright.dev/python/">Playwright Documentation</a></li>
+    
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">API Documentation</a><ul>
+      <li>Previous: <a href="rest_endpoints.html" title="previous chapter">REST API Endpoints</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="websocket-api">
+<h1>WebSocket API<a class="headerlink" href="#websocket-api" title="Link to this heading">¶</a></h1>
+<p>NewLoom provides real-time updates through WebSocket connections using Django Channels. This section documents the available WebSocket endpoints and their usage.</p>
+<section id="authentication">
+<h2>Authentication<a class="headerlink" href="#authentication" title="Link to this heading">¶</a></h2>
+<p>WebSocket connections require authentication. Authentication is handled through URL parameters:</p>
+<ul class="simple">
+<li><p>Token Authentication: <code class="docutils literal notranslate"><span class="pre">?token=&lt;your-token&gt;</span></code></p></li>
+<li><p>Session Authentication: Uses Django session cookie (for browser-based access)</p></li>
+</ul>
+</section>
+<section id="connection-urls">
+<h2>Connection URLs<a class="headerlink" href="#connection-urls" title="Link to this heading">¶</a></h2>
+<section id="chat-websocket">
+<h3>Chat WebSocket<a class="headerlink" href="#chat-websocket" title="Link to this heading">¶</a></h3>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ws://localhost:8000/ws/chat/?token=&lt;your-token&gt;
+</pre></div>
+</div>
+<dl class="simple">
+<dt>Features:</dt><dd><ul class="simple">
+<li><p>Real-time chat messages</p></li>
+<li><p>Message status updates</p></li>
+<li><p>Typing indicators</p></li>
+<li><p>Error notifications</p></li>
+</ul>
+</dd>
+</dl>
+<p>Message Formats:</p>
+<ol class="arabic simple">
+<li><p>Send Message:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;message&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Your message here&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;chat_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Receive Message:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;message&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">456</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Message content&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;user&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;username&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-02-05T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;chat_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Typing Indicator:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;typing&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;chat_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;user&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;username&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;is_typing&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="stream-status-websocket">
+<h3>Stream Status WebSocket<a class="headerlink" href="#stream-status-websocket" title="Link to this heading">¶</a></h3>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ws://localhost:8000/ws/streams/?token=&lt;your-token&gt;
+</pre></div>
+</div>
+<dl class="simple">
+<dt>Features:</dt><dd><ul class="simple">
+<li><p>Real-time stream status updates</p></li>
+<li><p>Execution statistics</p></li>
+<li><p>Error notifications</p></li>
+</ul>
+</dd>
+</dl>
+<p>Message Formats:</p>
+<ol class="arabic simple">
+<li><p>Stream Status Update:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;status_update&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;stream_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-02-05T12:00:00Z&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Execution Statistics:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;execution_stats&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;stream_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;stats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;processed_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;failed_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;total_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">52</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;execution_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;00:05:23&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Error Notification:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;stream_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error description&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ERROR_CODE&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-02-05T12:00:00Z&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="error-handling">
+<h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Connection Errors:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;connection_error&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authentication failed&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Message Format Errors:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;invalid_format&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invalid message format&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Permission Errors:</p></li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;permission_denied&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Not authorized for this chat&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="connection-management">
+<h2>Connection Management<a class="headerlink" href="#connection-management" title="Link to this heading">¶</a></h2>
+<section id="heartbeat">
+<h3>1. Heartbeat<a class="headerlink" href="#heartbeat" title="Link to this heading">¶</a></h3>
+<p>Send periodic heartbeat to keep connection alive:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;heartbeat&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="disconnection">
+<h3>2. Disconnection<a class="headerlink" href="#disconnection" title="Link to this heading">¶</a></h3>
+<p>Clean disconnection message:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;disconnect&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt>Connection Management:</dt><dd><ul class="simple">
+<li><p>Implement exponential backoff for reconnection attempts</p></li>
+<li><p>Handle connection errors gracefully</p></li>
+<li><p>Send periodic heartbeats</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Message Handling:</dt><dd><ul class="simple">
+<li><p>Validate message format before sending</p></li>
+<li><p>Handle all message types appropriately</p></li>
+<li><p>Implement error handling for failed messages</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Performance:</dt><dd><ul class="simple">
+<li><p>Limit subscription to necessary channels</p></li>
+<li><p>Implement message batching for bulk updates</p></li>
+<li><p>Handle reconnection efficiently</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+<section id="example-usage">
+<h2>Example Usage<a class="headerlink" href="#example-usage" title="Link to this heading">¶</a></h2>
+<p>JavaScript WebSocket Client:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">chatSocket</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span>
+<span class="w">    </span><span class="s1">&#39;ws://&#39;</span>
+<span class="w">    </span><span class="o">+</span><span class="w"> </span><span class="nb">window</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">host</span>
+<span class="w">    </span><span class="o">+</span><span class="w"> </span><span class="s1">&#39;/ws/chat/?token=&#39;</span>
+<span class="w">    </span><span class="o">+</span><span class="w"> </span><span class="nx">yourAuthToken</span>
+<span class="p">);</span>
+
+<span class="nx">chatSocket</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+<span class="w">    </span><span class="k">switch</span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;message&#39;</span><span class="o">:</span>
+<span class="w">            </span><span class="nx">handleNewMessage</span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">message</span><span class="p">);</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;typing&#39;</span><span class="o">:</span>
+<span class="w">            </span><span class="nx">handleTypingIndicator</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s1">&#39;error&#39;</span><span class="o">:</span>
+<span class="w">            </span><span class="nx">handleError</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="nx">chatSocket</span><span class="p">.</span><span class="nx">onclose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">&#39;Chat socket closed unexpectedly&#39;</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="c1">// Send a message</span>
+<span class="nx">chatSocket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span>
+<span class="w">    </span><span class="s1">&#39;type&#39;</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;message&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;content&#39;</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Hello, World!&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;chat_id&#39;</span><span class="o">:</span><span class="w"> </span><span class="mf">123</span>
+<span class="p">}));</span>
+</pre></div>
+</div>
+</section>
+<section id="security-considerations">
+<h2>Security Considerations<a class="headerlink" href="#security-considerations" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt>Authentication:</dt><dd><ul class="simple">
+<li><p>Always use secure tokens</p></li>
+<li><p>Implement token expiration</p></li>
+<li><p>Validate user permissions</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Data Validation:</dt><dd><ul class="simple">
+<li><p>Validate all incoming messages</p></li>
+<li><p>Sanitize user input</p></li>
+<li><p>Implement rate limiting</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Connection Security:</dt><dd><ul class="simple">
+<li><p>Use WSS (WebSocket Secure) in production</p></li>
+<li><p>Implement proper error handling</p></li>
+<li><p>Monitor for suspicious activity</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, RimaMedia.
+      
+      |
+      <a href="../_sources/api/websockets.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

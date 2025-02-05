@@ -99,14 +99,30 @@
 <h1>Creating Stream Schemas<a class="headerlink" href="#creating-stream-schemas" title="Link to this heading">¶</a></h1>
 <section id="schema-development-guide">
 <h2>Schema Development Guide<a class="headerlink" href="#schema-development-guide" title="Link to this heading">¶</a></h2>
-<p>NewLoom uses Pydantic for schema validation. Here’s how to create and implement new schemas:</p>
+<p>NewLoom uses Pydantic v2 for schema validation. All stream configuration schemas inherit from a base configuration class that provides common functionality.</p>
+</section>
+<section id="base-configuration">
+<h2>Base Configuration<a class="headerlink" href="#base-configuration" title="Link to this heading">¶</a></h2>
+<p>All stream schemas inherit from BaseConfig:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base configuration class for all stream configurations.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;extra&quot;</span><span class="p">:</span> <span class="s2">&quot;ignore&quot;</span>  <span class="c1"># Allow but ignore any extra fields</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
 </section>
 <section id="basic-schema-structure">
 <h2>Basic Schema Structure<a class="headerlink" href="#basic-schema-structure" title="Link to this heading">¶</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">HttpUrl</span><span class="p">,</span> <span class="n">Field</span>
+<p>Create new schemas by inheriting from BaseConfig:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">HttpUrl</span><span class="p">,</span> <span class="n">Field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseConfig</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">MyNewSchema</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyNewSchema</span><span class="p">(</span><span class="n">BaseConfig</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema description&quot;&quot;&quot;</span>
 
     <span class="c1"># Required fields</span>
@@ -115,9 +131,6 @@
 
     <span class="c1"># Optional fields</span>
     <span class="n">custom_field</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
-        <span class="n">extra</span> <span class="o">=</span> <span class="s1">&#39;forbid&#39;</span>  <span class="c1"># Prevent additional fields</span>
 </pre></div>
 </div>
 </section>
@@ -133,18 +146,19 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">Dict</span></code>: For nested configurations</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">List</span></code>: For arrays</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">bool</span></code>: For flags</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Optional</span></code>: For optional fields</p></li>
 </ul>
 </section>
 <section id="validation">
 <h3>2. Validation<a class="headerlink" href="#validation" title="Link to this heading">¶</a></h3>
-<p>Add field validators:</p>
+<p>Add field validators using Pydantic v2 syntax:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">MySchema</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MySchema</span><span class="p">(</span><span class="n">BaseConfig</span><span class="p">):</span>
     <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s1">&#39;field_name&#39;</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">validate_field</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_field</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;valid_&#39;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Field must start with &#39;valid_&#39;&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">v</span>
@@ -153,17 +167,17 @@
 </section>
 <section id="configuration">
 <h3>3. Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h3>
-<p>Set schema configuration:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
-    <span class="n">extra</span> <span class="o">=</span> <span class="s1">&#39;forbid&#39;</span>  <span class="c1"># Prevent additional fields</span>
-    <span class="n">arbitrary_types_allowed</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Allow custom types</span>
-    <span class="n">json_schema_extra</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;examples&quot;</span><span class="p">:</span> <span class="p">[</span>
-            <span class="p">{</span>
-                <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;max_items&quot;</span><span class="p">:</span> <span class="mi">100</span>
-            <span class="p">}</span>
-        <span class="p">]</span>
+<p>Schema configuration is handled through model_config:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MySchema</span><span class="p">(</span><span class="n">BaseConfig</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;json_schema_extra&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;examples&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;max_items&quot;</span><span class="p">:</span> <span class="mi">100</span>
+                <span class="p">}</span>
+            <span class="p">]</span>
+        <span class="p">}</span>
     <span class="p">}</span>
 </pre></div>
 </div>

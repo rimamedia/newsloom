@@ -64,6 +64,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../chat/slack_integration.html">Slack Integration</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="authentication.html">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html">REST API Endpoints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html">WebSocket API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-versioning">API Versioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
 </ul>
 </li>
 </ul>
@@ -104,8 +109,9 @@
             
   <section id="api-documentation">
 <h1>API Documentation<a class="headerlink" href="#api-documentation" title="Link to this heading">¶</a></h1>
-<p>This section covers the API endpoints available in the Newsloom project.</p>
+<p>This section covers the API endpoints available in the Newsloom project. NewLoom provides both RESTful HTTP endpoints and WebSocket connections for real-time updates.</p>
 <div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="authentication.html">Authentication</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="authentication.html#login">Login</a></li>
@@ -116,8 +122,58 @@
 <li class="toctree-l2"><a class="reference internal" href="authentication.html#security-considerations">Security Considerations</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="rest_endpoints.html">REST API Endpoints</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#common-headers">Common Headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#pagination">Pagination</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#sources-api">Sources API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#streams-api">Streams API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#news-api">News API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#error-responses">Error Responses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest_endpoints.html#rate-limiting">Rate Limiting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="websockets.html">WebSocket API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html#connection-urls">Connection URLs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html#error-handling">Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html#connection-management">Connection Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html#example-usage">Example Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html#security-considerations">Security Considerations</a></li>
+</ul>
+</li>
 </ul>
 </div>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Authentication
+- See <a class="reference internal" href="authentication.html"><span class="doc">Authentication</span></a> for obtaining API tokens
+- Required for both REST and WebSocket endpoints</p></li>
+<li><p>REST API
+- RESTful endpoints using Django REST Framework
+- JSON request/response format
+- Token or session authentication
+- See <a class="reference internal" href="rest_endpoints.html"><span class="doc">REST API Endpoints</span></a> for detailed documentation</p></li>
+<li><p>WebSocket API
+- Real-time updates using Django Channels
+- JSON message format
+- Supports chat and stream status updates
+- See <a class="reference internal" href="websockets.html"><span class="doc">WebSocket API</span></a> for detailed documentation</p></li>
+</ol>
+</section>
+<section id="api-versioning">
+<h2>API Versioning<a class="headerlink" href="#api-versioning" title="Link to this heading">¶</a></h2>
+<p>The current API version is v1. All endpoints are prefixed with <code class="docutils literal notranslate"><span class="pre">/api/v1/</span></code>.</p>
+</section>
+<section id="rate-limiting">
+<h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>REST API: 1000 requests per hour for authenticated users</p></li>
+<li><p>WebSocket: No strict message limit, but implement reasonable client-side throttling</p></li>
+</ul>
+</section>
 </section>
 
 
