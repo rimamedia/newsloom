@@ -1,6 +1,6 @@
 from agents.models import Agent
 from chat.models import Chat, ChatMessage
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
 from rest_framework import serializers
@@ -12,6 +12,27 @@ from streams.models import (
     TelegramDocPublishLog,
     TelegramPublishLog,
 )
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        """Meta configuration for RegisterSerializer."""
+
+        model = get_user_model()
+        fields = ("id", "username", "password", "email", "first_name", "last_name")
+        extra_kwargs = {"password": {"write_only": True}, "email": {"required": True}}
+
+    def create(self, validated_data):
+        user = get_user_model().objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            first_name=validated_data.get("first_name", ""),
+            last_name=validated_data.get("last_name", ""),
+        )
+        return user
 
 
 class LoginSerializer(serializers.Serializer):

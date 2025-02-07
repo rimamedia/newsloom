@@ -1,6 +1,48 @@
 Authentication
 =============
 
+Registration
+-----------
+
+.. http:post:: /api/register/
+
+   Register a new user account.
+
+   **Example request**:
+
+   .. sourcecode:: http
+
+      POST /api/register/ HTTP/1.1
+      Host: example.com
+      Content-Type: application/json
+
+      {
+          "username": "newuser",
+          "password": "your_password",
+          "email": "user@example.com",
+          "first_name": "John",
+          "last_name": "Doe"
+      }
+
+   **Example response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 201 Created
+      Content-Type: application/json
+
+      {
+          "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b",
+          "user_id": 1,
+          "username": "newuser",
+          "email": "user@example.com"
+      }
+
+   :reqheader Content-Type: application/json
+   :resheader Content-Type: application/json
+   :statuscode 201: Registration successful
+   :statuscode 400: Invalid registration data
+
 The Newsloom API uses token-based authentication. To access protected endpoints, you need to obtain an authentication token by logging in with your credentials.
 
 Login
@@ -54,6 +96,38 @@ Once you have obtained a token, include it in the ``Authorization`` header of al
 
 JavaScript Example
 ----------------
+
+// Registration function
+async function register(username, password, email, firstName = '', lastName = '') {
+  try {
+    const response = await fetch('http://your-backend-url/api/register/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username,
+        password,
+        email,
+        first_name: firstName,
+        last_name: lastName
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Registration failed');
+    }
+
+    const data = await response.json();
+    // Store the token
+    localStorage.setItem('authToken', data.token);
+    return data;
+  } catch (error) {
+    console.error('Registration error:', error);
+    throw error;
+  }
+}
+
 
 Here's a complete example of how to authenticate and make API requests using JavaScript:
 

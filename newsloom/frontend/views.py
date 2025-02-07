@@ -25,6 +25,7 @@ from .serializers import (
     LoginSerializer,
     MediaSerializer,
     NewsSerializer,
+    RegisterSerializer,
     SourceSerializer,
     StreamExecutionStatsSerializer,
     StreamLogSerializer,
@@ -33,6 +34,24 @@ from .serializers import (
     TelegramPublishLogSerializer,
     UserSerializer,
 )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def register_view(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        token, created = Token.objects.get_or_create(user=user)
+        return Response(
+            {
+                "token": token.key,
+                "user_id": user.pk,
+                "username": user.username,
+                "email": user.email,
+            }
+        )
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])

@@ -70,6 +70,7 @@ def add_stream(
         "article_searcher",
         "bing_search",
         "google_search",
+        "duckduckgo_search",
         "telegram_bulk_parser",
         "news_stream",
         "doc_publisher",
