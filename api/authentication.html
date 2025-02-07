@@ -111,7 +111,10 @@
             
   <section id="authentication">
 <h1>Authentication<a class="headerlink" href="#authentication" title="Link to this heading">¶</a></h1>
+<section id="registration">
+<h2>Registration<a class="headerlink" href="#registration" title="Link to this heading">¶</a></h2>
 <p>The Newsloom API uses token-based authentication. To access protected endpoints, you need to obtain an authentication token by logging in with your credentials.</p>
+</section>
 <section id="login">
 <h2>Login<a class="headerlink" href="#login" title="Link to this heading">¶</a></h2>
 </section>
@@ -126,6 +129,46 @@
 </section>
 <section id="javascript-example">
 <h2>JavaScript Example<a class="headerlink" href="#javascript-example" title="Link to this heading">¶</a></h2>
+<p>// Registration function
+async function register(username, password, email, firstName = ‘’, lastName = ‘’) {</p>
+<blockquote>
+<div><dl>
+<dt>try {</dt><dd><dl>
+<dt>const response = await fetch(’<a class="reference external" href="http://your-backend-url/api/register/">http://your-backend-url/api/register/</a>’, {</dt><dd><p>method: ‘POST’,
+headers: {</p>
+<blockquote>
+<div><p>‘Content-Type’: ‘application/json’,</p>
+</div></blockquote>
+<p>},
+body: JSON.stringify({</p>
+<blockquote>
+<div><p>username,
+password,
+email,
+first_name: firstName,
+last_name: lastName</p>
+</div></blockquote>
+<p>})</p>
+</dd>
+</dl>
+<p>});</p>
+<dl class="simple">
+<dt>if (!response.ok) {</dt><dd><p>throw new Error(‘Registration failed’);</p>
+</dd>
+</dl>
+<p>}</p>
+<p>const data = await response.json();
+// Store the token
+localStorage.setItem(‘authToken’, data.token);
+return data;</p>
+</dd>
+<dt>} catch (error) {</dt><dd><p>console.error(‘Registration error:’, error);
+throw error;</p>
+</dd>
+</dl>
+<p>}</p>
+</div></blockquote>
+<p>}</p>
 <p>Here’s a complete example of how to authenticate and make API requests using JavaScript:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="c1">// Login function</span>
 <span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">login</span><span class="p">(</span><span class="nx">username</span><span class="p">,</span><span class="w"> </span><span class="nx">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
