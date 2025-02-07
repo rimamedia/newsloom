@@ -150,7 +150,7 @@ components:
           type: integer
           readOnly: true
           example: 1
-        chat:
+        chat_id:
           type: integer
           example: 1
         user:
