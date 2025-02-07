@@ -78,7 +78,40 @@ class ChatSerializer(serializers.ModelSerializer):
         read_only_fields = ["user", "created_at", "updated_at"]
 
 
+class SourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        """Meta configuration for SourceSerializer."""
+
+        model = Source
+        fields = ["id", "name", "link", "type", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
+
+
+class ExamplesSerializer(serializers.ModelSerializer):
+    class Meta:
+        """Meta configuration for ExamplesSerializer."""
+
+        model = Examples
+        fields = ["id", "media", "text", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
+
+
+class MediaSerializer(serializers.ModelSerializer):
+    examples = ExamplesSerializer(many=True, read_only=True)
+    sources = SourceSerializer(many=True, read_only=True)
+
+    class Meta:
+        """Meta configuration for MediaSerializer."""
+
+        model = Media
+        fields = ["id", "name", "sources", "examples", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
+
+
 class StreamSerializer(serializers.ModelSerializer):
+    source = SourceSerializer(read_only=True)
+    media = MediaSerializer(read_only=True)
+
     class Meta:
         """Meta configuration for StreamSerializer."""
 
@@ -148,15 +181,6 @@ class TelegramDocPublishLogSerializer(serializers.ModelSerializer):
         fields = ["id", "doc", "media", "published_at"]
 
 
-class SourceSerializer(serializers.ModelSerializer):
-    class Meta:
-        """Meta configuration for SourceSerializer."""
-
-        model = Source
-        fields = ["id", "name", "link", "type", "created_at", "updated_at"]
-        read_only_fields = ["created_at", "updated_at"]
-
-
 class NewsSerializer(serializers.ModelSerializer):
     source = SourceSerializer(read_only=True)
 
@@ -178,6 +202,8 @@ class NewsSerializer(serializers.ModelSerializer):
 
 
 class DocSerializer(serializers.ModelSerializer):
+    media = MediaSerializer(read_only=True)
+
     class Meta:
         """Meta configuration for DocSerializer."""
 
@@ -221,24 +247,3 @@ class AgentSerializer(serializers.ModelSerializer):
                 "Prompt template must contain {news} placeholder"
             )
         return value
-
-
-class ExamplesSerializer(serializers.ModelSerializer):
-    class Meta:
-        """Meta configuration for ExamplesSerializer."""
-
-        model = Examples
-        fields = ["id", "media", "text", "created_at", "updated_at"]
-        read_only_fields = ["created_at", "updated_at"]
-
-
-class MediaSerializer(serializers.ModelSerializer):
-    examples = ExamplesSerializer(many=True, read_only=True)
-    sources = SourceSerializer(many=True, read_only=True)
-
-    class Meta:
-        """Meta configuration for MediaSerializer."""
-
-        model = Media
-        fields = ["id", "name", "sources", "examples", "created_at", "updated_at"]
-        read_only_fields = ["created_at", "updated_at"]
