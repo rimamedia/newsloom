@@ -59,16 +59,21 @@ components:
       properties:
         username:
           type: string
+          example: "john_doe"
         password:
           type: string
           format: password
+          example: "securepassword123"
         email:
           type: string
           format: email
+          example: "john.doe@example.com"
         first_name:
           type: string
+          example: "John"
         last_name:
           type: string
+          example: "Doe"
 
     PaginatedResponse:
       type: object
@@ -98,19 +103,24 @@ components:
       properties:
         username:
           type: string
+          example: "john_doe"
         password:
           type: string
           format: password
+          example: "securepassword123"
 
     LoginResponse:
       type: object
       properties:
         token:
           type: string
+          example: "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"
         user_id:
           type: integer
+          example: 1
         username:
           type: string
+          example: "john_doe"
 
     User:
       type: object
@@ -118,15 +128,20 @@ components:
         id:
           type: integer
           readOnly: true
+          example: 1
         username:
           type: string
+          example: "john_doe"
         email:
           type: string
           readOnly: true
+          example: "john.doe@example.com"
         first_name:
           type: string
+          example: "John"
         last_name:
           type: string
+          example: "Doe"
 
     ChatMessage:
       type: object
@@ -134,19 +149,24 @@ components:
         id:
           type: integer
           readOnly: true
+          example: 1
         chat:
           type: integer
+          example: 1
         user:
           $ref: '#/components/schemas/User'
           readOnly: true
         message:
           type: string
+          example: "What's the latest news about AI?"
         response:
           type: string
+          example: "Here are the latest developments in AI..."
         timestamp:
           type: string
           format: date-time
           readOnly: true
+          example: "2025-02-07T11:14:55Z"
 
     Chat:
       type: object
@@ -154,19 +174,23 @@ components:
         id:
           type: integer
           readOnly: true
+          example: 1
         user:
           $ref: '#/components/schemas/User'
           readOnly: true
         title:
           type: string
+          example: "AI News Discussion"
         created_at:
           type: string
           format: date-time
           readOnly: true
+          example: "2025-02-07T11:14:00Z"
         updated_at:
           type: string
           format: date-time
           readOnly: true
+          example: "2025-02-07T11:14:55Z"
         messages:
           type: array
           items:
