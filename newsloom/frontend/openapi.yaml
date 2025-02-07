@@ -517,6 +517,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/Chat'
 
+  /api/messages/process_message/:
+    post:
+      tags:
+        - Messages
+      summary: Process a message using Claude AI
+      description: |
+        Process a message using Claude AI and return the response. This endpoint uses the same
+        processing logic as WebSocket connections to ensure consistent behavior across both interfaces.
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: The message to process
+                chat_id:
+                  type: integer
+                  description: Optional ID of existing chat to continue
+      responses:
+        '200':
+          description: Message processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: The original message
+                  response:
+                    type: string
+                    description: Claude's response
+                  chat_id:
+                    type: integer
+                    description: ID of the chat (existing or newly created)
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: When the message was processed
+        '400':
+          description: Message is required
+        '404':
+          description: Specified chat not found
+        '500':
+          description: Processing error or missing credentials
+
   /api/messages/:
     get:
       tags:

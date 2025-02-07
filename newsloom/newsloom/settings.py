@@ -214,6 +214,13 @@ LOGGING = {
             "formatter": "verbose",
         },
     },
+    "loggers": {
+        "chat.message_processing": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
     "root": {
         "handlers": ["console", "file"],
         "level": "DEBUG",

@@ -285,93 +285,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.error(traceback.format_exc())
             await self.send(text_data=json.dumps({"error": str(e)}))
 
-    async def process_message(self, message):
-        """Process a message and handle all status updates."""
+    @classmethod
+    async def process_message_core(cls, message, chat, chat_history, client, user):
+        """Core message processing logic that can be used by both WebSocket and REST endpoints."""
         try:
-            # Initial status update
-            await self.send(
-                text_data=json.dumps(
-                    {"type": "status", "message": "Analyzing your request..."}
-                )
-            )
-
-            try:
-                # Get response from Claude with periodic status updates
-                response = await self.get_claude_response()
-
-                # Only save and send response if not cancelled
-                if response:
-                    try:
-                        # Save the message and response to the database
-                        await self.save_message(message, response)
-
-                        # Send final response
-                        # Get the saved message with timestamp
-                        chat_message = await self.get_last_message()
-                        await self.send(
-                            text_data=json.dumps(
-                                {
-                                    "type": "chat_message",
-                                    "message": message,
-                                    "response": response,
-                                    "chat_id": self.chat.id,
-                                    "timestamp": (
-                                        chat_message.timestamp.isoformat()
-                                        if chat_message
-                                        else None
-                                    ),
-                                }
-                            )
-                        )
-
-                        # Send completion status
-                        await self.send(
-                            text_data=json.dumps({"type": "process_complete"})
-                        )
-                    except Exception as e:
-                        logger.error(f"Error saving/sending response: {str(e)}")
-                        raise
-
-            except asyncio.CancelledError:
-                logger.info("Process message cancelled")
-                # Don't save partial responses or send completion message
-                # The stop handler will send the appropriate messages
-                raise
-            except Exception as e:
-                logger.error(f"Error in process_message: {str(e)}")
-                await self.send(text_data=json.dumps({"error": str(e)}))
-                raise
-
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            logger.error(f"Error in process_message: {str(e)}", exc_info=True)
-            await self.send(text_data=json.dumps({"error": str(e)}))
-
-    async def get_claude_response(self):
-        """Get response from Claude with status updates."""
-        try:
-            logger.info(
-                f"Current chat history: {json.dumps(self.chat_history, indent=2)}"
-            )
+            # Add new user message to history
+            chat_history.append({"role": "user", "content": message})
 
             while True:
-                # Update status before API call
-                await self.send(
-                    text_data=json.dumps(
-                        {"type": "status", "message": "Generating response..."}
-                    )
-                )
-
                 # Create a task for the API call that can be cancelled
                 api_task = asyncio.create_task(
-                    sync_to_async(self.client.messages.create)(
+                    sync_to_async(client.messages.create)(
                         model="anthropic.claude-3-5-sonnet-20241022-v2:0",
                         max_tokens=8192,
                         temperature=0,
                         system=SYSTEM_PROMPT,
                         tools=TOOLS,
-                        messages=self.chat_history,
+                        messages=chat_history,
                     )
                 )
 
@@ -379,7 +309,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     # Wait for the API call with timeout
                     response = await asyncio.wait_for(api_task, timeout=60.0)
                 except asyncio.TimeoutError:
-                    # Cancel the API task if it times out
                     api_task.cancel()
                     try:
                         await api_task
@@ -387,7 +316,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         pass
                     raise
                 except asyncio.CancelledError:
-                    # Cancel the API task if the parent task is cancelled
                     api_task.cancel()
                     try:
                         await api_task
@@ -404,7 +332,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     logger.info("Tool use detected in response")
 
                     # Add assistant's response to history
-                    self.chat_history.append(
+                    chat_history.append(
                         {
                             "role": "assistant",
                             "content": [
@@ -419,16 +347,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             tool_name = content.name
                             tool_input = content.input
                             tool_id = content.id
-
-                            # Update status for tool execution
-                            await self.send(
-                                text_data=json.dumps(
-                                    {
-                                        "type": "status",
-                                        "message": f"Executing {tool_name}...",
-                                    }
-                                )
-                            )
 
                             logger.info(f"Executing tool: {tool_name}")
                             logger.info(f"Tool input: {tool_input}")
@@ -450,7 +368,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 )
 
                                 # Add tool result to history with role: user
-                                self.chat_history.append(
+                                chat_history.append(
                                     {
                                         "role": "user",
                                         "content": [
@@ -468,8 +386,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                                 raise
                             except Exception as e:
                                 logger.error(f"Tool execution failed: {str(e)}")
-                                # Add error result to history with role: user
-                                self.chat_history.append(
+                                chat_history.append(
                                     {
                                         "role": "user",
                                         "content": [
@@ -489,18 +406,139 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 # If no tool calls, add response to history and return
                 logger.info("No tool calls in response, returning final text")
                 final_response = response.content[0].text
-                self.chat_history.append(
-                    {"role": "assistant", "content": final_response}
-                )
-                return final_response
+                chat_history.append({"role": "assistant", "content": final_response})
 
-        except asyncio.CancelledError:
-            logger.info("Claude response generation cancelled")
-            raise
+                # Save the message and response
+                chat_message = await database_sync_to_async(ChatMessage.objects.create)(
+                    chat=chat, user=user, message=message, response=final_response
+                )
+
+                # Save detailed message flow
+                await cls._save_message_details(chat_message, chat, chat_history)
+
+                return final_response, chat_message
 
         except Exception as e:
-            logger.error(f"Error in get_claude_response: {str(e)}", exc_info=True)
-            return f"Error getting response: {str(e)}"
+            logger.error(f"Error in process_message_core: {str(e)}", exc_info=True)
+            raise
+
+    @classmethod
+    async def _save_message_details(cls, chat_message, chat, chat_history):
+        """Save detailed message flow to database."""
+        sequence = 0
+
+        # Save user's initial message
+        await database_sync_to_async(ChatMessageDetail.objects.create)(
+            chat_message=chat_message,
+            chat=chat,
+            sequence_number=sequence,
+            role="user",
+            content_type="text",
+            content={"text": chat_history[0]["content"]},
+        )
+        sequence += 1
+
+        # Save all intermediate messages from chat_history
+        for msg in chat_history[
+            1:
+        ]:  # Skip first message as it's the user's initial message
+            if msg["role"] == "assistant":
+                if isinstance(msg["content"], list):
+                    # Handle tool calls
+                    for content in msg["content"]:
+                        if content["type"] == "tool_use":
+                            await database_sync_to_async(
+                                ChatMessageDetail.objects.create
+                            )(
+                                chat_message=chat_message,
+                                chat=chat,
+                                sequence_number=sequence,
+                                role="assistant",
+                                content_type="tool_call",
+                                content=content,
+                                tool_name=content["name"],
+                                tool_id=content["id"],
+                            )
+                            sequence += 1
+                else:
+                    # Handle text response
+                    await database_sync_to_async(ChatMessageDetail.objects.create)(
+                        chat_message=chat_message,
+                        chat=chat,
+                        sequence_number=sequence,
+                        role="assistant",
+                        content_type="text",
+                        content={"text": msg["content"]},
+                    )
+                    sequence += 1
+            elif msg["role"] == "user" and isinstance(msg["content"], list):
+                # Handle tool results
+                for content in msg["content"]:
+                    if content["type"] == "tool_result":
+                        await database_sync_to_async(ChatMessageDetail.objects.create)(
+                            chat_message=chat_message,
+                            chat=chat,
+                            sequence_number=sequence,
+                            role="user",
+                            content_type="tool_result",
+                            content=content,
+                            tool_id=content["tool_use_id"],
+                        )
+                        sequence += 1
+
+    async def process_message(self, message):
+        """Process a message and handle all status updates."""
+        try:
+            # Initial status update
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "status", "message": "Analyzing your request..."}
+                )
+            )
+
+            try:
+                # Process message using core logic
+                response, chat_message = await self.process_message_core(
+                    message,
+                    self.chat,
+                    self.chat_history,
+                    self.client,
+                    self.scope["user"],
+                )
+
+                # Send final response
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "chat_message",
+                            "message": message,
+                            "response": response,
+                            "chat_id": self.chat.id,
+                            "timestamp": (
+                                chat_message.timestamp.isoformat()
+                                if chat_message
+                                else None
+                            ),
+                        }
+                    )
+                )
+
+                # Send completion status
+                await self.send(text_data=json.dumps({"type": "process_complete"}))
+
+            except asyncio.CancelledError:
+                logger.info("Process message cancelled")
+                raise
+            except Exception as e:
+                logger.error(f"Error in process_message: {str(e)}")
+                await self.send(text_data=json.dumps({"error": str(e)}))
+                raise
+
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"Error in process_message: {str(e)}", exc_info=True)
+            await self.send(text_data=json.dumps({"error": str(e)}))
 
     @database_sync_to_async
     def create_chat(self):

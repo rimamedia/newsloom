@@ -1,4 +1,8 @@
+import logging
+import os
 from agents.models import Agent
+from anthropic import AnthropicBedrock
+from chat.consumers import ChatConsumer
 from chat.models import Chat, ChatMessage
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
@@ -34,6 +38,10 @@ from .serializers import (
     TelegramPublishLogSerializer,
     UserSerializer,
 )
+
+# Initialize loggers
+logger = logging.getLogger(__name__)
+message_logger = logging.getLogger("chat.message_processing")
 
 
 @api_view(["POST"])
@@ -93,6 +101,124 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=["post"])
+    def process_message(self, request):
+        """
+        Process a message using Claude AI and return the response.
+
+        This endpoint uses the same processing logic as WebSocket connections to ensure
+        consistent behavior across both interfaces.
+
+        Request Body:
+            {
+                "message": "string",     # Required. The message to process
+                "chat_id": "integer"     # Optional. ID of existing chat to continue
+            }
+
+        Returns:
+            {
+                "message": "string",      # The original message
+                "response": "string",     # Claude's response
+                "chat_id": "integer",     # ID of the chat (existing or newly created)
+                "timestamp": "string"     # ISO format timestamp of the message
+            }
+
+        Raises:
+            400 Bad Request: If message is missing
+            404 Not Found: If specified chat_id doesn't exist
+            500 Internal Server Error: For processing errors or missing credentials
+        """
+        try:
+            message = request.data.get("message")
+            chat_id = request.data.get("chat_id")
+
+            if not message:
+                return Response(
+                    {"error": "Message is required"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Initialize AWS Bedrock client
+            aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
+            aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
+            aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
+
+            if not aws_access_key or not aws_secret_key:
+                return Response(
+                    {"error": "Missing AWS credentials for Bedrock"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            client = AnthropicBedrock(
+                aws_access_key=aws_access_key,
+                aws_secret_key=aws_secret_key,
+                aws_region=aws_region,
+            )
+
+            # Get or create chat
+            chat = None
+            chat_history = []
+
+            if chat_id:
+                try:
+                    chat = Chat.objects.get(id=chat_id, user=request.user)
+                    # Load chat history
+                    messages = list(
+                        ChatMessage.objects.filter(chat=chat).order_by("timestamp")
+                    )
+                    for msg in messages:
+                        chat_history.append({"role": "user", "content": msg.message})
+                        if msg.response:
+                            chat_history.append(
+                                {"role": "assistant", "content": msg.response}
+                            )
+                except Chat.DoesNotExist:
+                    return Response(
+                        {"error": "Chat not found"}, status=status.HTTP_404_NOT_FOUND
+                    )
+
+            if not chat:
+                chat = Chat.objects.create(user=request.user)
+
+            # Process message using ChatConsumer's core logic
+            message_logger.info(f"Processing message for chat {chat.id}")
+            from asgiref.sync import async_to_sync
+
+            try:
+                response, chat_message = async_to_sync(
+                    ChatConsumer.process_message_core
+                )(
+                    message=message,
+                    chat=chat,
+                    chat_history=chat_history,
+                    client=client,
+                    user=request.user,
+                )
+                message_logger.info(
+                    f"Successfully processed message for chat {chat.id}"
+                )
+            except Exception as e:
+                message_logger.error(
+                    f"Failed to process message for chat {chat.id}: {str(e)}"
+                )
+                raise
+
+            return Response(
+                {
+                    "message": message,
+                    "response": response,
+                    "chat_id": chat.id,
+                    "timestamp": (
+                        chat_message.timestamp.isoformat() if chat_message else None
+                    ),
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error processing message: {str(e)}", exc_info=True)
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class StreamViewSet(viewsets.ModelViewSet):
