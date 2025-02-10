@@ -10,11 +10,16 @@ from sources.models import News
 logger = logging.getLogger(__name__)
 
 
-def _save_news(news, text):
-    """Save news text in the database."""
+def _save_news(news, text, title=None):
+    """Save news text and title in the database."""
     news.text = text
+    if title:
+        news.title = title
     news.updated_at = timezone.now()
-    news.save(update_fields=["text", "updated_at"])
+    update_fields = ["text", "updated_at"]
+    if title:
+        update_fields.append("title")
+    news.save(update_fields=update_fields)
 
 
 async def _process_news_batch(news_items):
@@ -23,9 +28,13 @@ async def _process_news_batch(news_items):
         for news in news_items:
             try:
                 result = await crawler.arun(url=news.link)
-                if result and result.markdown:
-                    await sync_to_async(_save_news)(news, result.markdown)
-                    logger.info(f"Successfully scraped content for news {news.id}")
+                if result:
+                    if result.markdown:
+                        title = (
+                            result.metadata.get("title") if result.metadata else None
+                        )
+                        await sync_to_async(_save_news)(news, result.markdown, title)
+                        logger.info(f"Successfully scraped content for news {news.id}")
                 else:
                     logger.warning(f"No content found for news {news.id}")
             except Exception as e:

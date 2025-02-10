@@ -9,6 +9,27 @@ from streams.models import Stream, StreamLog
 
 logger = logging.getLogger(__name__)
 
+StreamType = Literal[
+    "sitemap_news",
+    "sitemap_blog",
+    "playwright_link_extractor",
+    "rss_feed",
+    "web_article",
+    "telegram_channel",
+    "telegram_publish",
+    "article_searcher",
+    "bing_search",
+    "google_search",
+    "duckduckgo_search",
+    "telegram_bulk_parser",
+    "news_stream",
+    "doc_publisher",
+    "google_doc_creator",
+    "telegram_doc_publisher",
+    "articlean",
+    "web_scraper",
+]
+
 
 def list_streams(
     status: Optional[str] = None, limit: Optional[int] = 50, offset: Optional[int] = 0
@@ -59,23 +80,7 @@ def list_streams(
 
 def add_stream(
     name: str,
-    stream_type: Literal[
-        "sitemap_news",
-        "sitemap_blog",
-        "playwright_link_extractor",
-        "rss_feed",
-        "web_article",
-        "telegram_channel",
-        "telegram_publish",
-        "article_searcher",
-        "bing_search",
-        "google_search",
-        "duckduckgo_search",
-        "telegram_bulk_parser",
-        "news_stream",
-        "doc_publisher",
-        "articlean",
-    ],
+    stream_type: StreamType,
     frequency: Literal["5min", "15min", "30min", "1hour", "6hours", "12hours", "daily"],
     configuration: Dict,
     source_id: Optional[int] = None,
@@ -134,24 +139,7 @@ def add_stream(
 def update_stream(
     id: int,
     name: Optional[str] = None,
-    stream_type: Optional[
-        Literal[
-            "sitemap_news",
-            "sitemap_blog",
-            "playwright_link_extractor",
-            "rss_feed",
-            "web_article",
-            "telegram_channel",
-            "telegram_publish",
-            "article_searcher",
-            "bing_search",
-            "google_search",
-            "telegram_bulk_parser",
-            "news_stream",
-            "doc_publisher",
-            "articlean",
-        ]
-    ] = None,
+    stream_type: Optional[StreamType] = None,
     frequency: Optional[
         Literal["5min", "15min", "30min", "1hour", "6hours", "12hours", "daily"]
     ] = None,
