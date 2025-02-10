@@ -183,10 +183,23 @@ WebSocket endpoints are available for real-time updates:
    docker-compose up -d --build
    ```
 
-2. Create superuser in container:
+   This will:
+   - Build the Docker image
+   - Run collectstatic automatically
+   - Configure Nginx to serve static files
+   - Mount volumes for static and media files
+
+2. Verify static files setup:
+   ```bash
+   docker-compose exec web ls /app/staticfiles
+   ```
+
+3. Create superuser in container:
    ```bash
    docker-compose exec web python manage.py createsuperuser
    ```
+
+Note: Static and media files are managed through Docker volumes for persistence. The project uses Nginx to serve these files efficiently in both development and production environments.
 
 ## Creating Content Sources and Streams
 
