@@ -31,7 +31,11 @@ Initial Setup
 
     python manage.py createsuperuser 
 
-6. Start the development server::
+6. Collect static files::
+
+    python manage.py collectstatic
+
+7. Start the development server::
 
     python manage.py runserver
 
@@ -98,6 +102,7 @@ Technical Architecture
    cases/index
    chat/slack_integration
    api/index
+   deployment/index
 
 Quick Links
 ----------
