@@ -8,3 +8,4 @@ This section covers various aspects of deploying NewLoom in production environme
    :caption: Contents:
 
    static_files
+   docker
