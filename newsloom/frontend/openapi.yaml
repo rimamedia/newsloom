@@ -992,7 +992,7 @@ paths:
     post:
       tags:
         - Media
-      summary: Add source to media
+      summary: Add one or more sources to media
       security:
         - TokenAuth: []
       parameters:
@@ -1011,7 +1011,13 @@ paths:
                 - source_id
               properties:
                 source_id:
-                  type: integer
+                  oneOf:
+                    - type: integer
+                      description: Single source ID to add
+                    - type: array
+                      description: List of source IDs to add
+                      items:
+                        type: integer
       responses:
         '200':
           description: Source added to media

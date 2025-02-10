@@ -305,9 +305,17 @@ class MediaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def add_source(self, request, pk=None):
         media = self.get_object()
-        source = Source.objects.get(pk=request.data.get("source_id"))
-        media.sources.add(source)
-        return Response({"status": "source added"})
+        source_ids = request.data.get("source_id")
+
+        # Handle both single ID and list of IDs
+        if isinstance(source_ids, list):
+            sources = Source.objects.filter(pk__in=source_ids)
+            media.sources.add(*sources)
+            return Response({"status": f"{len(sources)} sources added"})
+        else:
+            source = Source.objects.get(pk=source_ids)
+            media.sources.add(source)
+            return Response({"status": "source added"})
 
     @action(detail=True, methods=["post"])
     def remove_source(self, request, pk=None):

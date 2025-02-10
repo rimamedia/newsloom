@@ -97,6 +97,11 @@ NewLoom is built on three main pillars:
    python manage.py createsuperuser
    ```
 
+8. Collect static files:
+   ```bash
+   python manage.py collectstatic
+   ```
+
 ## Configuration
 
 ### Environment Variables
