@@ -48,6 +48,14 @@ components:
         default: 10
         minimum: 1
         maximum: 100
+    NoPagination:
+      name: no_pagination
+      in: query
+      description: Set to 'true' to disable pagination and return all results
+      required: false
+      schema:
+        type: boolean
+        default: false
 
   schemas:
     RegisterRequest:
@@ -482,6 +490,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/NoPagination'
       responses:
         '200':
           description: List of users
@@ -507,6 +516,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/NoPagination'
       responses:
         '200':
           description: List of chats
@@ -604,6 +614,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/NoPagination'
       responses:
         '200':
           description: List of messages
@@ -718,6 +729,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/NoPagination'
         - name: stream
           in: query
           schema:
@@ -905,6 +917,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/NoPagination'
         - name: active_only
           in: query
           schema:
@@ -1074,6 +1087,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/NoPagination'
         - name: media
           in: query
           schema:
