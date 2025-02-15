@@ -4,8 +4,8 @@ FROM python:3.13-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DEBIAN_FRONTEND=noninteractive
-    
-RUN ls
+
+RUN ls -la /codebuild/output
 # Set working directory
 WORKDIR /app
 
