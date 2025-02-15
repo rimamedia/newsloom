@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-COPY ../01/ /app/dist
+COPY ./01 /app/dist
 
 # Install system dependencies, Nginx, and netcat
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -45,12 +45,12 @@ RUN playwright install chromium
 RUN playwright install-deps chromium
 
 # Copy the Django project
-COPY newsloom /app/newsloom
+COPY ./00/newsloom /app/newsloom
 
 
 
 # Copy Nginx configuration
-COPY nginx_ecs.conf /etc/nginx/conf.d/default.conf
+COPY ./00/nginx_ecs.conf /etc/nginx/conf.d/default.conf
 RUN rm -f /etc/nginx/sites-enabled/default
 
 # Set the working directory to where manage.py is
@@ -66,15 +66,15 @@ RUN mkdir -p /var/log && \
         /var/log/stream_scheduler.err.log /var/log/stream_scheduler.out.log
 
 # Copy supervisor configuration
-COPY supervisord.docker.conf /etc/supervisor/conf.d/supervisord.conf
+COPY ./00/supervisord.docker.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Expose Nginx port
 EXPOSE 80
 
 # Create a startup script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY ./00/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-COPY docs /app/docs
+COPY ./00/docs /app/docs
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
