@@ -37,7 +37,7 @@ RUN arch=$(dpkg --print-architecture) && \
 RUN mkdir -p /app/staticfiles /app/mediafiles
 
 # Copy requirements and install dependencies
-COPY requirements.txt ./
+COPY ./00/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright and browsers
