@@ -18,7 +18,7 @@ phases:
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME
       - BRANCH_NAME=${BranchName}
       - echo Pull started on `date`
-      - docker pull $REPOSITORY_URI:latest || true
+      # - docker pull $REPOSITORY_URI:latest || true
   build:
     commands:
       - echo Build started on `date`
