@@ -3,7 +3,7 @@
 // Login function
 async function login(username, password) {
   try {
-    const response = await fetch('http://your-backend-url/api/login/', {
+    const response = await fetch('http://your-backend-url/api/token/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

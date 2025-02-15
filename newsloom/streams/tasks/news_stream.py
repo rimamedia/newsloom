@@ -1,309 +1,293 @@
+"""News stream processing using Anthropic's Claude model via Amazon Bedrock."""
+
 import json
 import logging
 import os
 from datetime import timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-import boto3
 from agents.models import Agent
+from anthropic import AnthropicBedrock
+from django.conf import settings
+from django.db import connection
 from django.utils import timezone
 from dotenv import load_dotenv
 from mediamanager.models import Examples
 from sources.models import Doc, News
+from streams.models import Stream
+from streams.tools.news_tools import NEWS_PROCESSING_TOOLS
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Load environment variables from .env file
 load_dotenv()
 
-
 logger = logging.getLogger(__name__)
 
 
-def validate_aws_credentials() -> Tuple[bool, Optional[str]]:
-    """
-    Validate AWS credentials are properly configured.
+class BedrockProcessor:
+    """Handles interactions with Amazon Bedrock using the Anthropic SDK."""
 
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    required_vars = [
-        "BEDROCK_AWS_ACCESS_KEY_ID",
-        "BEDROCK_AWS_SECRET_ACCESS_KEY",
-        "BEDROCK_AWS_REGION",
-    ]
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-
-    if missing_vars:
-        return (
-            False,
-            f"Missing required AWS environment variables: {', '.join(missing_vars)}",
+    def __init__(self):
+        """Initialize the Bedrock processor with AWS credentials."""
+        self.client = AnthropicBedrock(
+            aws_access_key=os.getenv("BEDROCK_AWS_ACCESS_KEY_ID"),
+            aws_secret_key=os.getenv("BEDROCK_AWS_SECRET_ACCESS_KEY"),
+            aws_region=os.getenv("BEDROCK_AWS_REGION", "us-east-1"),
         )
 
-    return True, None
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        reraise=True,
+    )
+    def process_content(
+        self, system_prompt: str, user_prompt: str, stream: Optional[Stream] = None
+    ) -> Dict:
+        """
+        Process content using Claude model with retry support.
 
+        Args:
+            system_prompt: The system prompt that defines behavior
+            user_prompt: The user prompt with content to process
+            stream: Optional Stream object for document creation
 
-def get_bedrock_client():
-    """
-    Get a boto3 client for Amazon Bedrock.
-
-    Returns:
-        boto3 client for bedrock-runtime
-
-    Raises:
-        ValueError: If AWS credentials are not properly configured
-    """
-    # Validate credentials before creating client
-    is_valid, error_msg = validate_aws_credentials()
-    if not is_valid:
-        logger.error("AWS credentials validation failed: %s", error_msg)
-        raise ValueError(f"AWS credentials not properly configured: {error_msg}")
-
-    try:
-        session = boto3.Session(
-            aws_access_key_id=os.getenv("BEDROCK_AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("BEDROCK_AWS_SECRET_ACCESS_KEY"),
-            region_name=os.getenv("BEDROCK_AWS_REGION", "us-east-1"),
-        )
-
-        client = session.client(
-            service_name="bedrock-runtime",
-            region_name=os.getenv("BEDROCK_AWS_REGION", "us-east-1"),
-        )
-        return client
-
-    except Exception as e:
-        error_msg = f"Failed to initialize Bedrock client: {str(e)}"
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-
-
-def validate_prompt_template(
-    template: str, available_vars: Dict[str, str]
-) -> List[str]:
-    """
-    Validate that all variables in the template exist in available_vars.
-
-    Args:
-        template: The prompt template string
-        available_vars: Dictionary of available variables
-
-    Returns:
-        List of missing variables if any
-    """
-    try:
-        # Test format the template with a dict comprehension of all possible variables
-        test_vars = {key: "{" + key + "}" for key in available_vars.keys()}
-        template.format(**test_vars)
-        return []
-    except KeyError as e:
-        # Extract the missing key from the KeyError message
-        missing_key = str(e).strip("'")
-        return [missing_key]
-
-
-def invoke_bedrock_anthropic(
-    system_prompt: str, user_prompt: str, stream=None, client=None
-) -> Dict:
-    """
-    Invoke the Anthropic model through Amazon Bedrock with tool calling.
-
-    Args:
-        system_prompt: The system prompt that defines behavior
-        user_prompt: The user prompt with content to process
-        stream: Stream object for saving documents
-        client: Optional pre-configured boto3 client
-
-    Returns:
-        Dict containing the model's response
-    """
-    try:
-        if client is None:
-            client = get_bedrock_client()
-
-        # Define the create_documents tool
-        tools = [
-            {
-                "name": "create_documents",
-                "description": "Create a list of documents from the analyzed news content",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "topic": {
-                            "type": "string",
-                            "description": "The main topic or theme of the documents",
-                        },
-                        "documents": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "text": {
-                                        "type": "string",
-                                        "description": "The text content of the document",
-                                    },
-                                    "url": {
-                                        "type": "string",
-                                        "description": "The source URL for the document",
-                                    },
-                                },
-                                "required": ["text", "url"],
-                            },
-                            "description": "Array of documents to create",
-                        },
-                    },
-                    "required": ["topic", "documents"],
-                },
-            }
-        ]
-
-        logger.info(
-            "Preparing Bedrock request with tools: %s", json.dumps(tools, indent=2)
-        )
-
-        # Initialize messages list
-        messages = [
-            {"role": "user", "content": [{"type": "text", "text": user_prompt}]}
-        ]
-        final_response = None
-
-        while True:
-            # Prepare request body
-            request_body = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 8192,
-                "temperature": 0,
-                "messages": messages,
-                "system": system_prompt,
-                "tools": tools,
-            }
-
-            logger.debug(
-                "Sending request to Bedrock with body: %s", json.dumps(request_body)
+        Returns:
+            Dict containing the model's response and processing results
+        """
+        try:
+            response = self.client.messages.create(
+                model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+                max_tokens=8192,
+                temperature=0,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+                tools=NEWS_PROCESSING_TOOLS,
             )
 
-            # Make API call
-            response = client.invoke_model(
-                modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps(request_body),
-            )
-
-            # Parse response
-            response_body = json.loads(response["body"].read())
             logger.info(
-                "Received raw response from Bedrock: %s",
-                json.dumps(response_body, indent=2),
+                "Received response from Bedrock: %s",
+                json.dumps(response.model_dump(), indent=2),
             )
 
-            # Add assistant's response to messages
-            messages.append(
-                {"role": "assistant", "content": response_body.get("content", [])}
-            )
-
-            # Get text content for final response
-            text_content = ""
-            for block in response_body.get("content", []):
-                if block.get("type") == "text":
-                    text_content += block.get("text", "")
-            final_response = text_content.strip()
-
-            # Check for tool use
-            tool_calls = [
-                c
-                for c in response_body.get("content", [])
-                if c.get("type") == "tool_use"
+            # Initialize message history with the initial exchange
+            messages = [
+                {"role": "user", "content": user_prompt},
+                {
+                    "role": "assistant",
+                    "content": [content.model_dump() for content in response.content],
+                },
             ]
 
-            if not tool_calls:
-                logger.info("No tool calls in response, completing conversation")
-                break
-
-            # Process tool calls
-            for content in tool_calls:
-                logger.info(f"Processing tool call: {content.get('name')}")
-                try:
-                    if content.get("name") == "create_documents":
-                        tool_input = content.get("input", {})
-                        logger.info(
-                            "Successfully extracted tool input: %s",
-                            json.dumps(tool_input, indent=2),
+            # Process tool calls if present
+            saved_count = 0
+            if response.stop_reason == "tool_use":
+                for content in response.content:
+                    if (
+                        content.type == "tool_use"
+                        and content.name == "create_documents"
+                    ):
+                        tool_result = self._handle_document_creation(
+                            content.input, stream
                         )
+                        saved_count = tool_result.get("saved_count", 0)
 
-                        # Save documents to database
-                        try:
-                            documents = tool_input.get("documents", [])
-                            topic = tool_input.get("topic", "Untitled")
-                            saved_count = 0
-
-                            if stream is None:
-                                raise ValueError(
-                                    "Stream object is required for saving documents"
-                                )
-
-                            for document in documents:
-                                doc = Doc.objects.create(
-                                    media=stream.media,
-                                    link=document.get("url", ""),
-                                    title=topic,
-                                    text=document.get("text", ""),
-                                    status="new",
-                                )
-                                saved_count += 1
-                                logger.info("Created doc %d", doc.id)
-
-                            result = {
-                                "success": True,
-                                "message": f"Successfully saved {saved_count} documents",
-                                "saved_count": saved_count,
-                            }
-                        except Exception as e:
-                            error_msg = f"Error saving documents: {str(e)}"
-                            logger.error(error_msg)
-                            result = {
-                                "success": False,
-                                "message": error_msg,
-                                "saved_count": 0,
-                            }
-
-                        # Add tool result to messages
+                        # Add tool result to message history
                         messages.append(
                             {
                                 "role": "user",
                                 "content": [
                                     {
                                         "type": "tool_result",
-                                        "tool_use_id": content.get("id"),
-                                        "content": json.dumps(result),
+                                        "tool_use_id": content.id,
+                                        "content": json.dumps(tool_result),
                                     }
                                 ],
                             }
                         )
-                except Exception as e:
-                    error_msg = f"Error executing tool {content.get('name')}: {str(e)}"
-                    logger.error(error_msg)
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": content.get("id"),
-                                    "content": f"Error executing tool: {str(e)}",
-                                }
-                            ],
-                        }
-                    )
 
+            # Get final text content
+            final_text = ""
+            for content in response.content:
+                if content.type == "text":
+                    final_text += content.text
+
+            return {
+                "completion": final_text.strip(),
+                "full_response": response.model_dump(),
+                "message_history": messages,
+                "saved_count": saved_count,
+            }
+
+        except Exception as e:
+            logger.error("Error in process_content: %s", str(e), exc_info=True)
+            raise ValueError(f"Failed to process content: {str(e)}")
+
+    def _handle_document_creation(
+        self, tool_input: Dict, stream: Optional[Stream]
+    ) -> Dict:
+        """Handle document creation from tool input."""
+        try:
+            if stream is None:
+                raise ValueError("Stream object is required for saving documents")
+
+            documents = tool_input.get("documents", [])
+            topic = tool_input.get("topic", "Untitled")
+            saved_count = 0
+
+            # Create documents in database
+            for document in documents:
+                doc = Doc.objects.create(
+                    media=stream.media,
+                    link=document.get("url", ""),
+                    title=topic,
+                    text=document.get("text", ""),
+                    status="new",
+                )
+                saved_count += 1
+                logger.info("Created doc %d", doc.id)
+
+            return {
+                "success": True,
+                "message": f"Successfully saved {saved_count} documents",
+                "saved_count": saved_count,
+            }
+
+        except Exception as e:
+            error_msg = f"Error saving documents: {str(e)}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg, "saved_count": 0}
+
+
+class NewsStreamProcessor:
+    """Handles the processing of news streams."""
+
+    def __init__(self, stream_id: int, agent_id: int):
+        """Initialize the news stream processor."""
+        self.stream_id = stream_id
+        self.agent_id = agent_id
+        self.bedrock = BedrockProcessor()
+
+    def process(self, time_window_minutes: int = 60, max_items: int = 100) -> Dict:
+        """
+        Process news items using the specified agent.
+
+        Args:
+            time_window_minutes: Time window in minutes to look back for news
+            max_items: Maximum number of news items to process
+
+        Returns:
+            Dict containing processing results
+        """
+        try:
+            # Get stream and agent
+            stream = Stream.objects.get(id=self.stream_id)
+            agent = Agent.objects.get(id=self.agent_id)
+
+            # Validate agent
+            if not agent.is_active:
+                raise ValueError(f"Agent {self.agent_id} is not active")
+            if agent.provider.lower() != "bedrock":
+                raise ValueError("Only Bedrock provider is currently supported")
+
+            # Verify timezone settings
+            self._verify_timezone_settings()
+
+            # Get news items
+            news_items = self._get_news_items(stream, time_window_minutes, max_items)
+            if not news_items:
+                return self._empty_result(time_window_minutes)
+
+            # Get examples and prepare content
+            examples = Examples.objects.filter(media=stream.media)
+            examples_text = "\n\n".join(example.text for example in examples)
+
+            # Format news content
+            news_content = self._format_news_content(news_items)
+
+            # Prepare template variables
+            template_vars = {
+                "news": news_content,
+                "examples": examples_text,
+                "example": examples_text,  # Backward compatibility
+                "now": timezone.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            }
+
+            # Format prompts
+            system_prompt = agent.system_prompt.format(**template_vars)
+            user_prompt = agent.user_prompt_template.format(**template_vars)
+
+            # Process content
+            response = self.bedrock.process_content(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                stream=stream,
+            )
+
+            return {
+                "processed": len(news_items),
+                "saved": response.get("saved_count", 0),
+                "error": None,
+                "bedrock_response": {
+                    "full_response": response.get("full_response"),
+                    "message_history": response.get("message_history", []),
+                },
+            }
+
+        except Exception as e:
+            error_msg = f"Error in news stream task: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            return {
+                "processed": 0,
+                "saved": 0,
+                "error": error_msg,
+                "bedrock_response": {"full_response": None, "message_history": []},
+            }
+
+    def _verify_timezone_settings(self):
+        """Verify timezone settings are properly configured."""
+        if not settings.USE_TZ:
+            raise ValueError("Django timezone support must be enabled")
+
+        if settings.TIME_ZONE != "UTC":
+            logger.warning("Django TIME_ZONE is not UTC: %s", settings.TIME_ZONE)
+
+        # Check database timezone
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                cursor.execute("SHOW timezone;")
+                db_timezone = cursor.fetchone()[0]
+                if db_timezone != "UTC":
+                    raise ValueError("Database timezone must be UTC")
+        elif connection.vendor == "sqlite":
+            logger.info("Using SQLite - ensuring all datetime operations use UTC")
+
+    def _get_news_items(
+        self, stream: Stream, time_window_minutes: int, max_items: int
+    ) -> List[News]:
+        """Get recent news items for processing."""
+        time_threshold = timezone.now() - timedelta(minutes=time_window_minutes)
+        return list(
+            News.objects.filter(
+                source__in=stream.media.sources.all(),
+                created_at__gte=time_threshold,
+            ).order_by("-created_at")[:max_items]
+        )
+
+    def _format_news_content(self, news_items: List[News]) -> str:
+        """Format news items into a single string."""
+        return "\n\n---\n\n".join(
+            f"Title: {news.title}\n\nContent: {news.text}\n\nURL: {news.link}"
+            for news in news_items
+        )
+
+    def _empty_result(self, time_window_minutes: int) -> Dict:
+        """Return result for when no news items are found."""
         return {
-            "completion": final_response,
-            "full_response": response_body,
-            "message_history": messages,
+            "processed": 0,
+            "saved": 0,
+            "error": f"No news items found in the last {time_window_minutes} minutes",
+            "bedrock_response": {"full_response": None, "message_history": []},
         }
-
-    except Exception as e:
-        error_msg = f"Unexpected error in invoke_bedrock_anthropic: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise ValueError(error_msg)
 
 
 def process_news_stream(
@@ -312,10 +296,12 @@ def process_news_stream(
     time_window_minutes: int = 60,
     max_items: int = 100,
     save_to_docs: bool = True,
-    **kwargs,  # Accept any additional configuration parameters
+    **kwargs,
 ) -> Dict:
     """
     Process news items using the specified agent.
+
+    This is the main entry point for news stream processing.
 
     Args:
         stream_id: ID of the stream
@@ -327,197 +313,8 @@ def process_news_stream(
     Returns:
         Dict containing processing results
     """
-    from streams.models import Stream
-
-    try:
-        logger.info(
-            "Starting news stream processing for stream_id=%d, agent_id=%d",
-            stream_id,
-            agent_id,
-        )
-
-        # Validate AWS credentials first
-        is_valid, error_msg = validate_aws_credentials()
-        if not is_valid:
-            raise ValueError(f"AWS credentials validation failed: {error_msg}")
-
-        # Get the stream and agent
-        stream = Stream.objects.get(id=stream_id)
-        agent = Agent.objects.get(id=agent_id)
-
-        if not agent.is_active:
-            logger.error("Agent %d is not active", agent_id)
-            raise ValueError(f"Agent {agent_id} is not active")
-
-        if agent.provider != "bedrock":
-            logger.error(
-                "Agent %d has unsupported provider: %s", agent_id, agent.provider
-            )
-            raise ValueError("Only Bedrock provider is currently supported")
-
-        # Calculate time window
-        time_threshold = timezone.now() - timedelta(minutes=time_window_minutes)
-        logger.debug("Using time threshold: %s", time_threshold)
-
-        # Get recent news items from the stream's media sources
-        news_items = News.objects.filter(
-            source__in=stream.media.sources.all(), created_at__gte=time_threshold
-        ).order_by("-created_at")[:max_items]
-
-        if not news_items:
-            logger.info(
-                "No relevant news items found in the last %d minutes for stream_id=%d. Skipping processing.",  # noqa: E501
-                time_window_minutes,
-                stream_id,
-            )
-            return {
-                "processed": 0,
-                "saved": 0,
-                "error": None,
-                "bedrock_response": {"full_response": None, "message_history": []},
-            }
-
-        logger.info("Found %d news items to process", len(news_items))
-
-        # Get examples for the media
-        examples = Examples.objects.filter(media=stream.media)
-        examples_text = "\n\n".join(example.text for example in examples)
-        logger.debug("Using %d examples for media", len(examples))
-
-        # Join all news items together
-        news_content = "\n\n---\n\n".join(
-            f"Title: {news.title}\n\nContent: {news.text}\n\nURL: {news.link}"
-            for news in news_items
-        )
-        logger.debug("Prepared news content with %d characters", len(news_content))
-
-        # Format the prompts with variables
-        now = timezone.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # Prepare variables for template formatting
-        template_vars = {
-            "news": news_content,
-            "examples": examples_text,
-            "example": examples_text,  # Add backward compatibility for 'example'
-            "now": now,
-        }
-
-        # Validate templates before formatting
-        logger.debug(
-            "Validating prompt templates with available variables: %s",
-            list(template_vars.keys()),
-        )
-
-        system_missing_vars = validate_prompt_template(
-            agent.system_prompt, template_vars
-        )
-        if system_missing_vars:
-            error_msg = f"System prompt template contains undefined variables: {system_missing_vars}"  # noqa: E501
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-
-        user_missing_vars = validate_prompt_template(
-            agent.user_prompt_template, template_vars
-        )
-        if user_missing_vars:
-            error_msg = f"User prompt template contains undefined variables: {user_missing_vars}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-
-        # Format prompts with validated templates
-        try:
-            system_prompt = agent.system_prompt.format(**template_vars)
-            user_prompt = agent.user_prompt_template.format(**template_vars)
-
-            logger.debug(
-                "Successfully formatted prompts - System prompt length: %d, User prompt length: %d",
-                len(system_prompt),
-                len(user_prompt),
-            )
-
-        except Exception as e:
-            error_msg = f"Failed to format prompt templates: {str(e)}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-
-        # Initialize Bedrock client and make the API call
-        try:
-            bedrock_client = get_bedrock_client()
-            logger.info("Successfully initialized Bedrock client")
-        except Exception as e:
-            error_msg = f"Failed to initialize Bedrock client: {str(e)}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-
-        logger.info("Making API call to Bedrock")
-
-        response = invoke_bedrock_anthropic(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            stream=stream,
-            client=bedrock_client,
-        )
-
-        processed_text = response.get("completion", "").strip()
-        processed_count = len(news_items)
-
-        # Calculate total saved documents from tool results
-        saved_count = 0
-        for message in response.get("message_history", []):
-            if message.get("role") == "user" and message.get("content"):
-                for content in message["content"]:
-                    if content.get("type") == "tool_result":
-                        try:
-                            result = json.loads(content.get("content", "{}"))
-                            saved_count += result.get("saved_count", 0)
-                        except json.JSONDecodeError:
-                            pass
-
-        logger.info(
-            "Received response from Bedrock with %d characters. Model output: %s",
-            len(processed_text),
-            (
-                processed_text[:500] + "..."
-                if len(processed_text) > 500
-                else processed_text
-            ),
-        )
-
-        logger.info(
-            "Completed processing with %d items processed and %d docs saved. Final model response: %s",  # noqa: E501
-            processed_count,
-            saved_count,
-            (
-                processed_text[:500] + "..."
-                if len(processed_text) > 500
-                else processed_text
-            ),
-        )
-        return {
-            "processed": processed_count,
-            "saved": saved_count,
-            "error": None,
-            "bedrock_response": {
-                "full_response": response.get("full_response"),
-                "message_history": response.get("message_history", []),
-            },
-        }
-
-    except Exception as e:
-        error_msg = f"Error in news stream task: {str(e)}"
-        logger.error(error_msg, exc_info=True)  # Include full traceback
-        return {
-            "processed": 0,
-            "saved": 0,
-            "error": error_msg,
-            "bedrock_response": {
-                "full_response": (
-                    response.get("full_response") if "response" in locals() else None
-                ),
-                "message_history": (
-                    response.get("message_history", [])
-                    if "response" in locals()
-                    else []
-                ),
-            },
-        }
+    processor = NewsStreamProcessor(stream_id=stream_id, agent_id=agent_id)
+    return processor.process(
+        time_window_minutes=time_window_minutes,
+        max_items=max_items,
+    )

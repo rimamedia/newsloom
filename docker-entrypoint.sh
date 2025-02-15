@@ -16,6 +16,10 @@ python manage.py makemigrations
 echo "Applying database migrations..."
 python manage.py migrate
 
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
 # Setup crawl4ai
 echo "Setting up crawl4ai..."
 crawl4ai-setup

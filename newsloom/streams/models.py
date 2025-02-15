@@ -28,10 +28,15 @@ class Stream(models.Model):
         """
         from django.utils import timezone
 
+        # Get the stream instance to calculate next run time
+        stream = cls.objects.get(id=stream_id)
         now = timezone.now()
-        cls.objects.filter(id=stream_id).update(
-            status=status, last_run=now, next_run=now
-        )
+
+        # Update last_run and calculate next_run based on frequency
+        stream.last_run = now
+        stream.next_run = stream.get_next_run_time()
+        stream.status = status
+        stream.save(update_fields=["status", "last_run", "next_run"])
 
     TYPE_CHOICES = [
         ("sitemap_news", "Sitemap News Parser"),
@@ -149,8 +154,14 @@ class Stream(models.Model):
     @classmethod
     def reactivate_failed_streams(cls):
         """Reactivate all failed streams and set their next run time."""
-        now = timezone.now()
-        cls.objects.filter(status="failed").update(status="active", next_run=now)
+        # Get all failed streams
+        failed_streams = cls.objects.filter(status="failed")
+
+        # Update each stream individually to properly calculate next_run
+        for stream in failed_streams:
+            stream.status = "active"
+            stream.next_run = stream.get_next_run_time()
+            stream.save(update_fields=["status", "next_run"])
 
     def save(self, *args, **kwargs):
         """Save the stream instance."""
@@ -177,7 +188,8 @@ class Stream(models.Model):
                 try:
                     current_status = Stream.objects.get(id=self.id).status
                     if current_status != "active":
-                        self.next_run = timezone.now()
+                        # Calculate next run based on frequency when reactivating
+                        self.next_run = self.get_next_run_time()
                 except Stream.DoesNotExist:
                     pass
 
@@ -185,9 +197,6 @@ class Stream(models.Model):
 
     def get_next_run_time(self):
         """Calculate the next run time based on frequency."""
-        if not self.last_run:
-            return timezone.now()
-
         frequency_mapping = {
             "5min": timedelta(minutes=5),
             "15min": timedelta(minutes=15),
@@ -198,7 +207,9 @@ class Stream(models.Model):
             "daily": timedelta(days=1),
         }
 
-        next_run = self.last_run + frequency_mapping[self.frequency]
+        # Calculate from last_run if exists, otherwise from current time
+        base_time = self.last_run if self.last_run else timezone.now()
+        next_run = base_time + frequency_mapping[self.frequency]
         if timezone.is_naive(next_run):
             next_run = timezone.make_aware(next_run)
         return next_run

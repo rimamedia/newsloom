@@ -8,11 +8,13 @@ from anthropic import AnthropicBedrock
 from asgiref.sync import sync_to_async
 from chat.models import Chat, ChatMessage
 from chat.system_prompt import SYSTEM_PROMPT
-from chat.tools import TOOLS
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
+
+from chat.tools import tool_functions
+from chat.tools.tools_descriptions import TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -120,17 +122,20 @@ class Command(BaseCommand):
                             logger.info(f"Executing tool: {tool_name}")
                             logger.info(f"Tool input: {tool_input}")
 
-                            # Execute the tool
+                            # Execute the tool asynchronously
                             try:
-                                from chat import tool_functions
+                                # Get tool function from dictionary
+                                tool_func = tool_functions.get(tool_name)
+                                if tool_func is None:
+                                    raise ValueError(f"Unknown tool: {tool_name}")
 
-                                tool_func = getattr(tool_functions, tool_name)
+                                # Execute tool
                                 tool_result = tool_func(**tool_input)
                                 logger.info(
                                     f"Tool execution successful. Result: {tool_result}"
                                 )
 
-                                # Add tool result to history
+                                # Add tool result to history with role: user
                                 chat_history.append(
                                     {
                                         "role": "user",
@@ -146,7 +151,8 @@ class Command(BaseCommand):
 
                             except Exception as e:
                                 logger.error(f"Tool execution failed: {str(e)}")
-                                # Add error result to history
+                                logger.error(traceback.format_exc())
+                                # Add error result to history with role: user
                                 chat_history.append(
                                     {
                                         "role": "user",

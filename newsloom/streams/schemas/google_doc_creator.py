@@ -10,9 +10,5 @@ class GoogleDocCreatorConfig(BaseModel):
     )
     folder_id: str = Field(
         ...,
-        description="Google Drive folder ID where to create new documents",
-    )
-    service_account_path: str = Field(
-        default="credentials.json",
-        description="Path to the Google service account credentials JSON file",
+        description="Google Drive folder ID where documents will be created. Must be shared with the service account.",  # noqa E501
     )

@@ -150,15 +150,19 @@ A task for creating Google Docs from documents in the database. Features:
 * Error handling and logging
 
 .. important::
-   This task requires:
+   This task requires the following environment variables:
    
-   * A Google Cloud service account credentials file (credentials.json)
-   * A Google Drive folder to store created documents
+   * GOOGLE_PROJECT_ID: Your Google Cloud project ID
+   * GOOGLE_PRIVATE_KEY_ID: Service account private key ID
+   * GOOGLE_PRIVATE_KEY: Service account private key
+   * GOOGLE_CLIENT_EMAIL: Service account client email
+   * GOOGLE_CLIENT_ID: Service account client ID
+   * GOOGLE_CLIENT_X509_CERT_URL: Service account cert URL
 
 Required Setup:
     1. Set up a Google Cloud project and create a service account
-    2. Download the service account credentials as credentials.json
-    3. Create a Google Drive folder and share it with the service account
+    2. Configure environment variables with service account details
+    3. Create a Google Drive folder and share it with the service account email
     4. Create a Stream in the admin panel
     5. Configure the stream with the settings below
 
@@ -168,7 +172,6 @@ Configuration example:
 
     {
         "folder_id": "your-folder-id",
-        "service_account_path": "credentials.json",
         "template_id": "your-template-doc-id"  # Optional: only if you want to use a template
     }
 
@@ -360,9 +363,11 @@ articlean
 A task for processing articles through the Articlean service. Features:
 
 * Extracts article content and title from URLs
-* Automatic error handling and retry logic
-* Batch processing support
-* Transaction-safe database updates
+* Comprehensive error handling with detailed logging
+* Database transaction safety for atomic updates
+* Automatic filtering of unprocessed articles
+* Request timeout protection (30 seconds)
+* Source-specific article processing
 
 .. important::
    This task requires the following environment variables to be set:
@@ -374,6 +379,40 @@ Required Setup:
     1. Set up the required environment variables in your .env file
     2. Create a Stream in the admin panel
     3. Configure the stream (no additional configuration required)
+
+Error Handling:
+    The task implements comprehensive error handling:
+
+    * Environment variable validation
+    * Network request timeouts (30 seconds)
+    * API response validation
+    * JSON parsing errors
+    * Database transaction errors
+    * Detailed error logging with context
+
+Logging:
+    Extensive logging is implemented at various levels:
+
+    * INFO: Processing status, successful operations
+    * ERROR: API failures, network issues, database errors
+    * DEBUG: Request/response details, data parsing
+
+Return Value:
+    The task returns execution statistics:
+
+    .. code-block:: python
+
+        {
+            "processed_count": int,  # Successfully processed articles
+            "failed_count": int,     # Failed article processing attempts
+            "total_count": int       # Total articles attempted
+        }
+
+Article Selection:
+    The task processes articles that meet these criteria:
+
+    * Text field is NULL or empty ("")
+    * Belongs to the stream's source (if source is configured)
 
 web
 ~~~

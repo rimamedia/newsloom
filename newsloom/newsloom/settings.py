@@ -15,8 +15,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file, supporting multiline values
+load_dotenv(override=True, stream=None)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "drf_yasg",
     "channels",
     "mediamanager",
     "sources",
@@ -64,6 +65,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "DEFAULT_PAGINATION_CLASS": "frontend.pagination.CustomPageNumberPagination",
 }
 
 # CORS settings
@@ -212,6 +214,13 @@ LOGGING = {
             "formatter": "verbose",
         },
     },
+    "loggers": {
+        "chat.message_processing": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
     "root": {
         "handlers": ["console", "file"],
         "level": "DEBUG",
@@ -240,6 +249,8 @@ if not CSRF_TRUSTED_ORIGINS:  # Fallback for development
         "http://127.0.0.1",
         "https://localhost",
         "https://127.0.0.1",
+        "https://newsloom.io",
+        "https://*.newsloom.io",  # Allow all subdomains
     ]
 
 # CSRF Cookie settings

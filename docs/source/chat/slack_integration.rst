@@ -138,9 +138,36 @@ Data Model
 Chat Model Extensions:
    - ``slack_channel_id``: ID of the Slack channel
    - ``slack_thread_ts``: Timestamp of the thread's parent message
+   - ``title``: Auto-generated chat title based on first message
 
 ChatMessage Model Extensions:
    - ``slack_ts``: Timestamp of the individual message
+   - ``chat``: Reference to the parent Chat instance
+   - ``response``: Bot's response to the message
+
+ChatMessageDetail Model:
+   - ``chat_message``: Reference to the parent ChatMessage
+   - ``chat``: Reference to the parent Chat (for efficient querying)
+   - ``sequence_number``: Order of the message in conversation flow
+   - ``role``: Message sender role (user/assistant)
+   - ``content_type``: Type of content (text/tool_call/tool_result)
+   - ``content``: Actual message content (JSON)
+   - ``tool_name``: Name of the tool if content_type is tool_call
+   - ``tool_id``: ID of the tool call for linking calls with results
+   - ``timestamp``: When this detail was created
+
+Message Flow Details:
+   1. User Message Processing:
+      - Creates ChatMessage record
+      - Generates ChatMessageDetail records for:
+        * Initial user message
+        * Tool calls and results
+        * Final assistant response
+
+   2. Thread Context:
+      - All ChatMessageDetails are ordered by sequence_number
+      - Tool calls and results are linked by tool_id
+      - Complete conversation flow is preserved
 
 Security
 -------

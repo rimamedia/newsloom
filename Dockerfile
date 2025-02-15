@@ -42,8 +42,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN playwright install chromium
 RUN playwright install-deps chromium
 
-# Copy the Django project and credentials
+# Copy the Django project, credentials and docs
 COPY newsloom /app/newsloom
+COPY docs /app/docs
 
 # Copy Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

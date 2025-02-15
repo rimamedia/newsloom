@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from .tools import TOOLS
+from .tools.tools_descriptions import TOOLS
 
 # Import available tasks documentation
 AVAILABLE_TASKS_DOC = (
@@ -228,6 +228,20 @@ be the site where you want to extract links from.
 - For setting up a Telegram document publisher, you need to ask for the ID, not the NAME.
 - Search streams usualy save links to the database, so for parsing content (text and titles)
 you need to use the Articlean task.
+- When setting up streams that require CSS selectors
+(playwright_link_extractor and article_searcher):
+  1. First use get_link_classes tool to analyze the target webpage:
+         "url": "target website URL",
+         "max_links": 100  # optional
+
+  2. Review the results which include:
+     - Most common CSS classes used in links
+     - Ready-to-use selector suggestions
+     - Usage statistics to evaluate reliability
+  3. Use the suggested selectors or combine classes based on the analysis
+  4. For article_searcher streams:
+     - Use link_selector from the get_link_classes results
+     - For article_selector, look for common wrapper classes in the target articles
 
 CRITICAL MEDIA-SOURCE ASSOCIATION RULES:
 

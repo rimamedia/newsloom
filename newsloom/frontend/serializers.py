@@ -1,6 +1,6 @@
 from agents.models import Agent
 from chat.models import Chat, ChatMessage
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
 from rest_framework import serializers
@@ -12,6 +12,27 @@ from streams.models import (
     TelegramDocPublishLog,
     TelegramPublishLog,
 )
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        """Meta configuration for RegisterSerializer."""
+
+        model = get_user_model()
+        fields = ("id", "username", "password", "email", "first_name", "last_name")
+        extra_kwargs = {"password": {"write_only": True}, "email": {"required": True}}
+
+    def create(self, validated_data):
+        user = get_user_model().objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            first_name=validated_data.get("first_name", ""),
+            last_name=validated_data.get("last_name", ""),
+        )
+        return user
 
 
 class LoginSerializer(serializers.Serializer):
@@ -57,7 +78,40 @@ class ChatSerializer(serializers.ModelSerializer):
         read_only_fields = ["user", "created_at", "updated_at"]
 
 
+class SourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        """Meta configuration for SourceSerializer."""
+
+        model = Source
+        fields = ["id", "name", "link", "type", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
+
+
+class ExamplesSerializer(serializers.ModelSerializer):
+    class Meta:
+        """Meta configuration for ExamplesSerializer."""
+
+        model = Examples
+        fields = ["id", "media", "text", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
+
+
+class MediaSerializer(serializers.ModelSerializer):
+    examples = ExamplesSerializer(many=True, read_only=True)
+    sources = SourceSerializer(many=True, read_only=True)
+
+    class Meta:
+        """Meta configuration for MediaSerializer."""
+
+        model = Media
+        fields = ["id", "name", "sources", "examples", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
+
+
 class StreamSerializer(serializers.ModelSerializer):
+    source = SourceSerializer(read_only=True)
+    media = MediaSerializer(read_only=True)
+
     class Meta:
         """Meta configuration for StreamSerializer."""
 
@@ -127,15 +181,6 @@ class TelegramDocPublishLogSerializer(serializers.ModelSerializer):
         fields = ["id", "doc", "media", "published_at"]
 
 
-class SourceSerializer(serializers.ModelSerializer):
-    class Meta:
-        """Meta configuration for SourceSerializer."""
-
-        model = Source
-        fields = ["id", "name", "link", "type", "created_at", "updated_at"]
-        read_only_fields = ["created_at", "updated_at"]
-
-
 class NewsSerializer(serializers.ModelSerializer):
     source = SourceSerializer(read_only=True)
 
@@ -157,6 +202,8 @@ class NewsSerializer(serializers.ModelSerializer):
 
 
 class DocSerializer(serializers.ModelSerializer):
+    media = MediaSerializer(read_only=True)
+
     class Meta:
         """Meta configuration for DocSerializer."""
 
@@ -200,24 +247,3 @@ class AgentSerializer(serializers.ModelSerializer):
                 "Prompt template must contain {news} placeholder"
             )
         return value
-
-
-class ExamplesSerializer(serializers.ModelSerializer):
-    class Meta:
-        """Meta configuration for ExamplesSerializer."""
-
-        model = Examples
-        fields = ["id", "media", "text", "created_at", "updated_at"]
-        read_only_fields = ["created_at", "updated_at"]
-
-
-class MediaSerializer(serializers.ModelSerializer):
-    examples = ExamplesSerializer(many=True, read_only=True)
-    sources = SourceSerializer(many=True, read_only=True)
-
-    class Meta:
-        """Meta configuration for MediaSerializer."""
-
-        model = Media
-        fields = ["id", "name", "sources", "examples", "created_at", "updated_at"]
-        read_only_fields = ["created_at", "updated_at"]

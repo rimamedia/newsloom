@@ -146,9 +146,8 @@ TASK_CONFIG_EXAMPLES = {
         "batch_size": 10,  # Process up to 10 docs at a time
     },
     "google_doc_creator": {
-        "template_id": "your-template-doc-id",  # Google Doc template ID
-        "folder_id": "your-folder-id",  # Google Drive folder ID
-        "service_account_path": "credentials.json",  # Path to service account credentials
+        "folder_id": "1a2b3c4d5e6f7g8h9i0j",  # Google Drive folder ID (found in folder URL)
+        "template_id": "1xYz2wVu3tSr4qPn5mL6k",  # Optional: Google Doc template ID (found in template doc URL) # noqa E501
     },
     "telegram_doc_publisher": {
         "message_template": "{title}\n\n{google_doc_link}",  # Message template
@@ -171,3 +170,6 @@ TASK_CONFIG_EXAMPLES = {
 def get_task_config_example(stream_type):
     """Get the example configuration for a given stream type."""
     return TASK_CONFIG_EXAMPLES.get(stream_type, {})
+
+
+# TODO: add name conventions for tasks
