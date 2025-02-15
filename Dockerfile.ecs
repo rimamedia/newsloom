@@ -1,11 +1,10 @@
-FROM python:3.13-slim
+FROM 841162694181.dkr.ecr.us-west-2.amazonaws.com/python-13.3-slim:latest
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DEBIAN_FRONTEND=noninteractive
 
-RUN ls -la /codebuild/output
 # Set working directory
 WORKDIR /app
 
