@@ -8,6 +8,8 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
+COPY dist /app/dist
+
 # Install system dependencies, Nginx, and netcat
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
