@@ -24,6 +24,8 @@ phases:
   build:
     commands:
       - echo Build started on `date`
+      - ls ../
+      - ls ../../
       - echo Building the Docker image...
       # - docker build -f ./Dockerfile.ecs --cache-from $REPOSITORY_URI:latest -t $REPOSITORY_URI:latest .
       - docker build -f ./Dockerfile.ecs --no-cache -t $REPOSITORY_URI:latest .
