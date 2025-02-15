@@ -19,11 +19,11 @@ phases:
       - BRANCH_NAME=${BranchName}
       - echo Pull started on `date`
       - docker pull $REPOSITORY_URI:latest || true
-      - codebuild-breakpoint
 
   build:
     commands:
       - echo Build started on `date`
+      - ls ../01/
       - echo Building the Docker image...
       - docker build -f ./Dockerfile.ecs --cache-from $REPOSITORY_URI:latest -t $REPOSITORY_URI:latest .
       
