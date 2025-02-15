@@ -9,7 +9,7 @@ RUN ls -la /codebuild/output
 # Set working directory
 WORKDIR /app
 
-COPY /codebuild/output/artifacts/frontend-build/dist /app/dist
+COPY dist /app/dist
 
 # Install system dependencies, Nginx, and netcat
 RUN apt-get update && apt-get install -y --no-install-recommends \

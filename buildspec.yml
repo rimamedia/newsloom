@@ -19,6 +19,9 @@ phases:
       - BRANCH_NAME=${BranchName}
       - echo Pull started on `date`
       # - docker pull $REPOSITORY_URI:latest || true
+      - echo Downloading frontend build artifact from S3...
+      - aws s3 cp s3://newsloom-frontend-artifacts/artifacts/dist.zip .
+      - unzip dist.zip -d dist
   build:
     commands:
       - echo Build started on `date`
