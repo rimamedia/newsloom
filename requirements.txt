@@ -33,7 +33,7 @@ MarkupSafe==3.0.2
 nodeenv==1.9.1
 packaging==24.2
 platformdirs==4.3.6
-playwright==1.49.0
+playwright==1.50.0
 playwright-stealth==1.0.6
 pre_commit==4.0.1
 psycopg2-binary==2.9.10
