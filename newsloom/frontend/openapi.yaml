@@ -207,24 +207,181 @@ components:
 
     Stream:
       type: object
+      description: |
+        A stream represents a configured task that can be executed to fetch, process, or publish content.
+        Each stream type has specific configuration requirements and may need additional setup like
+        environment variables or admin panel configuration.
       properties:
         id:
           type: integer
           readOnly: true
+          description: Unique identifier for the stream
         name:
           type: string
+          description: Human-readable name for the stream
         stream_type:
           type: string
+          description: The type of stream that determines its behavior and configuration requirements
+          enum:
+            - article_searcher
+            - bing_search
+            - google_search
+            - duckduckgo_search
+            - google_doc_creator
+            - doc_publisher
+            - telegram_doc_publisher
+            - news_stream
+            - web_scraper
+            - playwright
+            - rss
+            - sitemap
+            - articlean
+            - web
+            - telegram
+            - telegram_bulk_parser
+            - telegram_publisher
         source:
           type: integer
+          description: ID of the associated source (required for most stream types)
         media:
           type: integer
+          description: ID of the associated media (required for some stream types)
         frequency:
           type: string
+          description: How often the stream should be executed (e.g., "daily", "hourly")
         configuration:
           type: object
+          description: |
+            Configuration specific to the stream type. Each stream type requires different settings.
+            Below are examples for each stream type:
+
+            article_searcher:
+            ```json
+            {
+              "url": "https://example.com",
+              "link_selector": "//*[@id='content']/div[2]/ul/li[1]/a",
+              "link_selector_type": "xpath",
+              "article_selector": "div.article-content",
+              "article_selector_type": "css",
+              "search_text": "climate change",
+              "max_links": 10
+            }
+            ```
+
+            bing_search:
+            ```json
+            {
+              "keywords": ["climate change", "renewable energy"],
+              "max_results_per_keyword": 5,
+              "search_type": "news",
+              "debug": false
+            }
+            ```
+
+            google_doc_creator:
+            ```json
+            {
+              "folder_id": "your-folder-id",
+              "template_id": "your-template-doc-id"
+            }
+            ```
+            Required env vars: GOOGLE_PROJECT_ID, GOOGLE_PRIVATE_KEY_ID, GOOGLE_PRIVATE_KEY,
+            GOOGLE_CLIENT_EMAIL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_X509_CERT_URL
+
+            news_stream:
+            ```json
+            {
+              "agent_id": 1,
+              "time_window_minutes": 60,
+              "max_items": 100,
+              "save_to_docs": true
+            }
+            ```
+
+            telegram_doc_publisher:
+            ```json
+            {
+              "message_template": "{title}\n\n{google_doc_link}",
+              "batch_size": 10,
+              "delay_between_messages": 2
+            }
+            ```
+            Requires media with configured telegram_chat_id
+
+            web_scraper:
+            ```json
+            {
+              "batch_size": 10
+            }
+            ```
+
+            rss:
+            ```json
+            {
+              "feed_url": "https://example.com/feed.xml",
+              "max_entries": 100
+            }
+            ```
+
+            sitemap:
+            ```json
+            {
+              "sitemap_url": "https://example.com/sitemap.xml",
+              "max_links": 100,
+              "follow_next": false
+            }
+            ```
+
+            articlean:
+            ```json
+            {}
+            ```
+            Required env vars: ARTICLEAN_API_KEY, ARTICLEAN_API_URL
+
+            web:
+            ```json
+            {
+              "base_url": "https://example.com",
+              "selectors": {
+                "title": "h1.article-title",
+                "content": "div.article-content",
+                "date": "time.published-date"
+              },
+              "headers": {
+                "User-Agent": "Mozilla/5.0"
+              }
+            }
+            ```
+
+            telegram:
+            ```json
+            {
+              "posts_limit": 20
+            }
+            ```
+
+            telegram_bulk_parser:
+            ```json
+            {
+              "time_window_minutes": 120,
+              "max_scrolls": 50,
+              "wait_time": 5
+            }
+            ```
+
+            telegram_publisher:
+            ```json
+            {
+              "channel_id": "-100123456789",
+              "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+              "batch_size": 10,
+              "time_window_minutes": 10,
+              "source_types": ["web", "telegram"]
+            }
+            ```
         status:
           type: string
+          description: Current status of the stream (e.g., "active", "paused", "error")
         last_run:
           type: string
           format: date-time
