@@ -91,3 +91,5 @@ scripts/deploy.sh
 credentials.json
 newsloom-streams.service
 newsloom-streams.timer
+
+frontend-dist/
