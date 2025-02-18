@@ -31,7 +31,7 @@ class Source(models.Model):
 
 class News(models.Model):
     source = models.ForeignKey(Source, on_delete=models.CASCADE, related_name="news")
-    link = models.URLField(unique=True)
+    link = models.URLField(unique=True, max_length=1000)
     title = models.CharField(max_length=255, blank=True, null=True)
     text = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

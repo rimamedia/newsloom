@@ -16,12 +16,19 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 def get_credentials_from_env():
     """Get Google credentials from environment variables."""
     logger.debug("Loading service account credentials from environment variables")
+    
+    private_key = os.environ.get("GOOGLE_PRIVATE_KEY")
+    if not private_key:
+        logger.error("GOOGLE_PRIVATE_KEY is not set")
+        raise ValueError("GOOGLE_PRIVATE_KEY environment variable is required")
+
+    private_key = private_key.strip('"\'').replace('\\n', '\n')
 
     credentials_dict = {
         "type": "service_account",
         "project_id": os.environ.get("GOOGLE_PROJECT_ID"),
         "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID"),
-        "private_key": os.environ.get("GOOGLE_PRIVATE_KEY").replace("\\n", "\n"),
+        "private_key": private_key,
         "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL"),
         "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
