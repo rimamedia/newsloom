@@ -38,6 +38,7 @@ from .serializers import (
     TelegramPublishLogSerializer,
     UserSerializer,
 )
+from streams.tasks import TASK_CONFIG_EXAMPLES
 
 # Initialize loggers
 logger = logging.getLogger(__name__)
@@ -225,6 +226,12 @@ class StreamViewSet(viewsets.ModelViewSet):
     queryset = Stream.objects.all()
     serializer_class = StreamSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # Add configuration examples to the response
+        response.data["configuration_examples"] = TASK_CONFIG_EXAMPLES
+        return response
 
     @action(detail=True, methods=["post"])
     def execute(self, request, pk=None):
