@@ -1,8 +1,5 @@
 import logging
-import os
 from agents.models import Agent
-from anthropic import AnthropicBedrock
-from chat.consumers import ChatConsumer
 from chat.models import Chat, ChatMessage
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
@@ -76,6 +73,23 @@ def login_view(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def logout_view(request):
+    """Invalidate the user's auth token."""
+    try:
+        # Delete the user's token to invalidate it
+        request.user.auth_token.delete()
+        return Response(
+            {"detail": "Successfully logged out"}, status=status.HTTP_200_OK
+        )
+    except Exception:
+        return Response(
+            {"detail": "Error during logout"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -139,23 +153,6 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
                     {"error": "Message is required"}, status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Initialize AWS Bedrock client
-            aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
-            aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
-            aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
-
-            if not aws_access_key or not aws_secret_key:
-                return Response(
-                    {"error": "Missing AWS credentials for Bedrock"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-
-            client = AnthropicBedrock(
-                aws_access_key=aws_access_key,
-                aws_secret_key=aws_secret_key,
-                aws_region=aws_region,
-            )
-
             # Get or create chat
             chat = None
             chat_history = []
@@ -181,23 +178,32 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             if not chat:
                 chat = Chat.objects.create(user=request.user)
 
-            # Process message using ChatConsumer's core logic
+            # Process message using base handler
             message_logger.info(f"Processing message for chat {chat.id}")
             from asgiref.sync import async_to_sync
+            from chat.services.base_handler import ChatConfig, ChatMessageProcessor
 
             try:
-                response, chat_message = async_to_sync(
-                    ChatConsumer.process_message_core
-                )(
-                    message=message,
-                    chat=chat,
-                    chat_history=chat_history,
-                    client=client,
-                    user=request.user,
+                # Initialize message processor
+                config = ChatConfig()
+                message_processor = ChatMessageProcessor(config)
+
+                # Add message to history
+                chat_history.append({"role": "user", "content": message})
+
+                # Process message
+                response = async_to_sync(message_processor.process_message)(
+                    chat_history
                 )
                 message_logger.info(
                     f"Successfully processed message for chat {chat.id}"
                 )
+
+                # Save message and response
+                chat_message = ChatMessage.objects.create(
+                    chat=chat, user=request.user, message=message, response=response
+                )
+
             except Exception as e:
                 message_logger.error(
                     f"Failed to process message for chat {chat.id}: {str(e)}"
