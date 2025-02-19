@@ -326,10 +326,30 @@ class MediaViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def remove_source(self, request, pk=None):
+        """Remove one or more sources from a media entry.
+
+        Args:
+            request: The HTTP request object containing source_ids
+            pk: Primary key of the media entry
+
+        Returns:
+            Response with status message indicating number of sources removed
+
+        Raises:
+            Source.DoesNotExist: If any source with given id doesn't exist
+        """
         media = self.get_object()
-        source = Source.objects.get(pk=request.data.get("source_id"))
-        media.sources.remove(source)
-        return Response({"status": "source removed"})
+        source_ids = request.data.get("source_ids")
+
+        # Handle both single ID and list of IDs
+        if isinstance(source_ids, list):
+            sources = Source.objects.filter(pk__in=source_ids)
+            media.sources.remove(*sources)
+            return Response({"status": f"{len(sources)} sources removed"})
+        else:
+            source = Source.objects.get(pk=source_ids)
+            media.sources.remove(source)
+            return Response({"status": "source removed"})
 
 
 class ExamplesViewSet(viewsets.ModelViewSet):
