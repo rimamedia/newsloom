@@ -48,7 +48,7 @@ class ChatAdmin(admin.ModelAdmin):
     def view_details(self, obj):
         return format_html(
             '<a class="button" href="{}">View Details</a>',
-            reverse("chat:chat_details_admin", args=[obj.id]),
+            reverse("chat_details_admin", args=[obj.id]),
         )
 
     view_details.short_description = "Chat Details"

@@ -20,8 +20,14 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from . import views
+from chat import views as chat_views
 
 urlpatterns = [
+    path(
+        "admin/<int:chat_id>/details/",
+        chat_views.chat_details_admin,
+        name="chat_details_admin",
+    ),
     path("admin/", admin.site.urls),
     path("", views.home, name="home"),
     path("health/", views.health_check, name="health_check"),
