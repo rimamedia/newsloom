@@ -2,184 +2,20 @@ import logging
 import os
 import time
 import traceback
-from typing import Optional
 
-from anthropic import AnthropicBedrock
-from asgiref.sync import sync_to_async
-from chat.models import Chat, ChatMessage
-from chat.system_prompt import SYSTEM_PROMPT
-from django.contrib.auth.models import User
+from chat.services.base_handler import BaseChatHandler
 from django.core.management.base import BaseCommand
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
-from chat.tools import tool_functions
-from chat.tools.tools_descriptions import TOOLS
-
 logger = logging.getLogger(__name__)
 
 
-class Command(BaseCommand):
-    help = "Starts the Telegram bot for chat integration"
+class TelegramChatHandler(BaseChatHandler):
+    """Telegram-specific implementation of the chat handler."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Initialize Anthropic Bedrock client
-        aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
-        aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
-        aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
-
-        self.client = AnthropicBedrock(
-            aws_access_key=aws_access_key,
-            aws_secret_key=aws_secret_key,
-            aws_region=aws_region,
-        )
-
-    def _get_or_create_user(self, telegram_user) -> Optional[User]:
-        """Get or create a Django user for the Telegram user."""
-        try:
-            username = f"telegram_{telegram_user.id}"
-            email = f"{telegram_user.id}@telegram.user"
-            name = telegram_user.full_name or str(telegram_user.id)
-
-            # Try to get existing user by username
-            try:
-                return User.objects.get(username=username)
-            except User.DoesNotExist:
-                # Create new user
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    first_name=name.split()[0] if " " in name else name,
-                    last_name=name.split()[-1] if " " in name else "",
-                )
-                return user
-        except Exception as e:
-            logger.error(f"Error getting/creating user: {str(e)}")
-            return None
-
-    def _get_or_create_chat(self, chat_id: int, message_id: int, user: User) -> Chat:
-        """Get or create a chat thread."""
-        try:
-            # Try to get existing chat
-            chat = Chat.objects.filter(
-                telegram_chat_id=str(chat_id),
-                telegram_message_id=str(message_id),
-            ).first()
-
-            if not chat:
-                # Create new chat
-                chat = Chat.objects.create(
-                    user=user,
-                    telegram_chat_id=str(chat_id),
-                    telegram_message_id=str(message_id),
-                )
-                logger.info(f"Created new chat with ID: {chat.id}")
-            else:
-                logger.info(f"Found existing chat with ID: {chat.id}")
-
-            return chat
-        except Exception as e:
-            logger.error(f"Error getting/creating chat: {str(e)}")
-            raise
-
-    def _get_claude_response(self, chat_history):
-        """Get response from Claude with tool handling."""
-        try:
-            while True:
-                # Get response from Claude
-                response = self.client.messages.create(
-                    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                    max_tokens=8192,
-                    temperature=0,
-                    system=SYSTEM_PROMPT,
-                    tools=TOOLS,
-                    messages=chat_history,
-                )
-
-                # Check if response contains tool calls
-                if response.stop_reason == "tool_use":
-                    logger.info("Tool use detected in response")
-
-                    # Add assistant's response to history
-                    chat_history.append(
-                        {
-                            "role": "assistant",
-                            "content": [
-                                content.model_dump() for content in response.content
-                            ],
-                        }
-                    )
-
-                    for content in response.content:
-                        if content.type == "tool_use":
-                            # Extract tool details
-                            tool_name = content.name
-                            tool_input = content.input
-                            tool_id = content.id
-
-                            logger.info(f"Executing tool: {tool_name}")
-                            logger.info(f"Tool input: {tool_input}")
-
-                            # Execute the tool asynchronously
-                            try:
-                                # Get tool function from dictionary
-                                tool_func = tool_functions.get(tool_name)
-                                if tool_func is None:
-                                    raise ValueError(f"Unknown tool: {tool_name}")
-
-                                # Execute tool
-                                tool_result = tool_func(**tool_input)
-                                logger.info(
-                                    f"Tool execution successful. Result: {tool_result}"
-                                )
-
-                                # Add tool result to history with role: user
-                                chat_history.append(
-                                    {
-                                        "role": "user",
-                                        "content": [
-                                            {
-                                                "type": "tool_result",
-                                                "tool_use_id": tool_id,
-                                                "content": str(tool_result),
-                                            }
-                                        ],
-                                    }
-                                )
-
-                            except Exception as e:
-                                logger.error(f"Tool execution failed: {str(e)}")
-                                logger.error(traceback.format_exc())
-                                # Add error result to history with role: user
-                                chat_history.append(
-                                    {
-                                        "role": "user",
-                                        "content": [
-                                            {
-                                                "type": "tool_result",
-                                                "tool_use_id": tool_id,
-                                                "content": str(e),
-                                                "is_error": True,
-                                            }
-                                        ],
-                                    }
-                                )
-
-                    logger.info("Continuing conversation with tool results")
-                    continue  # Continue the conversation with tool results
-
-                # If no tool calls, add response to history and return
-                logger.info("No tool calls in response, returning final text")
-                final_response = response.content[0].text
-                chat_history.append({"role": "assistant", "content": final_response})
-                return final_response
-
-        except Exception as e:
-            logger.error(f"Error getting Claude response: {str(e)}")
-            logger.error(traceback.format_exc())
-            return f"Error getting response: {str(e)}"
+    def __init__(self):
+        super().__init__()
 
     async def process_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Process both mentions and replies."""
@@ -205,9 +41,14 @@ class Command(BaseCommand):
             logger.info(f"- Text: {text}")
 
             try:
-                # Run database operations in a thread
-                get_or_create_user_async = sync_to_async(self._get_or_create_user)
-                django_user = await get_or_create_user_async(user)
+                # Get or create Django user
+                django_user = await self.user_service.get_or_create_user(
+                    "telegram",
+                    {
+                        "id": user.id,
+                        "name": user.full_name or str(user.id),
+                    },
+                )
 
                 if not django_user:
                     logger.error(
@@ -226,64 +67,35 @@ class Command(BaseCommand):
                 )
 
                 # Get or create chat thread
-                get_or_create_chat_async = sync_to_async(self._get_or_create_chat)
-                chat = await get_or_create_chat_async(
-                    chat_id, thread_message_id, django_user
+                chat = await self.user_service.get_or_create_chat(
+                    "telegram",
+                    django_user,
+                    {"chat_id": chat_id, "message_id": thread_message_id},
                 )
                 logger.info(f"Using chat ID: {chat.id}")
 
-                # Create chat message
-                create_message_async = sync_to_async(ChatMessage.objects.create)
-                message_obj = await create_message_async(
-                    chat=chat,
-                    user=django_user,
-                    message=text,
-                    telegram_message_id=str(message_id),
-                )
-                logger.info(f"Created chat message with ID: {message_obj.id}")
-
                 # Load chat history
-                chat_history = []
-                get_messages_async = sync_to_async(
-                    lambda: list(
-                        ChatMessage.objects.filter(chat=chat).order_by("timestamp")
-                    )
-                )
-                messages = await get_messages_async()
-                message_count = len(messages)
-                logger.info(
-                    f"Found {message_count} messages in thread {thread_message_id}"
-                )
-
-                # Build chat history
-                for i, msg in enumerate(messages, 1):
-                    logger.info(f"Message {i}/{message_count}:")
-                    logger.info(f"- ID: {msg.id}")
-                    logger.info(f"- Text: {msg.message[:100]}")
-                    logger.info(f"- Telegram Message ID: {msg.telegram_message_id}")
-                    logger.info(f"- Has Response: {bool(msg.response)}")
-
-                    chat_history.append({"role": "user", "content": msg.message})
-                    if msg.response:
-                        chat_history.append(
-                            {"role": "assistant", "content": msg.response}
-                        )
+                chat_history = await self.load_chat_history(chat)
+                chat_history.append({"role": "user", "content": text})
 
                 # Process message with Claude
-                get_claude_response_async = sync_to_async(self._get_claude_response)
-                response = await get_claude_response_async(chat_history)
+                response = await self.message_processor.process_message(chat_history)
 
                 if response:
                     logger.info("Got response from Claude, saving to database...")
-                    # Save response
-                    message_obj.response = response
-                    save_async = sync_to_async(message_obj.save)
-                    await save_async()
-                    logger.info(f"Saved response for message ID: {message_obj.id}")
+                    # Save message and response
+                    await self.save_message(
+                        chat=chat,
+                        user=django_user,
+                        message=text,
+                        response=response,
+                        platform_data={"telegram_message_id": str(message_id)},
+                    )
+                    logger.info("Message saved successfully")
 
                     # Send to Telegram
                     logger.info("Sending response to Telegram...")
-                    sent_message = await context.bot.send_message(
+                    await context.bot.send_message(
                         chat_id=chat_id,
                         text=response,
                         reply_to_message_id=message_id,
@@ -295,23 +107,21 @@ class Command(BaseCommand):
             except Exception as e:
                 logger.error(f"Error processing message: {str(e)}")
                 logger.error(traceback.format_exc())
-                # Try to save error state if message exists
-                if "message_obj" in locals():
-                    try:
-                        message_obj.response = f"Error processing message: {str(e)}"
-                        save_async = sync_to_async(message_obj.save)
-                        await save_async()
-                    except Exception as save_error:
-                        logger.error(f"Error saving error state: {str(save_error)}")
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="Sorry, there was an error processing your request.",
+                    reply_to_message_id=message_id,
+                )
 
         except Exception as e:
             logger.error(f"Error handling message: {str(e)}")
             logger.error(traceback.format_exc())
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="Sorry, there was an error processing your request.",
-                reply_to_message_id=message_id,
-            )
+            if "chat_id" in locals() and "message_id" in locals():
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="Sorry, there was an error processing your request.",
+                    reply_to_message_id=message_id,
+                )
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle messages that mention the bot or reply to its messages."""
@@ -328,6 +138,7 @@ class Command(BaseCommand):
                     if mentioned_text.lower() == f"@{context.bot.username.lower()}":
                         bot_mentioned = True
                         break
+
         replying_to_bot = (
             message.reply_to_message
             and message.reply_to_message.from_user
@@ -336,6 +147,12 @@ class Command(BaseCommand):
 
         if bot_mentioned or replying_to_bot:
             await self.process_message(update, context)
+
+
+class Command(BaseCommand):
+    """Django management command to run the Telegram bot."""
+
+    help = "Starts the Telegram bot for chat integration"
 
     def handle(self, *args, **options):
         """Django command handler."""
@@ -355,14 +172,15 @@ class Command(BaseCommand):
                 self.style.SUCCESS(f"Bot token prefix: {bot_token[:10]}...")
             )
 
+            # Initialize handler
+            handler = TelegramChatHandler()
+
             while True:
                 try:
                     # Create application and add handlers
                     application = Application.builder().token(bot_token).build()
-
-                    # Add message handler for text messages and commands
                     application.add_handler(
-                        MessageHandler(filters.TEXT, self.handle_message)
+                        MessageHandler(filters.TEXT, handler.handle_message)
                     )
 
                     # Enable logging
@@ -372,14 +190,14 @@ class Command(BaseCommand):
                     )
 
                     self.stdout.write(self.style.SUCCESS("Starting Telegram bot..."))
-                    # Set shorter polling timeout and enable automatic reconnection
                     application.run_polling(
                         allowed_updates=["message"],
                         poll_interval=1.0,
                         timeout=5,
-                        drop_pending_updates=True,  # Don't process old updates on restart
-                        close_loop=False,  # Keep the event loop running
+                        drop_pending_updates=True,
+                        close_loop=False,
                     )
+
                 except Exception as e:
                     self.stderr.write(
                         self.style.ERROR(f"Telegram connection error: {str(e)}")
