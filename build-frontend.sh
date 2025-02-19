@@ -1,11 +1,38 @@
 #!/bin/bash
 set -e  # Exit on error
 
+# Show usage instructions
+show_usage() {
+    echo "Usage: $0 [-b branch] [-h]"
+    echo "Build the frontend from a specific branch"
+    echo ""
+    echo "Options:"
+    echo "  -b branch    Specify the git branch to build from (default: main)"
+    echo "  -h          Show this help message"
+    exit 1
+}
+
 # Configuration
 FRONTEND_REPO="git@github.com:rimamedia/newsloom-frontend.git"
-FRONTEND_BRANCH="main"
+FRONTEND_BRANCH="main"  # Default branch
 BUILD_DIR="frontend-build"
 DIST_DIR="frontend-dist"
+
+# Parse command line arguments
+while getopts "b:h" opt; do
+    case $opt in
+        b)
+            FRONTEND_BRANCH="$OPTARG"
+            ;;
+        h)
+            show_usage
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            show_usage
+            ;;
+    esac
+done
 
 # Clean previous builds (with sudo if needed)
 if [ -d "$BUILD_DIR" ] || [ -d "$DIST_DIR" ]; then
@@ -14,7 +41,8 @@ if [ -d "$BUILD_DIR" ] || [ -d "$DIST_DIR" ]; then
 fi
 
 # Clone and build
-git clone $FRONTEND_REPO $BUILD_DIR
+echo "Cloning from branch: $FRONTEND_BRANCH"
+git clone -b $FRONTEND_BRANCH $FRONTEND_REPO $BUILD_DIR
 cd $BUILD_DIR
 
 # Create development environment file
