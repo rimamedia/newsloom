@@ -1,20 +1,8 @@
 from django.urls import include, path
-from drf_yasg import openapi
-from drf_yasg.views import get_schema_view
-from rest_framework import permissions
 from rest_framework.routers import DefaultRouter
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from . import views
-
-schema_view = get_schema_view(
-    openapi.Info(
-        title="Newsloom API",
-        default_version="v1",
-        description="API for managing news streams, sources, documents and chat interactions",
-    ),
-    public=True,
-    permission_classes=(permissions.AllowAny,),
-)
 
 router = DefaultRouter()
 router.register(r"users", views.UserViewSet)
@@ -43,13 +31,7 @@ urlpatterns = [
         "token/", views.login_view, name="api_token_login"
     ),  # Token generation endpoint
     # Swagger UI
-    path(
-        "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
-    ),
-    path(
-        "swagger/",
-        schema_view.with_ui("swagger", cache_timeout=0),
-        name="schema-swagger-ui",
-    ),
-    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]

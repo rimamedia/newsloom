@@ -1,5 +1,6 @@
 import logging
 import os
+import django_filters as filters
 from agents.models import Agent
 from anthropic import AnthropicBedrock
 from chat.consumers import ChatConsumer
@@ -19,6 +20,7 @@ from streams.models import (
     TelegramDocPublishLog,
     TelegramPublishLog,
 )
+from streams.tasks import TASK_CONFIG_EXAMPLES
 
 from .serializers import (
     AgentSerializer,
@@ -82,6 +84,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ChatViewSet(viewsets.ModelViewSet):
+    queryset = Chat.objects.prefetch_related('users', 'messages', 'messages__user', 'messages__chat').all()
     serializer_class = ChatSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -222,7 +225,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
 
 class StreamViewSet(viewsets.ModelViewSet):
-    queryset = Stream.objects.all()
+    queryset = Stream.objects.prefetch_related('source', 'media', 'media__sources', 'media__examples').all()
     serializer_class = StreamSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -234,15 +237,10 @@ class StreamViewSet(viewsets.ModelViewSet):
 
 
 class StreamLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = StreamLog.objects.prefetch_related('stream').all()
     serializer_class = StreamLogSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = StreamLog.objects.all()
-        stream_id = self.request.query_params.get("stream", None)
-        if stream_id is not None:
-            queryset = queryset.filter(stream_id=stream_id)
-        return queryset
+    filterset_fields = ('stream', )
 
 
 class StreamExecutionStatsViewSet(viewsets.ReadOnlyModelViewSet):
@@ -252,13 +250,13 @@ class StreamExecutionStatsViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TelegramPublishLogViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = TelegramPublishLog.objects.all()
+    queryset = TelegramPublishLog.objects.prefetch_related('news', 'media').all()
     serializer_class = TelegramPublishLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
 class TelegramDocPublishLogViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = TelegramDocPublishLog.objects.all()
+    queryset = TelegramDocPublishLog.objects.prefetch_related("doc", "media")
     serializer_class = TelegramDocPublishLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -286,15 +284,13 @@ class DocViewSet(viewsets.ModelViewSet):
 
 
 class AgentViewSet(viewsets.ModelViewSet):
+    class Filter(filters.FilterSet):
+        active_only = filters.BooleanFilter(field_name='is_active')
+
     queryset = Agent.objects.all()
     serializer_class = AgentSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = Agent.objects.all()
-        if self.request.query_params.get("active_only"):
-            queryset = queryset.filter(is_active=True)
-        return queryset
+    filterset_class = Filter
 
 
 class MediaViewSet(viewsets.ModelViewSet):
@@ -326,13 +322,7 @@ class MediaViewSet(viewsets.ModelViewSet):
 
 
 class ExamplesViewSet(viewsets.ModelViewSet):
-    queryset = Examples.objects.all()
+    queryset = Examples.objects.prefetch_related('media').all()
     serializer_class = ExamplesSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = Examples.objects.all()
-        media_id = self.request.query_params.get("media", None)
-        if media_id is not None:
-            queryset = queryset.filter(media_id=media_id)
-        return queryset
+    filterset_fields = ('media', )
