@@ -18,7 +18,7 @@ playwright==1.50.0
 playwright-stealth==1.0.6
 pyaes==1.6.1
 pyasn1==0.6.1
-pydantic==2.10.2
+pydantic==2.10.6
 pydantic_core==2.27.2
 pyee==12.1.1
 Pygments==2.19.1
