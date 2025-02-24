@@ -35,7 +35,7 @@ packaging==24.2
 platformdirs==4.3.6
 playwright==1.50.0
 playwright-stealth==1.0.6
-pre_commit==4.0.1
+pre_commit==4.1.0
 psycopg2-binary==2.9.10
 pyaes==1.6.1
 pyasn1==0.6.1
