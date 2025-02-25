@@ -6,7 +6,7 @@ including model configuration, API settings, and WebSocket close codes.
 """
 
 # Model and API constants
-MODEL_NAME = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+MODEL_NAME = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 API_TIMEOUT = 60.0  # seconds
 MAX_TOKENS = 8192
 API_TEMPERATURE = 0
