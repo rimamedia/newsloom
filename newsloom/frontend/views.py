@@ -2,7 +2,7 @@ import logging
 import os
 from agents.models import Agent
 from anthropic import AnthropicBedrock
-from chat.consumers import ChatConsumer
+from chat.consumers import MessageProcessor
 from chat.models import Chat, ChatMessage
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
@@ -198,13 +198,13 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             if not chat:
                 chat = Chat.objects.create(user=request.user)
 
-            # Process message using ChatConsumer's core logic
+            # Process message using MessageProcessor's core logic
             message_logger.info(f"Processing message for chat {chat.id}")
             from asgiref.sync import async_to_sync
 
             try:
                 response, chat_message = async_to_sync(
-                    ChatConsumer.process_message_core
+                    MessageProcessor.process_message_core
                 )(
                     message=message,
                     chat=chat,
