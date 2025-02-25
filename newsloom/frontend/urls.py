@@ -25,10 +25,10 @@ urlpatterns = [
     path("", include(router.urls)),
     path("auth/", include("rest_framework.urls")),
     path(
-        "register/", views.register_view, name="api_register"
+        "register/", views.RegisterView.as_view(), name="api_register"
     ),  # User registration endpoint
     path(
-        "token/", views.login_view, name="api_token_login"
+        "token/", views.LoginView.as_view(), name="api_token_login"
     ),  # Token generation endpoint
     # Swagger UI
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
