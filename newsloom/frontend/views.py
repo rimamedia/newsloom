@@ -49,6 +49,7 @@ from .serializers import (
     TelegramPublishLogSerializer,
     UserSerializer,
 )
+from streams.tasks import TASK_CONFIG_EXAMPLES
 
 # Initialize loggers
 logger = logging.getLogger(__name__)
@@ -91,6 +92,23 @@ class LoginView(generics.GenericAPIView):
                 {"token": token.key, "user_id": user.pk, "username": user.username}
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def logout_view(request):
+    """Invalidate the user's auth token."""
+    try:
+        # Delete the user's token to invalidate it
+        request.user.auth_token.delete()
+        return Response(
+            {"detail": "Successfully logged out"}, status=status.HTTP_200_OK
+        )
+    except Exception:
+        return Response(
+            {"detail": "Error during logout"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
