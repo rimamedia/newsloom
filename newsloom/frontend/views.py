@@ -256,6 +256,76 @@ class StreamViewSet(viewsets.ModelViewSet):
         result = stream.execute_task()
         return Response({"status": "success", "result": result})
 
+    @action(detail=True, methods=["patch"])
+    def update_source(self, request, pk=None):
+        """Update the source of a stream.
+
+        Args:
+            request: HTTP request containing source_id
+            pk: Primary key of the stream to update
+
+        Returns:
+            Response with updated stream data
+
+        Raises:
+            404: If stream not found
+            400: If source_id not provided or invalid
+        """
+        stream = self.get_object()
+        source_id = request.data.get("source_id")
+
+        if source_id is None:
+            return Response(
+                {"error": "source_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            source = Source.objects.get(pk=source_id)
+            stream.source = source
+            stream.save()
+            serializer = self.get_serializer(stream)
+            return Response(serializer.data)
+        except Source.DoesNotExist:
+            return Response(
+                {"error": f"Source with id {source_id} not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["patch"])
+    def update_media(self, request, pk=None):
+        """Update the media of a stream.
+
+        Args:
+            request: HTTP request containing media_id
+            pk: Primary key of the stream to update
+
+        Returns:
+            Response with updated stream data
+
+        Raises:
+            404: If stream not found
+            400: If media_id not provided or invalid
+        """
+        stream = self.get_object()
+        media_id = request.data.get("media_id")
+
+        if media_id is None:
+            return Response(
+                {"error": "media_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            media = Media.objects.get(pk=media_id)
+            stream.media = media
+            stream.save()
+            serializer = self.get_serializer(stream)
+            return Response(serializer.data)
+        except Media.DoesNotExist:
+            return Response(
+                {"error": f"Media with id {media_id} not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
 
 class StreamLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StreamLogSerializer
@@ -343,10 +413,30 @@ class MediaViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def remove_source(self, request, pk=None):
+        """Remove one or more sources from a media entry.
+
+        Args:
+            request: The HTTP request object containing source_ids
+            pk: Primary key of the media entry
+
+        Returns:
+            Response with status message indicating number of sources removed
+
+        Raises:
+            Source.DoesNotExist: If any source with given id doesn't exist
+        """
         media = self.get_object()
-        source = Source.objects.get(pk=request.data.get("source_id"))
-        media.sources.remove(source)
-        return Response({"status": "source removed"})
+        source_ids = request.data.get("source_ids")
+
+        # Handle both single ID and list of IDs
+        if isinstance(source_ids, list):
+            sources = Source.objects.filter(pk__in=source_ids)
+            media.sources.remove(*sources)
+            return Response({"status": f"{len(sources)} sources removed"})
+        else:
+            source = Source.objects.get(pk=source_ids)
+            media.sources.remove(source)
+            return Response({"status": "source removed"})
 
 
 class ExamplesViewSet(viewsets.ModelViewSet):
