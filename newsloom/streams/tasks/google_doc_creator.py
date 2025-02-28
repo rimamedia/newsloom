@@ -16,18 +16,25 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 def get_credentials_from_env():
     """Get Google credentials from environment variables."""
     logger.debug("Loading service account credentials from environment variables")
+    
+    private_key = os.environ.get("GOOGLE_PRIVATE_KEY")
+    if not private_key:
+        logger.error("GOOGLE_PRIVATE_KEY is not set")
+        raise ValueError("GOOGLE_PRIVATE_KEY environment variable is required")
+
+    private_key = private_key.strip('"\'').replace('\\n', '\n')
 
     credentials_dict = {
         "type": "service_account",
-        "project_id": os.environ.get("GOOGLE_PROJECT_ID"),
-        "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID"),
-        "private_key": os.environ.get("GOOGLE_PRIVATE_KEY").replace("\\n", "\n"),
-        "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL"),
-        "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+        "project_id": os.environ.get("GOOGLE_PROJECT_ID").strip('"'),
+        "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID").strip('"'),
+        "private_key": private_key,
+        "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL").strip('"'),
+        "client_id": os.environ.get("GOOGLE_CLIENT_ID").strip('"'),
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL"),
+        "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL").strip('"'),
         "universe_domain": "googleapis.com",
     }
 

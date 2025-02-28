@@ -42,6 +42,7 @@ urlpatterns = [
     path(
         "token/", views.login_view, name="api_token_login"
     ),  # Token generation endpoint
+    path("logout/", views.logout_view, name="api_logout"),  # Token revocation endpoint
     # Swagger UI
     path(
         "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
