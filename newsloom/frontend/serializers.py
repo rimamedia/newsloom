@@ -134,6 +134,7 @@ class StreamSerializer(serializers.ModelSerializer):
             "version",
             "configuration_examples",
         ]
+        read_only_fields = ["created_at", "updated_at", "last_run", "next_run"]
 
     def get_configuration_examples(self, obj):
         return TASK_CONFIG_EXAMPLES
@@ -275,7 +276,7 @@ class NewsCreateSerializer(serializers.ModelSerializer):
 
 
 class SourceIdSerializer(serializers.Serializer):
-    source_id = serializers.PrimaryKeyRelatedField(queryset=Source.objects.all())
+    source_ids = serializers.ListSerializer(child=serializers.PrimaryKeyRelatedField(queryset=Source.objects.all()))
 
 
 class StatusResponseSerializer(serializers.Serializer):

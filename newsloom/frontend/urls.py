@@ -30,7 +30,7 @@ urlpatterns = [
     path(
         "token/", views.LoginView.as_view(), name="api_token_login"
     ),  # Token generation endpoint
-    path("logout/", views.logout_view, name="api_logout"),  # Token revocation endpoint
+    path("logout/", views.LogoutView.as_view(), name="api_logout"),  # Token revocation endpoint
     # Swagger UI
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

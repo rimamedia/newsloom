@@ -94,21 +94,22 @@ class LoginView(generics.GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated])
-def logout_view(request):
-    """Invalidate the user's auth token."""
-    try:
-        # Delete the user's token to invalidate it
-        request.user.auth_token.delete()
-        return Response(
-            {"detail": "Successfully logged out"}, status=status.HTTP_200_OK
-        )
-    except Exception:
-        return Response(
-            {"detail": "Error during logout"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+class LogoutView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        """Invalidate the user's auth token."""
+        try:
+            # Delete the user's token to invalidate it
+            request.user.auth_token.delete()
+            return Response(
+                {"detail": "Successfully logged out"}, status=status.HTTP_200_OK
+            )
+        except Exception:
+            return Response(
+                {"detail": "Error during logout"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -341,10 +342,23 @@ class MediaViewSet(viewsets.ModelViewSet):
     @extend_schema(request=SourceIdSerializer, responses=StatusResponseSerializer)
     @action(detail=True, methods=["post"])
     def remove_source(self, request, pk=None):
+        """Remove one or more sources from a media entry.
+        
+        Args:
+            request: The HTTP request
+            pk: Primary key of the media object
+            
+        Returns:
+            JSON response confirming removal
+            
+        Raises:
+            Http404: If media with given pk doesn't exist
+            Source.DoesNotExist: If any source with given id doesn't exist
+        """
         media = self.get_object()
         serializer = SourceIdSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        media.sources.remove(serializer.validated_data["source_id"])
+        media.sources.remove(*serializer.validated_data["source_ids"])
         return Response({"status": "source removed"})
 
 
