@@ -251,6 +251,7 @@ if not CSRF_TRUSTED_ORIGINS:  # Fallback for development
         "https://127.0.0.1",
         "https://newsloom.io",
         "https://*.newsloom.io",  # Allow all subdomains
+        "http://localhost:5173",
     ]
 
 # CSRF Cookie settings
