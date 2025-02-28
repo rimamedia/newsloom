@@ -110,9 +110,27 @@ class MediaSerializer(serializers.ModelSerializer):
 
 
 class StreamSerializer(serializers.ModelSerializer):
+    """Serializer for Stream model with source and media update capabilities."""
+
     source = SourceSerializer(read_only=True)
     media = MediaSerializer(read_only=True)
+
     configuration_examples = serializers.SerializerMethodField(read_only=True)
+
+    source_id = serializers.PrimaryKeyRelatedField(
+        queryset=Source.objects.all(),
+        source="source",
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    media_id = serializers.PrimaryKeyRelatedField(
+        queryset=Media.objects.all(),
+        source="media",
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
 
     class Meta:
         """Meta configuration for StreamSerializer."""
@@ -124,6 +142,8 @@ class StreamSerializer(serializers.ModelSerializer):
             "stream_type",
             "source",
             "media",
+            "source_id",
+            "media_id",
             "frequency",
             "configuration",
             "status",
