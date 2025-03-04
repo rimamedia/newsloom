@@ -3,194 +3,42 @@ import logging
 import os
 import time
 import traceback
-from functools import wraps
 
-from asgiref.sync import async_to_sync
+from anthropic import AnthropicBedrock
+from chat.models import Chat, ChatMessage
+from chat.system_prompt import SYSTEM_PROMPT
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-# Import components from chat module
-from chat.chat_consumer import ChatConsumer
-from chat.message_processor import MessageProcessor
-from chat.message_storage import MessageStorage
-from chat.models import Chat, ChatMessage
+from chat.tools import tool_functions
+from chat.tools.tools_descriptions import TOOLS
 
 logger = logging.getLogger(__name__)
 
 
-# Helper function to convert async methods to sync
-def async_to_sync_with_args(async_func):
-    """
-    Convert an async function to a sync function.
-
-    Parameters:
-        async_func: The async function to convert
-
-    Returns:
-        A synchronous version of the function
-    """
-
-    @wraps(async_func)
-    def sync_func(*args, **kwargs):
-        return async_to_sync(async_func)(*args, **kwargs)
-
-    return sync_func
-
-
-# Create synchronous versions of async methods
-class SyncMessageProcessor:
-    """
-    Provide synchronous access to MessageProcessor methods.
-
-    This class provides synchronous versions of the async methods in MessageProcessor.
-    """
-
-    @staticmethod
-    def process_message_core(message, chat, chat_history, client, user):
-        """
-        Process a message with Claude AI (synchronous version).
-
-        Parameters:
-            message: The user message to process
-            chat: The chat object
-            chat_history: The current chat history
-            client: The Anthropic client
-            user: The user who sent the message
-
-        Returns:
-            tuple: (final_response, chat_message)
-        """
-        return async_to_sync(MessageProcessor.process_message_core)(
-            message, chat, chat_history, client, user
-        )
-
-
-class SyncMessageStorage:
-    """
-    Provide synchronous access to MessageStorage methods.
-
-    This class provides synchronous versions of the async methods in MessageStorage.
-    """
-
-    @staticmethod
-    def create_chat(user):
-        """
-        Create a chat for the given user (synchronous version).
-
-        Parameters:
-            user: The user to create the chat for
-
-        Returns:
-            Chat: The newly created chat object
-        """
-        return async_to_sync(MessageStorage.create_chat)(user)
-
-    @staticmethod
-    def get_chat(chat_id, user):
-        """
-        Retrieve a chat by ID for the given user (synchronous version).
-
-        Parameters:
-            chat_id: The ID of the chat to retrieve
-            user: The user who should own the chat
-
-        Returns:
-            Chat or None: The chat object if found, None otherwise
-        """
-        return async_to_sync(MessageStorage.get_chat)(chat_id, user)
-
-    @staticmethod
-    def load_chat_history(chat):
-        """
-        Load chat history from the database (synchronous version).
-
-        Parameters:
-            chat: The chat to load history for
-
-        Returns:
-            list: The chat history as a list of message dictionaries
-        """
-        return async_to_sync(MessageStorage.load_chat_history)(chat)
-
-    @staticmethod
-    def save_message(chat, user, message, response=None):
-        """
-        Save a message and its response to the database (synchronous version).
-
-        Parameters:
-            chat: The chat the message belongs to
-            user: The user who sent the message
-            message: The message text
-            response: The AI response text
-
-        Returns:
-            ChatMessage: The created message object
-        """
-        return async_to_sync(MessageStorage.save_message)(chat, user, message, response)
-
-    @staticmethod
-    def save_message_details(chat_message, chat, chat_history):
-        """
-        Save detailed message flow to database (synchronous version).
-
-        Parameters:
-            chat_message: The parent message
-            chat: The chat the message belongs to
-            chat_history: The full conversation history
-        """
-        return async_to_sync(MessageStorage.save_message_details)(
-            chat_message, chat, chat_history
-        )
-
-
 class Command(BaseCommand):
-    """
-    Start the Slack event listener for chat integration.
-
-    This command initializes the Slack app, sets up event handlers, and starts
-    the Socket Mode handler for real-time messaging.
-    """
-
     help = "Starts the Slack event listener for chat integration"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 
-        # Initialize Anthropic Bedrock client using ChatConsumer's method
-        self.client = self._initialize_bedrock_client()
+        # Initialize Anthropic Bedrock client
+        aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
+        aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
+        aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
+
+        self.client = AnthropicBedrock(
+            aws_access_key=aws_access_key,
+            aws_secret_key=aws_secret_key,
+            aws_region=aws_region,
+        )
 
         self.setup_event_handlers()
 
-    def _initialize_bedrock_client(self):
-        """
-        Initialize the Anthropic Bedrock client with credentials from environment.
-
-        Reuse the logic from ChatConsumer._initialize_bedrock_client
-        but in a synchronous context.
-
-        Returns:
-            AnthropicBedrock: The initialized client
-        """
-        # Create a temporary ChatConsumer instance
-        consumer = ChatConsumer()
-
-        # Call the async method in a synchronous context
-        try:
-            async_to_sync(consumer._initialize_bedrock_client)()
-            # Return the initialized client
-            return consumer.client
-        except Exception as e:
-            error_msg = f"Failed to initialize Bedrock client: {str(e)}"
-            logger.error(error_msg)
-            logger.error(traceback.format_exc())
-            raise
-
     def setup_event_handlers(self):
-        """Set up Slack event handlers for mentions and thread replies."""
-
         def process_message(event, say, is_mention=True):
             """Process both mentions and thread replies."""
             try:
@@ -236,39 +84,46 @@ class Command(BaseCommand):
                 logger.info(f"Using chat ID: {chat.id}")
 
                 try:
-                    # Create chat message with Slack timestamp
+                    # Create chat message first
                     message = ChatMessage.objects.create(
                         chat=chat,
                         user=user,
                         message=text,
-                        slack_ts=current_ts,
+                        slack_ts=current_ts,  # Store current message timestamp
                     )
                     logger.info(f"Created chat message with ID: {message.id}")
 
-                    # Load chat history using MessageStorage
-                    chat_history = SyncMessageStorage.load_chat_history(chat)
-                    message_count = len(chat_history) // 2 + 1  # Approximate count
+                    # Load chat history
+                    chat_history = []
+                    messages = ChatMessage.objects.filter(chat=chat).order_by(
+                        "timestamp"
+                    )
+                    message_count = messages.count()
                     logger.info(f"Found {message_count} messages in thread {thread_ts}")
 
-                    # Process message with MessageProcessor
+                    # Debug log all messages in thread
+                    for i, msg in enumerate(messages, 1):
+                        logger.info(f"Message {i}/{message_count}:")
+                        logger.info(f"- ID: {msg.id}")
+                        logger.info(f"- Text: {msg.message[:100]}")
+                        logger.info(f"- Slack TS: {msg.slack_ts}")
+                        logger.info(f"- Has Response: {bool(msg.response)}")
+
+                        chat_history.append({"role": "user", "content": msg.message})
+                        if msg.response:
+                            chat_history.append(
+                                {"role": "assistant", "content": msg.response}
+                            )
+
+                    # Process message
                     logger.info("Processing message with Claude...")
-                    response, updated_message = (
-                        SyncMessageProcessor.process_message_core(
-                            text, chat, chat_history, self.client, user
-                        )
-                    )
+                    response = self._get_claude_response(chat_history)
 
                     if response:
                         logger.info("Got response from Claude, saving to database...")
-                        # The response is already saved by MessageProcessor, but we need to update
-                        # the slack_ts field which is specific to this integration
-                        if updated_message.id != message.id:
-                            # If MessageProcessor created a new message, update our reference
-                            message = updated_message
-                            # Ensure slack_ts is set
-                            message.slack_ts = current_ts
-                            message.save()
-
+                        # Save response to database first
+                        message.response = response
+                        message.save()
                         logger.info(f"Saved response for message ID: {message.id}")
 
                         # Then send to Slack
@@ -319,16 +174,105 @@ class Command(BaseCommand):
                 else:
                     logger.info("Ignoring thread reply in unknown chat")
 
+    def _get_claude_response(self, chat_history):
+        """Get response from Claude with tool handling."""
+        try:
+            while True:
+                # Get response from Claude
+                response = self.client.messages.create(
+                    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    max_tokens=8192,
+                    temperature=0,
+                    system=SYSTEM_PROMPT,
+                    tools=TOOLS,
+                    messages=chat_history,
+                )
+
+                # Check if response contains tool calls
+                if response.stop_reason == "tool_use":
+                    logger.info("Tool use detected in response")
+
+                    # Add assistant's response to history
+                    chat_history.append(
+                        {
+                            "role": "assistant",
+                            "content": [
+                                content.model_dump() for content in response.content
+                            ],
+                        }
+                    )
+
+                    for content in response.content:
+                        if content.type == "tool_use":
+                            # Extract tool details
+                            tool_name = content.name
+                            tool_input = content.input
+                            tool_id = content.id
+
+                            logger.info(f"Executing tool: {tool_name}")
+                            logger.info(f"Tool input: {tool_input}")
+
+                            # Execute the tool asynchronously
+                            try:
+                                # Get tool function from dictionary
+                                tool_func = tool_functions.get(tool_name)
+                                if tool_func is None:
+                                    raise ValueError(f"Unknown tool: {tool_name}")
+
+                                # Execute tool
+                                tool_result = tool_func(**tool_input)
+                                logger.info(
+                                    f"Tool execution successful. Result: {tool_result}"
+                                )
+
+                                # Add tool result to history with role: user
+                                chat_history.append(
+                                    {
+                                        "role": "user",
+                                        "content": [
+                                            {
+                                                "type": "tool_result",
+                                                "tool_use_id": tool_id,
+                                                "content": str(tool_result),
+                                            }
+                                        ],
+                                    }
+                                )
+
+                            except Exception as e:
+                                logger.error(f"Tool execution failed: {str(e)}")
+                                logger.error(traceback.format_exc())
+                                # Add error result to history with role: user
+                                chat_history.append(
+                                    {
+                                        "role": "user",
+                                        "content": [
+                                            {
+                                                "type": "tool_result",
+                                                "tool_use_id": tool_id,
+                                                "content": str(e),
+                                                "is_error": True,
+                                            }
+                                        ],
+                                    }
+                                )
+
+                    logger.info("Continuing conversation with tool results")
+                    continue  # Continue the conversation with tool results
+
+                # If no tool calls, add response to history and return
+                logger.info("No tool calls in response, returning final text")
+                final_response = response.content[0].text
+                chat_history.append({"role": "assistant", "content": final_response})
+                return final_response
+
+        except Exception as e:
+            logger.error(f"Error getting Claude response: {str(e)}")
+            logger.error(traceback.format_exc())
+            return f"Error getting response: {str(e)}"
+
     def _get_or_create_user(self, slack_user_id):
-        """
-        Get or create a Django user for the Slack user.
-
-        Parameters:
-            slack_user_id: The Slack user ID
-
-        Returns:
-            User: The Django user
-        """
+        """Get or create a Django user for the Slack user."""
         try:
             # Get user info from Slack
             user_info = self.app.client.users_info(user=slack_user_id)
@@ -358,17 +302,7 @@ class Command(BaseCommand):
             return None
 
     def _get_or_create_chat(self, channel_id, thread_ts, user):
-        """
-        Get or create a chat thread.
-
-        Parameters:
-            channel_id: The Slack channel ID
-            thread_ts: The Slack thread timestamp
-            user: The Django user
-
-        Returns:
-            Chat: The chat object
-        """
+        """Get or create a chat thread."""
         try:
             # Try to get existing chat
             chat = Chat.objects.filter(
@@ -462,3 +396,7 @@ class Command(BaseCommand):
             logger.error(f"Slack listener error: {str(e)}")
             logger.error(traceback.format_exc())
             raise
+
+
+# TODO: add general class for chat
+# TODO: verify user's email

@@ -2,7 +2,7 @@ import logging
 import django_filters as filters
 from agents.models import Agent
 from anthropic import AnthropicBedrock
-from chat.consumers import ChatConsumer
+from chat.consumers import MessageProcessor
 from chat.models import Chat, ChatMessage
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
@@ -206,11 +206,13 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
                 aws_region=settings.BEDROCK_AWS_REGION,
             )
 
+            # Process message using MessageProcessor's core logic
+
             message_logger.info(f"Processing message for chat {chat.id}")
 
             try:
                 response, chat_message = async_to_sync(
-                    ChatConsumer.process_message_core
+                    MessageProcessor.process_message_core
                 )(
                     message=message,
                     chat=chat,
