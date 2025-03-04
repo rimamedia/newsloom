@@ -2,13 +2,13 @@ import os
 import django
 from django.core.asgi import get_asgi_application
 
+from channels.routing import ProtocolTypeRouter, URLRouter  # noqa E402
+
+from chat.middleware import AuthMiddleware
+from chat.routing import websocket_urlpatterns  # noqa E402
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "newsloom.settings")
 django.setup()
-
-from channels.auth import AuthMiddlewareStack
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import OriginValidator
-from chat.routing import websocket_urlpatterns  # noqa E402
 
 # Define allowed origins for WebSocket connections
 ALLOWED_ORIGINS = [
@@ -19,12 +19,6 @@ ALLOWED_ORIGINS = [
 application = ProtocolTypeRouter(
     {
         "http": get_asgi_application(),
-        # WebSocket with OriginValidator to restrict connections to allowed origins
-        "websocket": OriginValidator(
-            AuthMiddlewareStack(
-                URLRouter(websocket_urlpatterns)  # This will route WebSocket connections
-            ),
-            ALLOWED_ORIGINS,  # Validate that the WebSocket origin is allowed
-        ),
+        "websocket": AuthMiddleware(URLRouter(websocket_urlpatterns)),
     }
 )
