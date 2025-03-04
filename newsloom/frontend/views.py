@@ -1,5 +1,5 @@
 import logging
-import os
+import django_filters as filters
 from agents.models import Agent
 from anthropic import AnthropicBedrock
 from chat.consumers import MessageProcessor
@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
 from rest_framework import permissions, status, viewsets
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from sources.models import Doc, News, Source
@@ -19,18 +19,29 @@ from streams.models import (
     TelegramDocPublishLog,
     TelegramPublishLog,
 )
+from streams.tasks import TASK_CONFIG_EXAMPLES
+from asgiref.sync import async_to_sync
+from django.conf import settings
+from drf_spectacular.utils import extend_schema
+from rest_framework import generics
 
 from .serializers import (
     AgentSerializer,
     ChatMessageSerializer,
+    ChatMessageRequestSerializer,
+    ChatMessageResponseSerializer,
     ChatSerializer,
     DocSerializer,
     ExamplesSerializer,
     LoginSerializer,
     MediaSerializer,
     NewsSerializer,
+    NewsCreateSerializer,
     RegisterSerializer,
+    SourceIdSerializer,
     SourceSerializer,
+    StatusResponseSerializer,
+    StatusWithResultResponseSerializer,
     StreamExecutionStatsSerializer,
     StreamLogSerializer,
     StreamSerializer,
@@ -45,52 +56,60 @@ logger = logging.getLogger(__name__)
 message_logger = logging.getLogger("chat.message_processing")
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def register_view(request):
-    serializer = RegisterSerializer(data=request.data)
-    if serializer.is_valid():
-        user = serializer.save()
-        token, created = Token.objects.get_or_create(user=user)
-        return Response(
-            {
-                "token": token.key,
-                "user_id": user.pk,
-                "username": user.username,
-                "email": user.email,
-            }
-        )
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class RegisterView(generics.GenericAPIView):
+    permission_classes = (AllowAny,)
+
+    @extend_schema(request=RegisterSerializer)
+    def post(self, request, *args, **kwargs):
+        """
+        Register a new user
+        """
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            token, created = Token.objects.get_or_create(user=user)
+            return Response(
+                {
+                    "token": token.key,
+                    "user_id": user.pk,
+                    "username": user.username,
+                    "email": user.email,
+                }
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def login_view(request):
-    serializer = LoginSerializer(data=request.data)
-    if serializer.is_valid():
-        user = serializer.validated_data
-        token, created = Token.objects.get_or_create(user=user)
-        return Response(
-            {"token": token.key, "user_id": user.pk, "username": user.username}
-        )
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class LoginView(generics.GenericAPIView):
+    permission_classes = (AllowAny,)
+
+    @extend_schema(request=LoginSerializer)
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data
+            token, created = Token.objects.get_or_create(user=user)
+            return Response(
+                {"token": token.key, "user_id": user.pk, "username": user.username}
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated])
-def logout_view(request):
-    """Invalidate the user's auth token."""
-    try:
-        # Delete the user's token to invalidate it
-        request.user.auth_token.delete()
-        return Response(
-            {"detail": "Successfully logged out"}, status=status.HTTP_200_OK
-        )
-    except Exception:
-        return Response(
-            {"detail": "Error during logout"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+class LogoutView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        """Invalidate the user's auth token."""
+        try:
+            # Delete the user's token to invalidate it
+            request.user.auth_token.delete()
+            return Response(
+                {"detail": "Successfully logged out"}, status=status.HTTP_200_OK
+            )
+        except Exception:
+            return Response(
+                {"detail": "Error during logout"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -100,6 +119,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ChatViewSet(viewsets.ModelViewSet):
+    queryset = Chat.objects.prefetch_related('users', 'messages', 'messages__user', 'messages__chat').all()
     serializer_class = ChatSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -120,6 +140,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @extend_schema(request=ChatMessageRequestSerializer, responses=ChatMessageResponseSerializer)
     @action(detail=False, methods=["post"])
     def process_message(self, request):
         """
@@ -147,32 +168,13 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             404 Not Found: If specified chat_id doesn't exist
             500 Internal Server Error: For processing errors or missing credentials
         """
+        serializer = ChatMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        chat_id = serializer.validated_data.get("chat_id")
+        message = serializer.validated_data.get("message")
+
         try:
-            message = request.data.get("message")
-            chat_id = request.data.get("chat_id")
-
-            if not message:
-                return Response(
-                    {"error": "Message is required"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Initialize AWS Bedrock client
-            aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
-            aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
-            aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
-
-            if not aws_access_key or not aws_secret_key:
-                return Response(
-                    {"error": "Missing AWS credentials for Bedrock"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-
-            client = AnthropicBedrock(
-                aws_access_key=aws_access_key,
-                aws_secret_key=aws_secret_key,
-                aws_region=aws_region,
-            )
-
             # Get or create chat
             chat = None
             chat_history = []
@@ -198,9 +200,15 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             if not chat:
                 chat = Chat.objects.create(user=request.user)
 
+            client = AnthropicBedrock(
+                aws_access_key=settings.BEDROCK_AWS_ACCESS_KEY_ID,
+                aws_secret_key=settings.BEDROCK_AWS_SECRET_ACCESS_KEY,
+                aws_region=settings.BEDROCK_AWS_REGION,
+            )
+
             # Process message using MessageProcessor's core logic
+
             message_logger.info(f"Processing message for chat {chat.id}")
-            from asgiref.sync import async_to_sync
 
             try:
                 response, chat_message = async_to_sync(
@@ -215,22 +223,25 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
                 message_logger.info(
                     f"Successfully processed message for chat {chat.id}"
                 )
+
+                response_data = {
+                    "message": message,
+                    "response": response,
+                    "chat_id": chat.id,
+                    "timestamp": None
+                }
+
+                if chat_message is not None:
+                    response_data["timestamp"] = chat_message.timestamp.isoformat()
+
+                response_serializer = ChatMessageResponseSerializer(response_data)
+
+                return Response(response_serializer.data)
             except Exception as e:
                 message_logger.error(
                     f"Failed to process message for chat {chat.id}: {str(e)}"
                 )
                 raise
-
-            return Response(
-                {
-                    "message": message,
-                    "response": response,
-                    "chat_id": chat.id,
-                    "timestamp": (
-                        chat_message.timestamp.isoformat() if chat_message else None
-                    ),
-                }
-            )
 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}", exc_info=True)
@@ -240,16 +251,11 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
 
 class StreamViewSet(viewsets.ModelViewSet):
-    queryset = Stream.objects.all()
+    queryset = Stream.objects.prefetch_related('source', 'media', 'media__sources', 'media__examples').all()
     serializer_class = StreamSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
-        # Add configuration examples to the response
-        response.data["configuration_examples"] = TASK_CONFIG_EXAMPLES
-        return response
-
+    @extend_schema(responses=StatusWithResultResponseSerializer)
     @action(detail=True, methods=["post"])
     def execute(self, request, pk=None):
         stream = self.get_object()
@@ -328,15 +334,10 @@ class StreamViewSet(viewsets.ModelViewSet):
 
 
 class StreamLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = StreamLog.objects.prefetch_related('stream').all()
     serializer_class = StreamLogSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = StreamLog.objects.all()
-        stream_id = self.request.query_params.get("stream", None)
-        if stream_id is not None:
-            queryset = queryset.filter(stream_id=stream_id)
-        return queryset
+    filterset_fields = ('stream', )
 
 
 class StreamExecutionStatsViewSet(viewsets.ReadOnlyModelViewSet):
@@ -346,13 +347,13 @@ class StreamExecutionStatsViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TelegramPublishLogViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = TelegramPublishLog.objects.all()
+    queryset = TelegramPublishLog.objects.prefetch_related('news', 'media').all()
     serializer_class = TelegramPublishLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
 class TelegramDocPublishLogViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = TelegramDocPublishLog.objects.all()
+    queryset = TelegramDocPublishLog.objects.prefetch_related("doc", "media")
     serializer_class = TelegramDocPublishLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -368,9 +369,10 @@ class NewsViewSet(viewsets.ModelViewSet):
     serializer_class = NewsSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def perform_create(self, serializer):
-        source = Source.objects.get(pk=self.request.data.get("source"))
-        serializer.save(source=source)
+    def get_serializer_class(self):
+        if self.action == "create":
+            return NewsCreateSerializer
+        return super().get_serializer_class()
 
 
 class DocViewSet(viewsets.ModelViewSet):
@@ -380,15 +382,13 @@ class DocViewSet(viewsets.ModelViewSet):
 
 
 class AgentViewSet(viewsets.ModelViewSet):
+    class Filter(filters.FilterSet):
+        active_only = filters.BooleanFilter(field_name='is_active')
+
     queryset = Agent.objects.all()
     serializer_class = AgentSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = Agent.objects.all()
-        if self.request.query_params.get("active_only"):
-            queryset = queryset.filter(is_active=True)
-        return queryset
+    filterset_class = Filter
 
 
 class MediaViewSet(viewsets.ModelViewSet):
@@ -411,42 +411,32 @@ class MediaViewSet(viewsets.ModelViewSet):
             media.sources.add(source)
             return Response({"status": "source added"})
 
+    @extend_schema(request=SourceIdSerializer, responses=StatusResponseSerializer)
     @action(detail=True, methods=["post"])
     def remove_source(self, request, pk=None):
         """Remove one or more sources from a media entry.
 
+        
         Args:
-            request: The HTTP request object containing source_ids
-            pk: Primary key of the media entry
-
+            request: The HTTP request
+            pk: Primary key of the media object
+            
         Returns:
-            Response with status message indicating number of sources removed
-
+            JSON response confirming removal
+            
         Raises:
+            Http404: If media with given pk doesn't exist
             Source.DoesNotExist: If any source with given id doesn't exist
         """
         media = self.get_object()
-        source_ids = request.data.get("source_ids")
-
-        # Handle both single ID and list of IDs
-        if isinstance(source_ids, list):
-            sources = Source.objects.filter(pk__in=source_ids)
-            media.sources.remove(*sources)
-            return Response({"status": f"{len(sources)} sources removed"})
-        else:
-            source = Source.objects.get(pk=source_ids)
-            media.sources.remove(source)
-            return Response({"status": "source removed"})
+        serializer = SourceIdSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        media.sources.remove(*serializer.validated_data["source_ids"])
+        return Response({"status": "source removed"})
 
 
 class ExamplesViewSet(viewsets.ModelViewSet):
-    queryset = Examples.objects.all()
+    queryset = Examples.objects.prefetch_related('media').all()
     serializer_class = ExamplesSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = Examples.objects.all()
-        media_id = self.request.query_params.get("media", None)
-        if media_id is not None:
-            queryset = queryset.filter(media_id=media_id)
-        return queryset
+    filterset_fields = ('media', )

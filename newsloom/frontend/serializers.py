@@ -12,6 +12,7 @@ from streams.models import (
     TelegramDocPublishLog,
     TelegramPublishLog,
 )
+from streams.tasks import TASK_CONFIG_EXAMPLES
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -113,6 +114,9 @@ class StreamSerializer(serializers.ModelSerializer):
 
     source = SourceSerializer(read_only=True)
     media = MediaSerializer(read_only=True)
+
+    configuration_examples = serializers.SerializerMethodField(read_only=True)
+
     source_id = serializers.PrimaryKeyRelatedField(
         queryset=Source.objects.all(),
         source="source",
@@ -148,7 +152,12 @@ class StreamSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "version",
+            "configuration_examples",
         ]
+        read_only_fields = ["created_at", "updated_at", "last_run", "next_run"]
+
+    def get_configuration_examples(self, obj):
+        return TASK_CONFIG_EXAMPLES
 
 
 class StreamLogSerializer(serializers.ModelSerializer):
@@ -265,3 +274,46 @@ class AgentSerializer(serializers.ModelSerializer):
                 "Prompt template must contain {news} placeholder"
             )
         return value
+
+
+class NewsCreateSerializer(serializers.ModelSerializer):
+    source = serializers.PrimaryKeyRelatedField(queryset=Source.objects.all())
+    
+    class Meta:
+        """Meta configuration for NewsCreateSerializer."""
+        model = News
+        fields = [
+            "id",
+            "source",
+            "link",
+            "title",
+            "text",
+            "created_at",
+            "published_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
+
+
+class SourceIdSerializer(serializers.Serializer):
+    source_ids = serializers.ListSerializer(child=serializers.PrimaryKeyRelatedField(queryset=Source.objects.all()))
+
+
+class StatusResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class StatusWithResultResponseSerializer(StatusResponseSerializer):
+    result = serializers.JSONField()
+
+
+class ChatMessageRequestSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    chat_id = serializers.PrimaryKeyRelatedField(queryset=Chat.objects.all(), required=False)
+
+
+class ChatMessageResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    chat_id = serializers.PrimaryKeyRelatedField(queryset=Chat.objects.all(), required=False)
+    response = serializers.CharField()
+    timestamp = serializers.DateTimeField(required=False)
