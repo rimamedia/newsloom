@@ -15,29 +15,33 @@ def get_user_by_token(key: str) -> User | AnonymousUser:
 
 
 def get_token_from_query_string(scope) -> str | None:
-    query_string = scope.get('query_string', '').decode('utf-8')
+    query_string = scope.get("query_string", "").decode("utf-8")
     if query_string:
         qs = parse_qs(query_string)
-        if 'token' in qs:
-            return qs['token'][0]
+        if "token" in qs:
+            return qs["token"][0]
     return None
 
 
 def get_token_from_headers(scope) -> str | None:
-    headers = scope.get('headers')
+    headers = scope.get("headers")
     if headers:
         for name, value in scope.get("headers", []):
-            if name == b'authorization':
-                return value.decode().lower().replace('token', '').strip()
+            if name == b"authorization":
+                return value.decode().lower().replace("token", "").strip()
     return None
 
 
 class AuthMiddleware(BaseMiddleware):
 
     async def __call__(self, scope, receive, send):
+        # Try to get token from query string or headers
+        token = None
         for cb in (get_token_from_query_string, get_token_from_headers):
             token = cb(scope)
             if token:
                 break
-        scope['user'] = await get_user_by_token(token)
-        return await super().__call__(scope, receive, send) 
+
+        # Set user in scope - if no token is found, this will be AnonymousUser
+        scope["user"] = await get_user_by_token(token) if token else AnonymousUser()
+        return await super().__call__(scope, receive, send)

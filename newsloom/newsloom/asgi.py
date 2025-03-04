@@ -1,14 +1,17 @@
 import os
 import django
-from django.core.asgi import get_asgi_application
 
-from channels.routing import ProtocolTypeRouter, URLRouter  # noqa E402
-
-from chat.middleware import AuthMiddleware
-from chat.routing import websocket_urlpatterns  # noqa E402
-
+# Set DJANGO_SETTINGS_MODULE first before importing other modules
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "newsloom.settings")
 django.setup()
+
+# Now import other modules after Django is set up
+from django.core.asgi import get_asgi_application  # noqa: E402
+from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
+from chat.middleware import AuthMiddleware  # noqa: E402
+from chat.routing import websocket_urlpatterns  # noqa: E402
+
+# The Django setup has been moved before imports to avoid circular references
 
 # Define allowed origins for WebSocket connections
 ALLOWED_ORIGINS = [
