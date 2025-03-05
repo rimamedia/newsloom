@@ -83,3 +83,4 @@ markdown
 django-filter
 django-cors-headers
 drf-yasg
+sentry_sdk
