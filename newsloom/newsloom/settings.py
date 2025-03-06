@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "drf_yasg",
     "channels",
     "mediamanager",
     "sources",
@@ -56,6 +55,8 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "frontend",
+    "django_filters",
+    "drf_spectacular",
 ]
 
 # REST Framework settings
@@ -68,6 +69,8 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "frontend.pagination.CustomPageNumberPagination",
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # CORS settings
@@ -280,3 +283,15 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/chat/"
 LOGOUT_REDIRECT_URL = "/"
+
+# Add this for Spectacular
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Newsloom API',
+    'DESCRIPTION': 'API for managing news streams, sources, documents and chat interactions',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
+BEDROCK_AWS_ACCESS_KEY_ID = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
+BEDROCK_AWS_SECRET_ACCESS_KEY = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
+BEDROCK_AWS_REGION = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
