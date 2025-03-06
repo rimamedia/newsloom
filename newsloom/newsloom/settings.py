@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 # Load environment variables from .env file, supporting multiline values
 load_dotenv(override=True, stream=None)
@@ -229,6 +231,18 @@ LOGGING = {
         "level": "DEBUG",
     },
 }
+
+# Sentry configuration
+sentry_sdk.init(
+    dsn="https://bf849e3f2ff92db1569e3ae171c8b1e5@o4508924566175744.ingest.us.sentry.io/4508924569845760",
+    integrations=[DjangoIntegration()],
+    send_default_pii=True,
+    traces_sample_rate=1.0,
+    _experiments={
+        "continuous_profiling_auto_start": True,
+    },
+)
+
 
 # Stream Scheduler Settings
 STREAM_SCHEDULER_SLEEP_INTERVAL = int(

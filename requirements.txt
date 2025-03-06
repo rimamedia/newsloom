@@ -83,3 +83,4 @@ markdown
 django-filter
 django-cors-headers
 drf-spectacular==0.28.0
+sentry_sdk
