@@ -171,33 +171,28 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         serializer = ChatMessageRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        chat_id = serializer.validated_data.get("chat_id")
         message = serializer.validated_data.get("message")
 
         try:
             # Get or create chat
-            chat = None
             chat_history = []
-
-            if chat_id:
-                try:
-                    chat = Chat.objects.get(id=chat_id, user=request.user)
-                    # Load chat history
-                    messages = list(
-                        ChatMessage.objects.filter(chat=chat).order_by("timestamp")
-                    )
-                    for msg in messages:
-                        chat_history.append({"role": "user", "content": msg.message})
-                        if msg.response:
-                            chat_history.append(
-                                {"role": "assistant", "content": msg.response}
-                            )
-                except Chat.DoesNotExist:
+            chat = serializer.validated_data.get("chat_id")
+            if chat:
+                if chat.user != request.user:
                     return Response(
                         {"error": "Chat not found"}, status=status.HTTP_404_NOT_FOUND
                     )
-
-            if not chat:
+                # Load chat history
+                messages = list(
+                    ChatMessage.objects.filter(chat=chat).order_by("timestamp")
+                )
+                for msg in messages:
+                    chat_history.append({"role": "user", "content": msg.message})
+                    if msg.response:
+                        chat_history.append(
+                            {"role": "assistant", "content": msg.response}
+                        )
+            else:
                 chat = Chat.objects.create(user=request.user)
 
             client = AnthropicBedrock(
