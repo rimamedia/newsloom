@@ -227,7 +227,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
                 response_data = {
                     "message": message,
                     "response": response,
-                    "chat_id": chat.id,
+                    "chat_id": chat,
                     "timestamp": None
                 }
 
