@@ -168,7 +168,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             404 Not Found: If specified chat_id doesn't exist
             500 Internal Server Error: For processing errors or missing credentials
         """
-        serializer = ChatMessageSerializer(data=request.data)
+        serializer = ChatMessageRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         chat_id = serializer.validated_data.get("chat_id")
