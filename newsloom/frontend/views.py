@@ -2,7 +2,7 @@ import logging
 import django_filters as filters
 from agents.models import Agent
 from anthropic import AnthropicBedrock
-from chat.consumers import MessageProcessor
+from chat.message_processor import MessageProcessor
 from chat.models import Chat, ChatMessage
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
