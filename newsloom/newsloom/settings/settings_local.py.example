@@ -1,0 +1,25 @@
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost",
+    "http://127.0.0.1",
+    "https://localhost",
+    "https://127.0.0.1",
+    "https://newsloom.io",
+    "https://*.newsloom.io",  # Allow all subdomains
+    "http://localhost:5173",
+]
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "newsloom",
+        "USER": "postgres",
+        "PASSWORD": "",
+        "HOST": "localhost",
+        "PORT":5432,
+        "OPTIONS": {
+            "options": "-c timezone=UTC",
+        },
+    }
+}
+
+SENTRY_DSN = None

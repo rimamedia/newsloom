@@ -1,11 +1,11 @@
 import json
 import logging
-import os
 import time
 import traceback
 from functools import wraps
 
 from asgiref.sync import async_to_sync
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from slack_bolt import App
@@ -157,7 +157,7 @@ class Command(BaseCommand):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+        self.app = App(token=settings.SLACK_BOT_TOKEN)
 
         # Initialize Anthropic Bedrock client using ChatConsumer's method
         self.client = self._initialize_bedrock_client()
@@ -394,15 +394,13 @@ class Command(BaseCommand):
         try:
             # Log environment variables (without sensitive values)
             self.stdout.write(self.style.SUCCESS("Checking Slack configuration..."))
-            bot_token = os.environ.get("SLACK_BOT_TOKEN")
-            app_token = os.environ.get("SLACK_APP_TOKEN")
 
-            if not bot_token:
+            if not settings.SLACK_BOT_TOKEN:
                 self.stderr.write(
                     self.style.ERROR("SLACK_BOT_TOKEN not found in environment")
                 )
                 return
-            if not app_token:
+            if not settings.SLACK_APP_TOKEN:
                 self.stderr.write(
                     self.style.ERROR("SLACK_APP_TOKEN not found in environment")
                 )
@@ -410,10 +408,10 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.SUCCESS("Found required Slack tokens"))
             self.stdout.write(
-                self.style.SUCCESS(f"Bot token prefix: {bot_token[:10]}...")
+                self.style.SUCCESS(f"Bot token prefix: {settings.SLACK_BOT_TOKEN[:10]}...")
             )
             self.stdout.write(
-                self.style.SUCCESS(f"App token prefix: {app_token[:10]}...")
+                self.style.SUCCESS(f"App token prefix: {settings.SLACK_APP_TOKEN[:10]}...")
             )
 
             # Test Slack API connection

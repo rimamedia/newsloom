@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict
 
 import requests
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from dotenv import load_dotenv
@@ -31,12 +32,6 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
         EnvironmentError: If required environment variables are not set
     """
     # Check required environment variables
-    required_vars = ["ARTICLEAN_API_KEY", "ARTICLEAN_API_URL"]
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-    if missing_vars:
-        raise EnvironmentError(
-            f"Missing required environment variables: {', '.join(missing_vars)}"
-        )
 
     # Get stream to access its source
     stream = Stream.objects.get(id=stream_id)
@@ -59,12 +54,12 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
 
             payload = json.dumps({"url": article.link})
             headers = {
-                "x-api-key": os.getenv("ARTICLEAN_API_KEY"),
+                "x-api-key": settings.ARTICLEAN_API_KEY,
                 "Content-Type": "application/json",
             }
             logger.info(f"Making request to Articlean API with payload: {payload}")
 
-            api_url = f"{os.getenv('ARTICLEAN_API_URL')}/process-url"
+            api_url = f"{settings.ARTICLEAN_API_URL}/process-url"
             logger.info(f"Sending request to: {api_url}")
 
             # Send request

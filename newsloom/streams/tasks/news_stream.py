@@ -30,9 +30,9 @@ class BedrockProcessor:
     def __init__(self):
         """Initialize the Bedrock processor with AWS credentials."""
         self.client = AnthropicBedrock(
-            aws_access_key=os.getenv("BEDROCK_AWS_ACCESS_KEY_ID"),
-            aws_secret_key=os.getenv("BEDROCK_AWS_SECRET_ACCESS_KEY"),
-            aws_region=os.getenv("BEDROCK_AWS_REGION", "us-east-1"),
+                aws_access_key=settings.BEDROCK_AWS_ACCESS_KEY_ID,
+                aws_secret_key=settings.BEDROCK_AWS_SECRET_ACCESS_KEY,
+                aws_region=settings.BEDROCK_AWS_REGION,
         )
 
     @retry(
