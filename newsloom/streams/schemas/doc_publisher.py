@@ -35,3 +35,7 @@ class DocPublisherConfig(BaseConfig):
         ge=1,
         le=100,
     )
+    google_doc_links: bool = Field(
+        default=False,
+        description="Whether to include Google Doc links in messages",
+    )
