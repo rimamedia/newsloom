@@ -14,6 +14,7 @@ def publish_docs(
     channel_id,
     bot_token,
     batch_size=10,
+    google_doc_links=False,
     **kwargs,  # Accept any additional configuration parameters
 ):
     """
@@ -24,6 +25,8 @@ def publish_docs(
         channel_id (str): Telegram channel ID
         bot_token (str): Telegram bot token
         batch_size (int): Maximum number of docs to process
+        google_doc_links (bool): Whether to include Google Doc links in messages
+        **kwargs: Additional configuration parameters
 
     Returns:
         dict: Result containing processed counts and any errors
@@ -69,6 +72,10 @@ def publish_docs(
                 if doc.link:
                     # Add link on new line
                     message += f"\n\n{doc.link}"
+
+                # Add Google Doc link if enabled in config
+                if google_doc_links and doc.google_doc_link:
+                    message += f"\n\nGoogle Doc: {doc.google_doc_link}"
 
                 # Add debug logging before sending
                 logger.info(
