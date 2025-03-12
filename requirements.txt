@@ -84,3 +84,4 @@ django-filter
 django-cors-headers
 drf-spectacular==0.28.0
 sentry_sdk
+django-split-settings==1.0.1
