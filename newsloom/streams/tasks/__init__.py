@@ -173,3 +173,5 @@ def get_task_config_example(stream_type):
 
 
 # TODO: add name conventions for tasks
+
+from ._process import process_stream

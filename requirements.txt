@@ -16,7 +16,6 @@ defusedxml==0.7.1
 distlib==0.3.9
 Django==5.1.6
 django-picklefield==3.2
-django-q==1.3.9
 docutils==0.21.2
 feedparser==6.0.11
 filelock==3.17.0
@@ -49,7 +48,7 @@ python-dotenv==1.0.1
 python-telegram-bot==21.7
 pytz==2025.1
 PyYAML==6.0.2
-redis==3.5.3
+redis==5.2.1
 requests==2.32.3
 rsa==4.9
 setuptools==75.8.0
@@ -84,4 +83,8 @@ django-filter
 django-cors-headers
 drf-spectacular==0.28.0
 sentry_sdk
+celery==5.4.0
+django-celery-beat==2.7.0
+split_settingsq
+flower
 django-split-settings==1.0.1

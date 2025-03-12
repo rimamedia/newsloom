@@ -4,6 +4,7 @@ from split_settings.tools import optional, include
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SENTRY_DSN = None
 
 _base_settings = (
     'components/django.py',
@@ -11,6 +12,7 @@ _base_settings = (
     'components/api.py',
     'components/articlean.py',
     'components/bedrock.py',
+    'components/celery.py',
     'components/channel.py',
     'components/db.py',
     'components/google.py',

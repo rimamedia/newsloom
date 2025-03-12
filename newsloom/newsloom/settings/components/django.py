@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "channels",
     "corsheaders",
     "django_filters",
+    'django_celery_beat',
 
     "rest_framework",
     "rest_framework.authtoken",

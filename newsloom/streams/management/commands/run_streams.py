@@ -173,61 +173,63 @@ class Command(BaseCommand):
             raise
 
     def handle(self, *args, **options):
-        self.stdout.write("Starting one-time parallel stream execution...")
-        logger.info("Stream execution started")
+        self.stdout.write("Use celery!!!")
 
-        # Log timezone information
-        logger.info(f"Current timezone: {timezone.get_current_timezone_name()}")
-        logger.info(f"Current time: {timezone.now()}")
-
-        # Reactivate any failed streams
-        Stream.reactivate_failed_streams()
-        logger.info("Reactivated failed streams")
-
-        max_retries = options["max_retries"]
-        num_processes = options["processes"]
-        logger.info(
-            f"Configuration: max_retries={max_retries}, processes={num_processes}"
-        )
-
-        try:
-            # Create execution stats
-            stats = StreamExecutionStats.objects.create()
-            logger.info(f"Starting execution at {stats.execution_start}")
-
-            # Get all due streams
-            due_streams = self.get_due_streams()
-
-            if due_streams:
-                # Update stats before processing
-                stats.streams_attempted = len(due_streams)
-                stats.save()
-
-                # Process all streams in parallel
-                self.process_streams(due_streams, stats, max_retries, num_processes)
-
-                # Log final results
-                total = stats.streams_succeeded + stats.streams_failed
-                logger.info(
-                    f"Stream execution results:\n"
-                    f"Total streams processed: {stats.streams_attempted}\n"
-                    f"Successfully completed: {stats.streams_succeeded}\n"
-                    f"Failed: {stats.streams_failed}\n"
-                    f"Total processed: {total}"
-                )
-            else:
-                logger.info("No due streams found")
-
-            # Update stats
-            stats.execution_end = timezone.now()
-            stats.save()
-            stats.calculate_stats()
-
-            duration = stats.execution_end - stats.execution_start
-            logger.info(
-                f"Execution completed in {duration.total_seconds():.2f} seconds"
-            )
-
-        except Exception as e:
-            logger.exception(f"Critical error in stream execution: {e}")
-            raise
+        # self.stdout.write("Starting one-time parallel stream execution...")
+        # logger.info("Stream execution started")
+        #
+        # # Log timezone information
+        # logger.info(f"Current timezone: {timezone.get_current_timezone_name()}")
+        # logger.info(f"Current time: {timezone.now()}")
+        #
+        # # Reactivate any failed streams
+        # Stream.reactivate_failed_streams() # failed to active
+        # logger.info("Reactivated failed streams")
+        #
+        # max_retries = options["max_retries"]
+        # num_processes = options["processes"]
+        # logger.info(
+        #     f"Configuration: max_retries={max_retries}, processes={num_processes}"
+        # )
+        #
+        # try:
+        #     # Create execution stats
+        #     stats = StreamExecutionStats.objects.create()
+        #     logger.info(f"Starting execution at {stats.execution_start}")
+        #
+        #     # Get all due streams
+        #     due_streams = self.get_due_streams() # status = active & failed
+        #
+        #     if due_streams:
+        #         # Update stats before processing
+        #         stats.streams_attempted = len(due_streams)
+        #         stats.save()
+        #
+        #         # Process all streams in parallel
+        #         self.process_streams(due_streams, stats, max_retries, num_processes)
+        #
+        #         # Log final results
+        #         total = stats.streamxs_succeeded + stats.streams_failed
+        #         logger.info(
+        #             f"Stream execution results:\n"
+        #             f"Total streams processed: {stats.streams_attempted}\n"
+        #             f"Successfully completed: {stats.streams_succeeded}\n"
+        #             f"Failed: {stats.streams_failed}\n"
+        #             f"Total processed: {total}"
+        #         )
+        #     else:
+        #         logger.info("No due streams found")
+        #
+        #     # Update stats
+        #     stats.execution_end = timezone.now()
+        #     stats.save()
+        #     stats.calculate_stats()
+        #
+        #     duration = stats.execution_end - stats.execution_start
+        #     logger.info(
+        #         f"Execution completed in {duration.total_seconds():.2f} seconds"
+        #     )
+        #
+        # except Exception as e:
+        #     logger.exception(f"Critical error in stream execution: {e}")
+        #     raise

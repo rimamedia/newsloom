@@ -3,6 +3,7 @@ FROM python:3.13-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    C_FORCE_ROOT=1 \
     DEBIAN_FRONTEND=noninteractive
 
 # Set working directory
