@@ -58,6 +58,9 @@ class MessageProcessor:
             # Add new user message to history
             chat_history.append({"role": "user", "content": message})
 
+            # Counter to track the number of tool usage iterations
+            tool_usage_count = 0
+
             while True:
                 # Process the message with the AI service
                 response = await MessageProcessor._call_ai_service(client, chat_history)
@@ -65,6 +68,9 @@ class MessageProcessor:
                 # Check if response contains tool calls
                 if response.stop_reason == "tool_use":
                     logger.info("Tool use detected in response")
+
+                    # Increment the tool usage counter
+                    tool_usage_count += 1
 
                     # Add assistant's response to history
                     chat_history.append(
@@ -84,9 +90,33 @@ class MessageProcessor:
                     logger.info("Continuing conversation with tool results")
                     continue  # Continue the conversation with tool results
 
-                # If no tool calls, add response to history and return
-                logger.info("No tool calls in response, returning final text")
+                # If no tool calls, process the final response
+                logger.info("No tool calls in response, processing final text")
                 final_response = response.content[0].text
+
+                # If there were multiple tool usages, generate a summary
+                if tool_usage_count > 1:
+                    logger.info(
+                        f"Multiple tool usages detected ({tool_usage_count}), generating summary"  # noqa E501
+                    )
+
+                    # Add a message requesting a summary
+                    summary_request = "Please provide a concise summary of all the actions and steps taken in this conversation."  # noqa E501
+                    chat_history.append({"role": "user", "content": summary_request})
+
+                    # Get summary from AI
+                    summary_response = await MessageProcessor._call_ai_service(
+                        client, chat_history
+                    )
+                    summary = summary_response.content[0].text
+
+                    # Use the summary as the final response
+                    final_response = summary
+
+                    # Remove the summary request from history
+                    chat_history.pop()
+
+                # Add final response to history
                 chat_history.append({"role": "assistant", "content": final_response})
 
                 # Save the message and response
