@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     netcat-traditional \
     curl \
+    redis \
     && rm -rf /var/lib/apt/lists/*
 
 # Install CloudWatch agent based on architecture

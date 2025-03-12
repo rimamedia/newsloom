@@ -85,6 +85,5 @@ drf-spectacular==0.28.0
 sentry_sdk
 celery==5.4.0
 django-celery-beat==2.7.0
-split_settingsq
 flower
 django-split-settings==1.0.1
