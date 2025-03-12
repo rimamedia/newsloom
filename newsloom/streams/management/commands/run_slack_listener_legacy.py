@@ -1,12 +1,12 @@
 import json
 import logging
-import os
 import time
 import traceback
 
 from anthropic import AnthropicBedrock
 from chat.models import Chat, ChatMessage
 from chat.system_prompt import SYSTEM_PROMPT
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from slack_bolt import App
@@ -23,17 +23,13 @@ class Command(BaseCommand):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+        self.app = App(token=settings.SLACK_BOT_TOKEN)
 
         # Initialize Anthropic Bedrock client
-        aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
-        aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
-        aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
-
         self.client = AnthropicBedrock(
-            aws_access_key=aws_access_key,
-            aws_secret_key=aws_secret_key,
-            aws_region=aws_region,
+                aws_access_key=settings.BEDROCK_AWS_ACCESS_KEY_ID,
+                aws_secret_key=settings.BEDROCK_AWS_SECRET_ACCESS_KEY,
+                aws_region=settings.BEDROCK_AWS_REGION,
         )
 
         self.setup_event_handlers()
@@ -328,15 +324,13 @@ class Command(BaseCommand):
         try:
             # Log environment variables (without sensitive values)
             self.stdout.write(self.style.SUCCESS("Checking Slack configuration..."))
-            bot_token = os.environ.get("SLACK_BOT_TOKEN")
-            app_token = os.environ.get("SLACK_APP_TOKEN")
 
-            if not bot_token:
+            if not settings.SLACK_BOT_TOKEN:
                 self.stderr.write(
                     self.style.ERROR("SLACK_BOT_TOKEN not found in environment")
                 )
                 return
-            if not app_token:
+            if not settings.SLACK_APP_TOKEN:
                 self.stderr.write(
                     self.style.ERROR("SLACK_APP_TOKEN not found in environment")
                 )
@@ -344,10 +338,10 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.SUCCESS("Found required Slack tokens"))
             self.stdout.write(
-                self.style.SUCCESS(f"Bot token prefix: {bot_token[:10]}...")
+                self.style.SUCCESS(f"Bot token prefix: {settings.SLACK_BOT_TOKEN[:10]}...")
             )
             self.stdout.write(
-                self.style.SUCCESS(f"App token prefix: {app_token[:10]}...")
+                self.style.SUCCESS(f"App token prefix: {settings.SLACK_APP_TOKEN[:10]}...")
             )
 
             # Test Slack API connection

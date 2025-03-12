@@ -95,3 +95,6 @@ newsloom-streams.timer
 # Frontend
 frontend-dist/
 frontend-build/
+
+# Project
+settings_local.py

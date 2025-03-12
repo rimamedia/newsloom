@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 import traceback
 from typing import Optional
@@ -8,6 +7,7 @@ from anthropic import AnthropicBedrock
 from asgiref.sync import sync_to_async
 from chat.models import Chat, ChatMessage
 from chat.system_prompt import SYSTEM_PROMPT
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from telegram import Update
@@ -26,14 +26,10 @@ class Command(BaseCommand):
         super().__init__(*args, **kwargs)
 
         # Initialize Anthropic Bedrock client
-        aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
-        aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
-        aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
-
         self.client = AnthropicBedrock(
-            aws_access_key=aws_access_key,
-            aws_secret_key=aws_secret_key,
-            aws_region=aws_region,
+                aws_access_key=settings.BEDROCK_AWS_ACCESS_KEY_ID,
+                aws_secret_key=settings.BEDROCK_AWS_SECRET_ACCESS_KEY,
+                aws_region=settings.BEDROCK_AWS_REGION,
         )
 
     def _get_or_create_user(self, telegram_user) -> Optional[User]:
@@ -342,9 +338,8 @@ class Command(BaseCommand):
         try:
             # Log environment variables (without sensitive values)
             self.stdout.write(self.style.SUCCESS("Checking Telegram configuration..."))
-            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
 
-            if not bot_token:
+            if not  settings.TELEGRAM_BOT_TOKEN:
                 self.stderr.write(
                     self.style.ERROR("TELEGRAM_BOT_TOKEN not found in environment")
                 )
@@ -352,13 +347,13 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.SUCCESS("Found required Telegram token"))
             self.stdout.write(
-                self.style.SUCCESS(f"Bot token prefix: {bot_token[:10]}...")
+                self.style.SUCCESS(f"Bot token prefix: { settings.TELEGRAM_BOT_TOKEN[:10]}...")
             )
 
             while True:
                 try:
                     # Create application and add handlers
-                    application = Application.builder().token(bot_token).build()
+                    application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
 
                     # Add message handler for text messages and commands
                     application.add_handler(

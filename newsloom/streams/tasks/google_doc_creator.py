@@ -1,8 +1,8 @@
 import logging
-import os
 import time
 from typing import Dict
 
+from django.conf import settings
 from django.utils import timezone
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -16,25 +16,22 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 def get_credentials_from_env():
     """Get Google credentials from environment variables."""
     logger.debug("Loading service account credentials from environment variables")
-    
-    private_key = os.environ.get("GOOGLE_PRIVATE_KEY")
-    if not private_key:
+
+    if not  settings.GOOGLE_PRIVATE_KEY:
         logger.error("GOOGLE_PRIVATE_KEY is not set")
         raise ValueError("GOOGLE_PRIVATE_KEY environment variable is required")
 
-    private_key = private_key.strip('"\'').replace('\\n', '\n')
-
     credentials_dict = {
         "type": "service_account",
-        "project_id": os.environ.get("GOOGLE_PROJECT_ID").strip('"'),
-        "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID").strip('"'),
-        "private_key": private_key,
-        "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL").strip('"'),
-        "client_id": os.environ.get("GOOGLE_CLIENT_ID").strip('"'),
+        "project_id": settings.GOOGLE_PROJECT_ID,
+        "private_key_id": settings.GOOGLE_PRIVATE_KEY_ID,
+        "private_key": settings.GOOGLE_PRIVATE_KEY,
+        "client_email": settings.GOOGLE_CLIENT_EMAIL,
+        "client_id": settings.GOOGLE_CLIENT_ID,
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL").strip('"'),
+        "client_x509_cert_url": settings.GOOGLE_CLIENT_X509_CERT_URL,
         "universe_domain": "googleapis.com",
     }
 

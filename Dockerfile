@@ -3,6 +3,7 @@ FROM python:3.13-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    C_FORCE_ROOT=1 \
     DEBIAN_FRONTEND=noninteractive
 
 # Set working directory
@@ -15,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     netcat-traditional \
     curl \
+    redis \
     && rm -rf /var/lib/apt/lists/*
 
 # Install CloudWatch agent based on architecture

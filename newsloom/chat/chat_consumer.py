@@ -8,7 +8,6 @@ connection management, message processing, and client communication.
 import asyncio
 import json
 import logging
-import os
 import traceback
 from datetime import datetime
 from typing import Any, Dict
@@ -16,6 +15,7 @@ from typing import Any, Dict
 from anthropic import AnthropicBedrock
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.conf import settings
 
 from .constants import (
     MODEL_NAME,
@@ -81,17 +81,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def _initialize_bedrock_client(self) -> None:
         """Initialize the Anthropic Bedrock client with credentials from environment."""
-        # Get credentials from environment
-        aws_access_key = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")
-        aws_secret_key = os.environ.get("BEDROCK_AWS_SECRET_ACCESS_KEY")
-        aws_region = os.environ.get("BEDROCK_AWS_REGION", "us-west-2")
 
         # Log credential status (without exposing actual values)
-        logger.info(f"AWS Region: {aws_region}")
-        logger.info(f"AWS Access Key present: {bool(aws_access_key)}")
-        logger.info(f"AWS Secret Key present: {bool(aws_secret_key)}")
+        logger.info(f"AWS Region: {settings.BEDROCK_AWS_REGION}")
+        logger.info(f"AWS Access Key present: {bool(settings.BEDROCK_AWS_ACCESS_KEY_ID)}")
+        logger.info(f"AWS Secret Key present: {bool( settings.BEDROCK_AWS_SECRET_ACCESS_KEY)}")
 
-        if not aws_access_key or not aws_secret_key:
+        if not settings.BEDROCK_AWS_ACCESS_KEY_ID or not  settings.BEDROCK_AWS_SECRET_ACCESS_KEY:
             error_msg = "Missing AWS credentials for Bedrock"
             logger.error(error_msg)
             await self.send(text_data=json.dumps({"error": error_msg}))
@@ -100,9 +96,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         try:
             self.client = AnthropicBedrock(
-                aws_access_key=aws_access_key,
-                aws_secret_key=aws_secret_key,
-                aws_region=aws_region,
+                aws_access_key=settings.BEDROCK_AWS_ACCESS_KEY_ID,
+                aws_secret_key=settings.BEDROCK_AWS_SECRET_ACCESS_KEY,
+                aws_region=settings.BEDROCK_AWS_REGION,
             )
 
             # Test the connection with a minimal request

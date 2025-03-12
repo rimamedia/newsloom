@@ -3,6 +3,7 @@ FROM 841162694181.dkr.ecr.us-west-2.amazonaws.com/python-13.3-slim:latest
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    C_FORCE_ROOT=1 \
     DEBIAN_FRONTEND=noninteractive
 
 # Set working directory
