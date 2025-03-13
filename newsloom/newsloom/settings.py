@@ -233,16 +233,18 @@ LOGGING = {
 }
 
 # Sentry configuration
-sentry_sdk.init(
-    dsn="https://bf849e3f2ff92db1569e3ae171c8b1e5@o4508924566175744.ingest.us.sentry.io/4508924569845760",
-    integrations=[DjangoIntegration()],
-    send_default_pii=True,
-    traces_sample_rate=1.0,
-    _experiments={
-        "continuous_profiling_auto_start": True,
-    },
-)
-
+sentry_dsn = os.environ.get("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        environment=os.environ.get("PROJECT_NAME", 'unknown'),
+        integrations=[DjangoIntegration()],
+        send_default_pii=True,
+        traces_sample_rate=1.0,
+        _experiments={
+            "continuous_profiling_auto_start": True,
+        },
+    )
 
 # Stream Scheduler Settings
 STREAM_SCHEDULER_SLEEP_INTERVAL = int(
