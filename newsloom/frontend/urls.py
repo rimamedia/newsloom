@@ -1,10 +1,10 @@
 from django.urls import include, path
-from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+from newsloom.contrib.router import NewsloomRouter
 from . import views
 
-router = DefaultRouter()
+router = NewsloomRouter()
 router.register(r"users", views.UserViewSet)
 router.register(r"chats", views.ChatViewSet, basename="chat")
 router.register(r"messages", views.ChatMessageViewSet, basename="chatmessage")

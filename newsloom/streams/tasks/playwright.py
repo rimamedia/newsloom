@@ -109,7 +109,7 @@ def extract_links(stream_id, url, link_selector, max_links=100, **kwargs):
                                     full_url = urljoin(base_url, href)
                                     link_data = {
                                         "url": full_url,
-                                        "title": title.strip() if title else None,
+                                        "title": title.strip() if title else "",
                                     }
                                     links.append(link_data)
                                     result["links"].append(link_data)
@@ -203,9 +203,7 @@ def save_links(links, stream):
                         continue
 
                     # Prepare title
-                    title = link_data.get("title", "").strip()
-                    if not title:
-                        title = "Untitled"
+                    title = str(link_data.get("title", "")).strip() or "Untitled"
                     title = title[:255]  # Truncate to max length
 
                     # Create news entry
