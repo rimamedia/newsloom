@@ -49,7 +49,7 @@ from .serializers import (
     TelegramPublishLogSerializer,
     UserSerializer,
 )
-from streams.tasks import TASK_CONFIG_EXAMPLES
+from newsloom.contrib.mixins import BulkDeleteMixin
 
 # Initialize loggers
 logger = logging.getLogger(__name__)
@@ -376,8 +376,9 @@ class DocViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 
-class AgentViewSet(viewsets.ModelViewSet):
+class AgentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     class Filter(filters.FilterSet):
+        # ids = filters.Lis(field_name="ids", lookup_field="id")
         active_only = filters.BooleanFilter(field_name='is_active')
 
     queryset = Agent.objects.all()
@@ -386,7 +387,7 @@ class AgentViewSet(viewsets.ModelViewSet):
     filterset_class = Filter
 
 
-class MediaViewSet(viewsets.ModelViewSet):
+class MediaViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     queryset = Media.objects.all()
     serializer_class = MediaSerializer
     permission_classes = [permissions.IsAuthenticated]
