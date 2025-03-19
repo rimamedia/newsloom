@@ -1,6 +1,6 @@
 from agents.models import Agent
 from chat.models import Chat, ChatMessage
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
 from rest_framework import serializers
@@ -36,15 +36,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-
-    def validate(self, data):
-        user = authenticate(**data)
-        if user and user.is_active:
-            return user
-        raise serializers.ValidationError("Incorrect Credentials")
+class LoginSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "password")
 
 
 class UserSerializer(serializers.ModelSerializer):

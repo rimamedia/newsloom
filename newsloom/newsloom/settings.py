@@ -65,7 +65,6 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "frontend.pagination.CustomPageNumberPagination",
@@ -292,6 +291,9 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API for managing news streams, sources, documents and chat interactions',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    "SERVE_AUTHENTICATION": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
 }
 
 BEDROCK_AWS_ACCESS_KEY_ID = os.environ.get("BEDROCK_AWS_ACCESS_KEY_ID")

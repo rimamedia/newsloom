@@ -4,10 +4,10 @@ from agents.models import Agent
 from anthropic import AnthropicBedrock
 from chat.message_processor import MessageProcessor
 from chat.models import Chat, ChatMessage
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
 from rest_framework import permissions, status, viewsets
-from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -19,7 +19,6 @@ from streams.models import (
     TelegramDocPublishLog,
     TelegramPublishLog,
 )
-from streams.tasks import TASK_CONFIG_EXAMPLES
 from asgiref.sync import async_to_sync
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
@@ -57,59 +56,45 @@ message_logger = logging.getLogger("chat.message_processing")
 
 
 class RegisterView(generics.GenericAPIView):
+
+    serializer_class = RegisterSerializer
     permission_classes = (AllowAny,)
 
-    @extend_schema(request=RegisterSerializer)
     def post(self, request, *args, **kwargs):
         """
         Register a new user
         """
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            token, created = Token.objects.get_or_create(user=user)
-            return Response(
-                {
-                    "token": token.key,
-                    "user_id": user.pk,
-                    "username": user.username,
-                    "email": user.email,
-                }
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
     permission_classes = (AllowAny,)
 
-    @extend_schema(request=LoginSerializer)
+    @extend_schema(request=LoginSerializer, responses=UserSerializer)
     def post(self, request, *args, **kwargs):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data
-            token, created = Token.objects.get_or_create(user=user)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=False)
+        user = authenticate(request, username=serializer.data.get('username'), password=serializer.data.get('password'))
+        if not user:
             return Response(
-                {"token": token.key, "user_id": user.pk, "username": user.username}
+                {'status': 'error', 'detail': 'Invalid email or password.'},
+                status=status.HTTP_403_FORBIDDEN
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        login(self.request, user)
+        user_serializer = UserSerializer(user)
+        return Response(user_serializer.data)
 
 
 class LogoutView(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
-        """Invalidate the user's auth token."""
-        try:
-            # Delete the user's token to invalidate it
-            request.user.auth_token.delete()
-            return Response(
-                {"detail": "Successfully logged out"}, status=status.HTTP_200_OK
-            )
-        except Exception:
-            return Response(
-                {"detail": "Error during logout"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        logout(request)
+        return Response({'status': 'ok'})
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
