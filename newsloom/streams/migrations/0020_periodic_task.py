@@ -4,14 +4,14 @@ from django.db import migrations
 
 
 def forward(apps: Apps, schema_editor) -> None:
-    from streams.services import stream_to_periodic_task
+    from streams.services.periodic_tasks import stream_to_periodic_task
     Stream = apps.get_model("streams", "Stream")
     for stream in Stream.objects.all():
         stream_to_periodic_task(stream)
 
 def reverse(apps: Apps, schema_editor) -> None:
     Stream = apps.get_model("streams", "Stream")
-    from streams.services import get_periodic_task_by_stream
+    from streams.services.periodic_tasks import get_periodic_task_by_stream
     for stream in Stream.objects.all():
         periodic_task = get_periodic_task_by_stream(stream)
         if periodic_task:

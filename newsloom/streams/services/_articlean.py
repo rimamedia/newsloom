@@ -34,15 +34,15 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
     # Check required environment variables
 
     # Get stream to access its source
-    stream = Stream.objects.get(id=stream_id)
+    stream = Stream.objects.get(pk=stream_id)
 
     # Build query for unprocessed articles from this source
-    query = Q(text__isnull=True) | Q(text="")
+    condition = Q(text__isnull=True) | Q(text="")
     if stream.source:
-        query &= Q(source=stream.source)
+        condition &= Q(source=stream.source)
 
     # Get articles that need processing
-    articles = News.objects.filter(query)
+    articles = News.objects.filter(condition)
 
     processed_count = 0
     failed_count = 0

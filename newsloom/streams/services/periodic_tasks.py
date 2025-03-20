@@ -1,8 +1,8 @@
 from functools import lru_cache
+
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
 
-from .models import Stream
-
+from streams.models import Stream
 
 STREAM_FREQUENCY_TO_CRONTAB = {
     "5min": {'minute': '*/5'},

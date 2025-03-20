@@ -2,7 +2,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
 from .models import Stream
-from .services import get_periodic_task_by_stream, stream_to_periodic_task
+from .services.periodic_tasks import get_periodic_task_by_stream, stream_to_periodic_task
 
 
 @receiver(post_save, sender=Stream)

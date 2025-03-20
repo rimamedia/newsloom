@@ -23,6 +23,7 @@ _base_settings = (
     'components/slack.py',
     'components/static.py',
     'components/stream.py',
+    'components/playwright.py',
     'components/telegram.py',
 
     optional('settings_local.py'),
