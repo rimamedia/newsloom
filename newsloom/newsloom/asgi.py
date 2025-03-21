@@ -7,8 +7,8 @@ django.setup()
 
 # Now import other modules after Django is set up
 from django.core.asgi import get_asgi_application  # noqa: E402
+from channels.auth import AuthMiddlewareStack  # noqa: E402
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
-from chat.middleware import AuthMiddleware  # noqa: E402
 from chat.routing import websocket_urlpatterns  # noqa: E402
 
 # The Django setup has been moved before imports to avoid circular references
@@ -22,6 +22,6 @@ ALLOWED_ORIGINS = [
 application = ProtocolTypeRouter(
     {
         "http": get_asgi_application(),
-        "websocket": AuthMiddleware(URLRouter(websocket_urlpatterns)),
+        "websocket": AuthMiddlewareStack(URLRouter(websocket_urlpatterns)),
     }
 )
