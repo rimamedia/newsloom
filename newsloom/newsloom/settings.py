@@ -65,7 +65,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "newsloom.contrib.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "frontend.pagination.CustomPageNumberPagination",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
