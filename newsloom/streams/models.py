@@ -214,81 +214,17 @@ class Stream(models.Model):
             next_run = timezone.make_aware(next_run)
         return next_run
 
-    def execute_task(self):
+    def execute_task(self, delay: bool = False):
         """Execute the stream task directly."""
-        from .tasks import get_task_function  # Lazy import to avoid circular dependency
+        from .tasks import TASK_MAPPING
+        if self.stream_type in TASK_MAPPING:
+            fnc = TASK_MAPPING[self.stream_type]
+            if delay:
+                fnc = fnc.delay
+            return fnc(self.id)
+        else:
+            raise NotImplementedError(f"Cannot execute task for stream type {self.stream_type}")
 
-        # First update the stream's status to processing
-        self.status = "processing"
-        self.save(update_fields=["status"])
-
-        # Create a new log entry
-        stream_log = StreamLog.objects.create(stream=self, status="running")
-        now = timezone.now()
-
-        try:
-            # Get task function
-            task_function = get_task_function(self.stream_type)
-            if not task_function:
-                error_msg = (
-                    f"No task function found for stream type: {self.stream_type}"
-                )
-                logger.error(error_msg)
-
-                # Update log
-                stream_log.status = "failed"
-                stream_log.error_message = error_msg
-                stream_log.completed_at = now
-                stream_log.save()
-
-                # Update stream
-                self.status = "failed"
-                self.last_run = now
-                self.next_run = self.get_next_run_time()
-                self.save(update_fields=["status", "last_run", "next_run"])
-                return
-
-            # Execute task
-            result = task_function(stream_id=self.id, **self.configuration)
-            logger.debug(f"Task executed with result: {result}")
-
-            # Update log for success
-            stream_log.status = "success"
-            stream_log.result = result
-            stream_log.completed_at = now
-            stream_log.save()
-
-            # Update stream for success
-            self.status = "active"  # Reset to active
-            self.last_run = now
-            self.next_run = self.get_next_run_time()
-            self.save(update_fields=["status", "last_run", "next_run"])
-
-            return result
-
-        except Exception as e:
-            error_msg = f"Error executing task for stream {self.id}: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-
-            try:
-                # Update log for failure
-                stream_log.status = "failed"
-                stream_log.error_message = str(e)
-                stream_log.completed_at = now
-                stream_log.save()
-            except Exception as log_error:
-                logger.error(f"Failed to update stream log: {log_error}")
-
-            try:
-                # Update stream for failure
-                self.status = "failed"
-                self.last_run = now
-                self.next_run = self.get_next_run_time()
-                self.save(update_fields=["status", "last_run", "next_run"])
-            except Exception as save_error:
-                logger.error(f"Failed to update stream status: {save_error}")
-
-            raise e
 
 
 class TelegramPublishLog(models.Model):

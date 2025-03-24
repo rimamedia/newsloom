@@ -1,16 +1,11 @@
 import logging
 from datetime import datetime
-from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
-
-from django.db import transaction
 from django.utils import timezone
-from sources.dataclasses import Link
 
-from sources.models import News, Source
-from streams.models import Stream
+from sources.dataclasses import Link
 
 
 logger = logging.getLogger(__name__)
@@ -41,8 +36,6 @@ def parse_sitemap(content: str, max_links: int | None = None) -> list[Link]:
                 published_at = timezone.now()
             links.append(Link(link=loc.text, published_at=published_at))
     return links
-
-
 
 
 

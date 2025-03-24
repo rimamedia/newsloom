@@ -7,6 +7,8 @@ from django.utils import timezone
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from sources.models import Doc
+from streams.models import Stream
+
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +135,7 @@ def create_google_doc(
 
 
 def google_doc_creator(
-    stream_id: int,
+    stream: Stream,
     folder_id: str,
     template_id: str | None = None,
     service_account_path: str | None = None,
@@ -146,68 +148,32 @@ def google_doc_creator(
     3. GOOGLE_APPLICATION_CREDENTIALS environment variable
     4. Default path relative to project root (newsloom/credentials.json)
     """
-    from streams.models import Stream
-
-    logger.info(f"Starting Google Doc creator for stream ID: {stream_id}")
-    logger.debug(f"Using folder ID: {folder_id}, template ID: {template_id}")
-
-    stream = Stream.objects.get(id=stream_id)
-    logger.debug(f"Found stream: {stream.name} (media: {stream.media})")
 
     # Get all docs without Google Doc links
     docs = Doc.objects.filter(
         media=stream.media, google_doc_link__isnull=True
     ).order_by("created_at")
 
-    doc_count = docs.count()
-    logger.info(f"Found {doc_count} docs without Google Doc links to process")
-
-    if not docs.exists():
-        logger.info("No docs without Google Doc links to process")
-        return {"message": "No docs without Google Doc links to process"}
-
-    logger.debug("Initializing Google services")
     drive_service, docs_service = get_google_services(service_account_path)
-    processed = 0
-    failed = 0
+
 
     for doc in docs:
-        logger.info(f"Processing doc ID: {doc.id} - '{doc.title or 'Untitled'}'")
-        try:
-            # Create Google Doc
-            google_doc_link = create_google_doc(
-                title=doc.title or "Untitled",
-                content=doc.text or "",
-                folder_id=folder_id,
-                drive_service=drive_service,
-                docs_service=docs_service,
-                template_id=template_id,
-            )
+        # Create Google Doc
+        google_doc_link = create_google_doc(
+            title=doc.title or "Untitled",
+            content=doc.text or "",
+            folder_id=folder_id,
+            drive_service=drive_service,
+            docs_service=docs_service,
+            template_id=template_id,
+        )
 
-            # Update doc with Google Doc link
-            logger.debug(f"Updating doc {doc.id} with Google Doc link")
-            doc.google_doc_link = google_doc_link
-            # Only update status if doc was new
-            if doc.status == "new":
-                doc.status = "edit"
-            doc.published_at = timezone.now()
-            doc.save()
-            logger.info(
-                f"Successfully processed doc {doc.id}, Google Doc created at: {google_doc_link}"
-            )
+        # Update doc with Google Doc link
+        doc.google_doc_link = google_doc_link
+        # Only update status if doc was new
+        if doc.status == "new":
+            doc.status = "edit"
+        doc.published_at = timezone.now()
+        doc.save()
 
-            processed += 1
-
-            # Add a small delay to avoid rate limiting
-            logger.debug("Adding delay to avoid rate limiting")
-            time.sleep(1)
-
-        except Exception as e:
-            logger.error(f"Failed to process doc {doc.id}: {e}", exc_info=True)
-            doc.status = "failed"
-            doc.save()
-            failed += 1
-
-    result = {"processed": processed, "failed": failed, "total": len(docs)}
-    logger.info(f"Google Doc creator completed. Results: {result}")
-    return result
+        time.sleep(1)

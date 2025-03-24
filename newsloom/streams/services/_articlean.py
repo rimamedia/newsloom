@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from typing import Any, Dict
 
 import requests
@@ -18,11 +17,11 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
+def articlean(stream: Stream, **kwargs) -> Dict[str, Any]:
     """Process articles through the Articlean service.
 
     Args:
-        stream_id: ID of the stream being executed
+        Stream: stream being executed
         **kwargs: Additional keyword arguments that will be ignored
 
     Returns:
@@ -32,9 +31,6 @@ def articlean(stream_id: int, **kwargs) -> Dict[str, Any]:
         EnvironmentError: If required environment variables are not set
     """
     # Check required environment variables
-
-    # Get stream to access its source
-    stream = Stream.objects.get(pk=stream_id)
 
     # Build query for unprocessed articles from this source
     condition = Q(text__isnull=True) | Q(text="")

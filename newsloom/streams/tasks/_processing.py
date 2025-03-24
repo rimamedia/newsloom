@@ -10,13 +10,13 @@ from streams.models import Stream, StreamLog
 logger = logging.getLogger(__name__)
 
 
-def stream_processing(stream_type: str):
+def stream_processing(stream_type: str | None ):
     def decorator(task_func):
         @wraps(task_func)
         def wrapper(self, stream_id, *args, **kwargs):
             try:
                 stream: Stream = Stream.objects.get(pk=stream_id)
-                if stream.stream_type != stream_type:
+                if stream_type and stream.stream_type != stream_type:
                     raise StreamProcessingError(f"Stream invalid stream type: {stream.stream_type}")
 
                 stream_log = StreamLog.objects.create(stream=stream, status="running")

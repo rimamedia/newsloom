@@ -1,17 +1,34 @@
+from datetime import timedelta
+from functools import partial
 
-from typing import Any
-
+from django.utils import timezone
 from newsloom.celery import app
 
-
+from sources.models import Source
 from streams.models import Stream
-from sources.services import create_news_from_links
+from sources.services import create_news_from_links, get_news_for_send
 
 from ._processing import stream_processing
 from streams.services import (
     process_sitemap as sitemap_news_service,
-    playwright_extract_links,
+    playwright_extractor,
+    link_extractor,
+    rss_feed_parser,
+    send_news_to_telegram,
+    process_telegram_channel,
+telegram_doc_publisher as telegram_doc_publisher_service,
+    article_searcher_extractor,
+    search_bing,
+    search_google,
+    search_duckduckgo,
+    articlean as articlean_service
 )
+from streams.services.news_stream import process_news_stream
+from streams.services.web_scraper import web_scraper as web_scraper_service
+from streams.services.google_doc_creator import google_doc_creator
+from streams.services.doc_publisher import publish_docs
+from streams.services.telegram_bulk_parser import run_telegram_parser
+
 
 @app.task(bind=True)
 @stream_processing(stream_type="sitemap_news")
@@ -22,16 +39,131 @@ def sitemap_news(self, stream: Stream) -> None:
 
 @app.task(bind=True)
 @stream_processing(stream_type="sitemap_blog")
-def sitemap_blog(self, stream: Stream) -> dict[str, Any]:
-    links = sitemap_news_service(stream, **stream.configuration)
+def sitemap_blog(self, stream: Stream) -> None:
+    links = sitemap_news_service(**stream.configuration)
     create_news_from_links(stream.source, links)
 
 
 @app.task(bind=True)
 @stream_processing(stream_type="playwright_link_extractor")
 def playwright_link_extractor(self, stream: Stream) -> None:
-    links = playwright_extract_links(**stream.configuration)
+    extractor = partial(
+        link_extractor,
+        url=stream.configuration['url'],
+        link_selector=stream.configuration['link_selector'],
+        max_links=stream.configuration['max_links'],
+    )
+    links = playwright_extractor(url=stream.configuration['url'], extractor=extractor)
     create_news_from_links(stream.source, links)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="rss_feed")
+def rss_feed(self, stream: Stream) -> None:
+    links = rss_feed_parser(**stream.configuration)
+    create_news_from_links(stream.source, links)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="telegram_publish")
+def publish_to_telegram(self, stream: Stream) -> None:
+    time_threshold = timezone.now() - timedelta(minutes=stream.configuration['time_window_minutes'])
+    news = get_news_for_send(
+        stream, time_threshold, stream.configuration['batch_size'], stream.configuration['source_types']
+    )
+    if news:
+        send_news_to_telegram(
+            stream.configuration['channel_id'],
+            stream.configuration['bot_token'],
+            news,
+            stream.media
+        )
+
+@app.task(bind=True)
+@stream_processing(stream_type="article_searcher")
+def article_searcher(self, stream: Stream) -> None:
+    extractor = partial(
+        article_searcher_extractor,
+        url=stream.configuration['url'],
+        link_selector=stream.configuration['link_selector'],
+        search_text=stream.configuration['search_text'],
+        article_selector=stream.configuration['article_selector'],
+        link_selector_type=stream.configuration['link_selector_type'],
+        article_selector_type=stream.configuration['article_selector_type'],
+        max_links=stream.configuration['max_links'],
+    )
+    links = playwright_extractor(url=stream.configuration['url'], extractor=extractor)
+    create_news_from_links(stream.source, links)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="bing_search")
+def bing_search(self, stream: Stream) -> None:
+    links = search_bing(**stream.configuration)
+    create_news_from_links(stream.source, links)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="google_search")
+def google_search(self, stream: Stream) -> None:
+    links = search_google(**stream.configuration)
+    create_news_from_links(stream.source, links)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="duckduckgo_search")
+def duckduckgo_search(self, stream: Stream) -> None:
+    links = search_duckduckgo(**stream.configuration)
+    create_news_from_links(stream.source, links)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="telegram_bulk_parser")
+def telegram_bulk_parser(self, stream: Stream) -> None:
+    run_telegram_parser(stream.id, **stream.configuration)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="news_stream")
+def news_stream(self, stream: Stream) -> None:
+    process_news_stream(stream.id, **stream.configuration)
+
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="doc_publisher")
+def doc_publisher(self, stream: Stream) -> None:
+    publish_docs(stream, **stream.configuration)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="google_doc_creator")
+def google_doc_creator(self, stream: Stream) -> None:
+    google_doc_creator(stream, **stream.configuration)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="telegram_doc_publisher")
+def telegram_doc_publisher(self, stream: Stream) -> None:
+    telegram_doc_publisher_service(stream, **stream.configuration)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="articlean")
+def articlean(self, stream: Stream) -> None:
+    articlean_service(stream.id, **stream.configuration)
+
+
+@app.task(bind=True)
+@stream_processing(stream_type="web_scraper")
+def web_scraper(self, stream: Stream) -> None:
+    web_scraper_service(stream.id, **stream.configuration)
+
+
+@app.task(bind=True)
+@stream_processing
+def dummy(self, *args, **kwargs) -> None:
+   raise Exception("Dummy task")
 
 
 # Example configuration for each task type
@@ -146,34 +278,27 @@ def get_task_config_example(stream_type):
     return TASK_CONFIG_EXAMPLES.get(stream_type, {})
 
 
-# TODO: add name conventions for tasks
-
-# from ._process import process_stream
-
-
-
-import logging
 
 # Map stream types to their corresponding task functions
 # TODO: add llm rewrite task
-# TASK_MAPPING = {
-#     "sitemap_news": parse_sitemap,
-#     "sitemap_blog": parse_sitemap,
-#     "playwright_link_extractor": extract_links,
+TASK_MAPPING = {
+    "sitemap_news": sitemap_news,
+    "sitemap_blog": sitemap_blog,
+    "playwright_link_extractor": playwright_link_extractor,
+    "rss_feed": rss_feed,
+    "telegram_publish": publish_to_telegram,
+    "article_searcher": article_searcher,
+    "bing_search": bing_search,
+    "google_search": google_search,
+    "duckduckgo_search": duckduckgo_search,
+    "telegram_bulk_parser": telegram_bulk_parser,
+    "news_stream": news_stream,
+    "doc_publisher": doc_publisher,
+    "google_doc_creator": google_doc_creator,
+    "telegram_doc_publisher": telegram_doc_publisher,
+    "articlean": articlean,
+    "web_scraper": web_scraper,
 
-#     "rss_feed": parse_rss_feed,
-#     "web_article": scrape_web_article,
-#     "telegram_channel": monitor_telegram_channel,
-#     "telegram_publish": publish_to_telegram,
-#     "article_searcher": search_articles,
-#     "bing_search": search_bing,
-#     "google_search": search_google,
-#     "telegram_bulk_parser": run_telegram_parser,
-#     "news_stream": process_news_stream,
-#     "doc_publisher": publish_docs,
-#     "google_doc_creator": google_doc_creator,
-#     "telegram_doc_publisher": telegram_doc_publisher,
-#     "articlean": articlean,
-#     "web_scraper": web_scraper,
-#     "duckduckgo_search": duckduckgo_search,
-# }
+    "web_article": dummy,
+    "telegram_channel": dummy,
+}

@@ -14,7 +14,7 @@ def process_stream(self, stream_id: int) -> None:
     """Process a single stream."""
     try:
         stream = Stream.objects.filter(status__in=['active', 'failed']).get(pk=stream_id)
-        stream.execute_task()
+        stream.execute_task(delay=True)
     except Stream.DoesNotExist:
         logger.error(f"Stream {stream_id} does not exist")
     except Exception as exc:
