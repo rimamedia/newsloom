@@ -7,7 +7,7 @@ from chat.models import Chat, ChatMessage
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from mediamanager.models import Examples, Media
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, status, viewsets, filters as drf_filters
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -367,6 +367,9 @@ class DocViewSet(viewsets.ModelViewSet):
     queryset = Doc.objects.all()
     serializer_class = DocSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [drf_filters.OrderingFilter]
+    ordering_fields = ['created_at', 'updated_at', 'title', 'status']
+    ordering = ['-created_at']
 
 
 class AgentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
