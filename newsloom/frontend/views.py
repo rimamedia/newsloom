@@ -102,6 +102,14 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """
+        Returns information about the currently authenticated user
+        """
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
 
 class ChatViewSet(viewsets.ModelViewSet):
     queryset = Chat.objects.prefetch_related('users', 'messages', 'messages__user', 'messages__chat').all()
