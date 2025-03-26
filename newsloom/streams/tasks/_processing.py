@@ -10,7 +10,7 @@ from streams.models import Stream, StreamLog
 logger = logging.getLogger(__name__)
 
 
-def stream_processing(stream_type: str | None ):
+def stream_processing(stream_type: str | None  = None):
     def decorator(task_func):
         @wraps(task_func)
         def wrapper(self, stream_id, *args, **kwargs):

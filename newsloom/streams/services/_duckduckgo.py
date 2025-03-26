@@ -48,7 +48,7 @@ def search_duckduckgo(
             if not all([title, url]):
                 continue
             if published_date:
-                published_at = datetime.strptime(published_date, "%Y-%m-%d")
+                published_at = datetime.strptime(published_date, "%Y-%m-%dT%H:%M:%S%z")
             else:
                 published_at = timezone.now()
             links.append(Link(link=url, title=title, text=body, published_at=published_at))

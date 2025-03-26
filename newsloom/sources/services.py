@@ -10,12 +10,15 @@ from streams.models import Stream
 
 
 @transaction.atomic
-def create_news_from_links(source: Source, links: list[Link]) -> int:
+def create_news_from_links(source: Source | None, links: list[Link]) -> int:
+    if not source:
+        raise ValueError('source must be object..')
+
     created_news_count = 0
     for link in links:
         if not link.link.startswith(("http://", "https://")):
             continue
-        if News.objects.filter(source=source, link=link.link).exists():
+        if News.objects.filter(link=link.link).exists():
             continue
         title = ''
         if link.title:

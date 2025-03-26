@@ -139,11 +139,8 @@ async def process_single_channel(
 
         # Navigate to channel with timeout
         try:
-            async with asyncio.timeout(60):  # 60 second timeout for navigation
-                await page.goto(url, timeout=60000)
-                await page.wait_for_selector(
-                    "div.tgme_widget_message_wrap", timeout=wait_time * 1000
-                )
+            await page.goto(url, timeout=60000)
+            await page.wait_for_selector("div.tgme_widget_message_wrap", timeout=wait_time * 1000)
         except Exception as e:
             raise ChannelNavigationError(f"Failed to navigate to channel: {str(e)}")
 

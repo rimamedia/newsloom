@@ -28,7 +28,6 @@ def search_google(
     Search Google for articles matching the given keywords.
 
     Args:
-        stream_id: ID of the stream
         keywords: List of keywords to search for
         max_results_per_keyword: Maximum number of results per keyword
         days_ago: Filter results from the last X days

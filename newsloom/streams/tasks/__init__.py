@@ -15,8 +15,7 @@ from streams.services import (
     link_extractor,
     rss_feed_parser,
     send_news_to_telegram,
-    process_telegram_channel,
-telegram_doc_publisher as telegram_doc_publisher_service,
+    telegram_doc_publisher as telegram_doc_publisher_service,
     article_searcher_extractor,
     search_bing,
     search_google,
@@ -25,7 +24,7 @@ telegram_doc_publisher as telegram_doc_publisher_service,
 )
 from streams.services.news_stream import process_news_stream
 from streams.services.web_scraper import web_scraper as web_scraper_service
-from streams.services.google_doc_creator import google_doc_creator
+from streams.services.google_doc_creator import google_doc_creator as google_doc_creator_service
 from streams.services.doc_publisher import publish_docs
 from streams.services.telegram_bulk_parser import run_telegram_parser
 
@@ -67,9 +66,9 @@ def rss_feed(self, stream: Stream) -> None:
 @app.task(bind=True)
 @stream_processing(stream_type="telegram_publish")
 def publish_to_telegram(self, stream: Stream) -> None:
-    time_threshold = timezone.now() - timedelta(minutes=stream.configuration['time_window_minutes'])
+    time_threshold = timezone.now() - timedelta(minutes=stream.configuration.get('time_window_minutes', 100))
     news = get_news_for_send(
-        stream, time_threshold, stream.configuration['batch_size'], stream.configuration['source_types']
+        stream, time_threshold, stream.configuration['batch_size'], stream.configuration.get('source_types')
     )
     if news:
         send_news_to_telegram(
@@ -139,7 +138,7 @@ def doc_publisher(self, stream: Stream) -> None:
 @app.task(bind=True)
 @stream_processing(stream_type="google_doc_creator")
 def google_doc_creator(self, stream: Stream) -> None:
-    google_doc_creator(stream, **stream.configuration)
+    google_doc_creator_service(stream, **stream.configuration)
 
 
 @app.task(bind=True)
@@ -151,7 +150,7 @@ def telegram_doc_publisher(self, stream: Stream) -> None:
 @app.task(bind=True)
 @stream_processing(stream_type="articlean")
 def articlean(self, stream: Stream) -> None:
-    articlean_service(stream.id, **stream.configuration)
+    articlean_service(stream, **stream.configuration)
 
 
 @app.task(bind=True)
@@ -161,9 +160,9 @@ def web_scraper(self, stream: Stream) -> None:
 
 
 @app.task(bind=True)
-@stream_processing
-def dummy(self, *args, **kwargs) -> None:
-   raise Exception("Dummy task")
+@stream_processing(stream_type=None)
+def dummy(self, stream: Stream, *args, **kwargs) -> None:
+    raise Exception("Dummy task")
 
 
 # Example configuration for each task type

@@ -10,11 +10,12 @@ logger = getLogger(__name__)
 
 
 @app.task(bind=True)
-def process_stream(self, stream_id: int) -> None:
+def process_stream(self, stream_id: int, delay:bool=True) -> None:
     """Process a single stream."""
     try:
-        stream = Stream.objects.filter(status__in=['active', 'failed']).get(pk=stream_id)
-        stream.execute_task(delay=True)
+        # stream = Stream.objects.filter(status__in=['active', 'failed']).get(pk=stream_id)
+        stream = Stream.objects.get(pk=stream_id)
+        stream.execute_task(delay=delay)
     except Stream.DoesNotExist:
         logger.error(f"Stream {stream_id} does not exist")
     except Exception as exc:
