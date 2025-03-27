@@ -4,11 +4,11 @@ from functools import partial
 from django.utils import timezone
 from newsloom.celery import app
 
-from sources.models import Source
 from streams.models import Stream
 from sources.services import create_news_from_links, get_news_for_send
 
 from ._processing import stream_processing
+from ._process import process_stream
 from streams.services import (
     process_sitemap as sitemap_news_service,
     playwright_extractor,
