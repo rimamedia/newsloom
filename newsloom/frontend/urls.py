@@ -23,14 +23,12 @@ router.register(r"examples", views.ExamplesViewSet)
 urlpatterns = [
     # API endpoints
     path("", include(router.urls)),
-    path("auth/", include("rest_framework.urls")),
-    path(
-        "register/", views.RegisterView.as_view(), name="api_register"
-    ),  # User registration endpoint
-    path(
-        "token/", views.LoginView.as_view(), name="api_token_login"
-    ),  # Token generation endpoint
-    path("logout/", views.LogoutView.as_view(), name="api_logout"),  # Token revocation endpoint
+    path("acc/", include([
+        path('login/', views.LoginView.as_view(), name='login'),
+        path('logout/', views.LogoutView.as_view(), name='logout'),
+        path("register/", views.RegisterView.as_view(), name="register"),
+
+    ])),
     # Swagger UI
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
