@@ -20,17 +20,23 @@ def get_random_user_agent() -> str:
 
 
 def playwright_extractor(url: str, extractor: Callable[[Page, ...], list[Link]]) -> list[Link]:
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(**settings.PLAYWRIGHT_BROWSER_OPTIONS)
-        context = browser.new_context(user_agent=get_random_user_agent(), **settings.PLAYWRIGHT_CONTEXT_OPTIONS)
-        page = context.new_page()
-        stealth_sync(page)
-        # Reduced timeout with default wait_until option
-        page.goto(url, timeout=settings.PLAYWRIGHT_TIMEOUT)
-        # Reduced timeout for network idle
-        page.wait_for_load_state("networkidle", timeout=settings.PLAYWRIGHT_TIMEOUT)
+    browser = None
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(**settings.PLAYWRIGHT_BROWSER_OPTIONS)
+            context = browser.new_context(user_agent=get_random_user_agent(), **settings.PLAYWRIGHT_CONTEXT_OPTIONS)
+            page = context.new_page()
+            stealth_sync(page)
+            # Reduced timeout with default wait_until option
+            page.goto(url, timeout=settings.PLAYWRIGHT_TIMEOUT)
+            # Reduced timeout for network idle
+            page.wait_for_load_state("networkidle", timeout=settings.PLAYWRIGHT_TIMEOUT)
 
-        return extractor(page)
+            return extractor(page)
+    finally:
+        if browser and hasattr(browser, 'close'):
+            browser.close()
+
 
 
 def link_extractor(page: Page, url: str, link_selector: str, max_links: int = 100) -> list[Link]:
