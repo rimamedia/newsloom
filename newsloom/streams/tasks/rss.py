@@ -9,6 +9,8 @@ from django.utils import timezone
 from sources.models import News
 from streams.models import Stream
 
+from .link_parser import enrich_link_data
+
 
 def sanitize_url(url):
     """Ensure URL is properly formatted and encoded."""
@@ -29,7 +31,20 @@ def clean_xml_content(content):
     return content
 
 
-def parse_rss_feed(stream_id, url, max_items=10):
+def parse_rss_feed(stream_id, url, max_items=10, parse_now=True):
+    """
+    Parse an RSS feed and extract entries.
+
+    Args:
+        stream_id: ID of the stream
+        url: URL of the RSS feed to parse
+        max_items: Maximum number of items to process
+        parse_now: Whether to parse links with Articlean immediately (True)
+            or mark for later processing (False)
+
+    Returns:
+        Dict containing parsing results
+    """
     logger = logging.getLogger(__name__)
     result = {
         "processed_count": 0,
@@ -97,16 +112,35 @@ def parse_rss_feed(stream_id, url, max_items=10):
                     published_at = datetime(*entry.published_parsed[:6])
 
                 logger.debug(f"Processing entry: {entry.title}")
+
+                # Create link data for enrichment
+                link_data = {
+                    "url": entry.link,
+                    "title": entry.title,
+                    "text": entry.get("description", "")
+                    or entry.get("summary", "")
+                    or "",
+                }
+
+                # Enrich link data with Articlean content
+                enriched_data = enrich_link_data(link_data, parse_now=parse_now)
+
+                # Create news entry with enriched data
+                defaults = {
+                    "title": enriched_data.get("title", entry.title),
+                    "published_at": published_at or timezone.now(),
+                }
+
+                # Use enriched text if available, otherwise use the original
+                if "text" in enriched_data and enriched_data["text"]:
+                    defaults["text"] = enriched_data["text"]
+                else:
+                    defaults["text"] = link_data["text"]
+
                 created = News.objects.get_or_create(
                     source=stream.source,
                     link=entry.link,
-                    defaults={
-                        "title": entry.title,
-                        "text": entry.get("description", "")
-                        or entry.get("summary", "")
-                        or "",
-                        "published_at": published_at or timezone.now(),
-                    },
+                    defaults=defaults,
                 )
                 if created[1]:  # If new object was created
                     logger.info(f"Created new news entry: {entry.title}")

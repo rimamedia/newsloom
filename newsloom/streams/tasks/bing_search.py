@@ -10,6 +10,7 @@ from django.utils import timezone
 from playwright.sync_api import sync_playwright
 from playwright_stealth import stealth_sync
 
+from .link_parser import enrich_link_data
 from .playwright import (
     BROWSER_OPTIONS,
     CONTEXT_OPTIONS,
@@ -55,6 +56,7 @@ def search_bing(
     max_results_per_keyword: int = 5,
     search_type: str = "news",
     debug: bool = False,
+    parse_now: bool = True,  # Whether to parse links with Articlean immediately
 ) -> Dict:
     """
     Search Bing for articles matching the given keywords from the last 24 hours.
@@ -65,6 +67,8 @@ def search_bing(
         max_results_per_keyword: Maximum number of results per keyword
         search_type: Type of search ('news' or 'web')
         debug: Debug mode flag
+        parse_now: Whether to parse links with Articlean immediately (True)
+            or mark for later processing (False)
     """
     result = {
         "extracted_count": 0,
@@ -156,13 +160,22 @@ def search_bing(
                                     title = element.evaluate("el => el.textContent")
 
                                     if href and not href.startswith("/"):
+                                        # Create basic link data
                                         link_data = {
                                             "url": href,
                                             "title": title.strip() if title else None,
                                             "keyword": keyword,
                                         }
-                                        all_links.append(link_data)
-                                        result["links"].append(link_data)
+
+                                        # Enrich link data with Articlean content
+                                        # Use the parse_now parameter to control whether links are
+                                        # processed immediately
+                                        enriched_link_data = enrich_link_data(
+                                            link_data, parse_now=parse_now
+                                        )
+
+                                        all_links.append(enriched_link_data)
+                                        result["links"].append(enriched_link_data)
                                         result["extracted_count"] += 1
                                         logger.info(
                                             f"Found article for keyword '{keyword}': {href}"

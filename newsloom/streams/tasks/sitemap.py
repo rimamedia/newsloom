@@ -8,8 +8,26 @@ from django.utils import timezone
 from sources.models import News
 from streams.models import Stream
 
+from .link_parser import enrich_link_data
 
-def parse_sitemap(stream_id, sitemap_url, max_links=100, follow_next=False):
+
+def parse_sitemap(
+    stream_id, sitemap_url, max_links=100, follow_next=False, parse_now=True
+):
+    """
+    Parse a sitemap XML file and extract URLs.
+
+    Args:
+        stream_id: ID of the stream
+        sitemap_url: URL of the sitemap to parse
+        max_links: Maximum number of links to process
+        follow_next: Whether to follow next page links in the sitemap
+        parse_now: Whether to parse links with Articlean immediately (True)
+            or mark for later processing (False)
+
+    Returns:
+        Dict containing parsing results
+    """
     logger = logging.getLogger(__name__)
     result = {
         "processed_count": 0,
@@ -32,7 +50,7 @@ def parse_sitemap(stream_id, sitemap_url, max_links=100, follow_next=False):
                 lastmod = url_element.find("lastmod")
 
                 if loc is not None:
-                    process_url(stream, loc.text, lastmod)
+                    process_url(stream, loc.text, lastmod, parse_now=parse_now)
                     result["urls"].append(loc.text)
                     result["processed_count"] += 1
 
@@ -54,7 +72,16 @@ def parse_sitemap(stream_id, sitemap_url, max_links=100, follow_next=False):
     return result
 
 
-def process_url(stream, url, lastmod):
+def process_url(stream, url, lastmod, parse_now=True):
+    """
+    Process a URL from a sitemap and save it to the database.
+
+    Args:
+        stream: Stream object
+        url: URL to process
+        lastmod: Last modified date element from sitemap
+        parse_now: Whether to parse links with Articlean immediately
+    """
     published_at = None
     if lastmod is not None:
         try:
@@ -64,10 +91,29 @@ def process_url(stream, url, lastmod):
         except ValueError:
             pass
 
+    # Create link data for enrichment
+    link_data = {
+        "url": url,
+        "title": None,  # No title available from sitemap
+    }
+
+    # Enrich link data with Articlean content
+    enriched_data = enrich_link_data(link_data, parse_now=parse_now)
+
+    # Create news entry with enriched data
+    defaults = {
+        "published_at": published_at or timezone.now(),
+    }
+
+    # Add title and text if available from enrichment
+    if "title" in enriched_data and enriched_data["title"]:
+        defaults["title"] = enriched_data["title"]
+
+    if "text" in enriched_data and enriched_data["text"]:
+        defaults["text"] = enriched_data["text"]
+
     News.objects.get_or_create(
         source=stream.source,
         link=url,
-        defaults={
-            "published_at": published_at or timezone.now(),
-        },
+        defaults=defaults,
     )

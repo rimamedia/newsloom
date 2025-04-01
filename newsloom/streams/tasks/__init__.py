@@ -70,20 +70,24 @@ TASK_CONFIG_EXAMPLES = {
         "sitemap_url": "https://example.com/sitemap.xml",
         "max_links": 100,
         "follow_next": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "sitemap_blog": {
         "sitemap_url": "https://example.com/blog-sitemap.xml",
         "max_links": 100,
         "follow_next": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "playwright_link_extractor": {
         "url": "https://example.com",
         "link_selector": "a.article-link",
         "max_links": 100,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "rss_feed": {
         "feed_url": "https://example.com/feed.xml",
         "max_entries": 100,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "web_article": {
         "base_url": "https://example.com",
@@ -114,12 +118,14 @@ TASK_CONFIG_EXAMPLES = {
         "article_selector_type": "css",
         "search_text": "białoruś",
         "max_links": 10,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "bing_search": {
         "keywords": ["climate change", "renewable energy"],
         "max_results_per_keyword": 5,
         "search_type": "news",
         "debug": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "google_search": {
         "keywords": ["climate change", "renewable energy"],
@@ -127,6 +133,7 @@ TASK_CONFIG_EXAMPLES = {
         "days_ago": 7,
         "search_type": "news",
         "debug": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "telegram_bulk_parser": {
         "time_window_minutes": 120,  # 2 hours window
@@ -163,6 +170,7 @@ TASK_CONFIG_EXAMPLES = {
         "region": "wt-wt",
         "time_range": "d",
         "safesearch": "moderate",
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
 }
 

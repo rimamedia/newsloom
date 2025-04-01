@@ -19,8 +19,12 @@ The frontend build process is separated from the Docker build for better caching
 # Make the build script executable (if not already)
 chmod +x build-frontend.sh
 
-# Run the build script
+# Run the build script with default branch (main)
 ./build-frontend.sh
+
+# Or specify a different branch
+./build-frontend.sh develop
+./build-frontend.sh feature/new-login
 ```
 
 This script will:

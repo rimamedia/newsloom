@@ -10,6 +10,8 @@ from playwright_stealth import stealth_sync
 from sources.models import News
 from streams.models import Stream
 
+from .link_parser import enrich_link_data
+
 # Browser launch options optimized for container environment
 BROWSER_OPTIONS = {
     "headless": True,  # Always use headless mode in container
@@ -57,7 +59,24 @@ USER_AGENTS = [
 ]
 
 
-def extract_links(stream_id, url, link_selector, max_links=100, **kwargs):
+def extract_links(
+    stream_id, url, link_selector, max_links=100, parse_now=True, **kwargs
+):
+    """
+    Extract links from a webpage using Playwright.
+
+    Args:
+        stream_id: ID of the stream
+        url: URL to extract links from
+        link_selector: CSS selector for links
+        max_links: Maximum number of links to extract
+        parse_now: Whether to parse links with Articlean immediately (True)
+            or mark for later processing (False)
+        **kwargs: Additional keyword arguments
+
+    Returns:
+        Dict containing extraction results
+    """
     logger = logging.getLogger(__name__)
     result = {
         "extracted_count": 0,
@@ -111,8 +130,16 @@ def extract_links(stream_id, url, link_selector, max_links=100, **kwargs):
                                         "url": full_url,
                                         "title": title.strip() if title else "",
                                     }
-                                    links.append(link_data)
-                                    result["links"].append(link_data)
+
+                                    # Enrich link data with Articlean content
+                                    # Use the parse_now parameter to control whether links are
+                                    # processed immediately
+                                    enriched_link_data = enrich_link_data(
+                                        link_data, parse_now=parse_now
+                                    )
+
+                                    links.append(enriched_link_data)
+                                    result["links"].append(enriched_link_data)
                                     result["extracted_count"] += 1
                             except Exception as e:
                                 logger.warning(f"Error processing element: {str(e)}")
@@ -206,11 +233,18 @@ def save_links(links, stream):
                     title = str(link_data.get("title", "")).strip() or "Untitled"
                     title = title[:255]  # Truncate to max length
 
-                    # Create news entry
+                    # Prepare text content if available
+                    text = link_data.get("text", "")
+
+                    # Note: needs_articlean_processing flag is stored in link_data
+                    # but we don't need to use it here as it's handled by the News model
+
+                    # Create news entry with all available data
                     news = News.objects.create(
                         source=stream.source,
                         link=url,
                         title=title,
+                        text=text,
                         published_at=timezone.now(),
                     )
                     saved_count += 1
