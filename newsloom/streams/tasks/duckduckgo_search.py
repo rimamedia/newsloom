@@ -6,6 +6,8 @@ from duckduckgo_search import DDGS
 from sources.models import News
 from streams.models import Stream
 
+from .link_parser import enrich_link_data
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +18,7 @@ def duckduckgo_search(
     region: Optional[str] = "wt-wt",
     time_range: Optional[str] = "d",  # 'd' for last 24 hours
     safesearch: Optional[str] = "moderate",
+    parse_now: bool = True,  # Whether to parse links with Articlean immediately
 ) -> Dict:
     """
     Search for news articles using DuckDuckGo.
@@ -27,6 +30,8 @@ def duckduckgo_search(
         region: Region for search results (e.g., us-en, uk-en, wt-wt)
         time_range: Time range for results (d: day, w: week, m: month, y: year)
         safesearch: SafeSearch setting (on, moderate, off)
+        parse_now: Whether to parse links with Articlean immediately (True)
+            or mark for later processing (False)
 
     Returns:
         Dict containing results summary
@@ -70,11 +75,22 @@ def duckduckgo_search(
                 if not all([title, url]):
                     continue
 
-                # Create news article with correct fields and stream's source
-                news_data = {
+                # Prepare link data for enrichment
+                link_data = {
+                    "url": url,
                     "title": title,
-                    "link": url,
                     "text": body,  # Using 'text' instead of 'description'
+                }
+
+                # Enrich link data with Articlean content
+                # Use the parse_now parameter to control whether links are processed immediately
+                enriched_data = enrich_link_data(link_data, parse_now=parse_now)
+
+                # Create news article with enriched data and stream's source
+                news_data = {
+                    "title": enriched_data.get("title", title),
+                    "link": url,
+                    "text": enriched_data.get("text", body),
                     "source": stream.source,  # Using stream's source
                     "published_at": (
                         datetime.fromisoformat(published_date.replace("Z", "+00:00"))

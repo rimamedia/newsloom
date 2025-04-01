@@ -7,6 +7,7 @@ from django.utils import timezone
 from playwright.sync_api import sync_playwright
 from playwright_stealth import stealth_sync
 
+from .link_parser import enrich_link_data
 from .playwright import USER_AGENTS, get_stream, save_links, update_stream_status
 
 
@@ -19,7 +20,26 @@ def search_articles(
     link_selector_type="css",
     article_selector_type="css",
     max_links=10,
+    parse_now=True,  # Whether to parse links with Articlean immediately
 ):
+    """
+    Search for articles containing specific text.
+
+    Args:
+        stream_id: ID of the stream
+        url: URL to start the search from
+        link_selector: CSS or XPath selector for links
+        search_text: Text to search for in articles
+        article_selector: CSS or XPath selector for article content
+        link_selector_type: Type of link selector ('css' or 'xpath')
+        article_selector_type: Type of article selector ('css' or 'xpath')
+        max_links: Maximum number of links to process
+        parse_now: Whether to parse links with Articlean immediately (True)
+        or mark for later processing (False)
+
+    Returns:
+        Dict containing search results
+    """
     logger = logging.getLogger(__name__)
     result = {
         "extracted_count": 0,
@@ -99,9 +119,14 @@ def search_articles(
                         if article_content:
                             content_text = article_content.text_content().lower()
                             if search_text.lower() in content_text:
-                                matching_links.append(link_data)
+                                # Enrich link data with Articlean content
+                                enriched_link_data = enrich_link_data(
+                                    link_data, parse_now=parse_now
+                                )
+
+                                matching_links.append(enriched_link_data)
                                 result["matched_count"] += 1
-                                result["links"].append(link_data)
+                                result["links"].append(enriched_link_data)
                                 logger.info(
                                     f"Found matching article: {link_data['url']}"
                                 )
