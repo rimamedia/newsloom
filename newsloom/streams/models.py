@@ -54,8 +54,9 @@ class Stream(models.Model):
         ("doc_publisher", "Doc Publisher"),
         ("google_doc_creator", "Google Doc Creator"),
         ("telegram_doc_publisher", "Telegram Doc Publisher"),
-        ("articlean", "Articlean Processor"),
-        ("web_scraper", "Web Content Scraper"),
+        # Legacy tools removed from available list
+        # ("articlean", "Articlean Processor"),
+        # ("web_scraper", "Web Content Scraper"),
         ("duckduckgo_search", "DuckDuckGo News Search"),
     ]
 
