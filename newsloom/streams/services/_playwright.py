@@ -14,6 +14,9 @@ from sources.dataclasses import Link
 
 logger = logging.getLogger(__name__)
 
+class PlaywrightException(Exception):
+    ...
+
 
 def get_random_user_agent() -> str:
     return random.choice(settings.PLAYWRIGHT_USER_AGENTS)
@@ -33,9 +36,10 @@ def playwright_extractor(url: str, extractor: Callable[[Page, ...], list[Link]])
             page.wait_for_load_state("networkidle", timeout=settings.PLAYWRIGHT_TIMEOUT)
 
             return extractor(page)
-    finally:
-        if browser and hasattr(browser, 'close'):
+    except Exception as e:
+        if browser and browser.is_connected():
             browser.close()
+        raise PlaywrightException() from e
 
 
 
