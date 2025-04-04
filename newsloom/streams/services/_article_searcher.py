@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 def article_searcher_extractor(
         page: Page,
         url: str,
-        link_selector,
-        search_text,
-        article_selector,
-        link_selector_type="css",
-        article_selector_type="css",
-        max_links=10,
+        link_selector: str,
+        search_text: str,
+        article_selector: str,
+        link_selector_type: str = "css",
+        article_selector_type: str = "css",
+        max_links: int = 10,
 ) -> list[Link]:
     links = []
 

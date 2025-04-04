@@ -2,9 +2,13 @@ from pathlib import Path
 
 from split_settings.tools import optional, include
 
+from newsloom.contrib.env import get_env_var
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SENTRY_DSN = None
+
+PROJECT_NAME = get_env_var("PROJECT_NAME", default='unknown')
 
 _base_settings = (
     'components/django.py',

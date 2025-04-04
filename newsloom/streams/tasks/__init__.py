@@ -4,11 +4,11 @@ from functools import partial
 from django.utils import timezone
 from newsloom.celery import app
 
-from sources.models import Source
 from streams.models import Stream
 from sources.services import create_news_from_links, get_news_for_send
 
 from ._processing import stream_processing
+from ._process import process_stream
 from streams.services import (
     process_sitemap as sitemap_news_service,
     playwright_extractor,
@@ -87,9 +87,9 @@ def article_searcher(self, stream: Stream) -> None:
         link_selector=stream.configuration['link_selector'],
         search_text=stream.configuration['search_text'],
         article_selector=stream.configuration['article_selector'],
-        link_selector_type=stream.configuration['link_selector_type'],
-        article_selector_type=stream.configuration['article_selector_type'],
-        max_links=stream.configuration['max_links'],
+        link_selector_type=stream.configuration.get('link_selector_type') or "css",
+        article_selector_type=stream.configuration.get('article_selector_type') or "css",
+        max_links=stream.configuration.get('max_links') or 10,
     )
     links = playwright_extractor(url=stream.configuration['url'], extractor=extractor)
     create_news_from_links(stream.source, links)
