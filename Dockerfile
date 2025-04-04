@@ -3,6 +3,7 @@ FROM python:3.13-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    C_FORCE_ROOT=1 \
     DEBIAN_FRONTEND=noninteractive
 
 # Set working directory
@@ -15,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     netcat-traditional \
     curl \
+    redis \
     && rm -rf /var/lib/apt/lists/*
 
 # Install CloudWatch agent based on architecture
@@ -61,6 +63,14 @@ RUN mkdir -p /var/log && \
     touch /var/log/daphne.err.log /var/log/daphne.out.log \
         /var/log/nginx.err.log /var/log/nginx.out.log \
         /var/log/stream_scheduler.err.log /var/log/stream_scheduler.out.log
+
+# redis setup
+RUN  \
+  mkdir /data && \
+  sed -i 's/^\(bind .*\)$/# \1/' /etc/redis/redis.conf && \
+  sed -i 's/^\(daemonize .*\)$/# \1/' /etc/redis/redis.conf && \
+  sed -i 's/^\(dir .*\)$/# \1\ndir \/data/' /etc/redis/redis.conf && \
+  sed -i 's/^\(logfile .*\)$/# \1/' /etc/redis/redis.conf
 
 # Copy supervisor configuration
 COPY supervisord.docker.conf /etc/supervisor/conf.d/supervisord.conf
