@@ -209,6 +209,7 @@ Here is a list of cases from the documentation:
 {CASES}
 ```
 
+<IMPORTANT>
 Tips and Tricks:
 
 - When creating a new agent, always use the Bedrock provider as the default.
@@ -250,6 +251,7 @@ you need to use the Articlean task.
   4. For article_searcher streams:
      - Use link_selector from the get_link_classes results
      - For article_selector, look for common wrapper classes in the target articles
+</IMPORTANT>
 
 CRITICAL MEDIA-SOURCE ASSOCIATION RULES:
 

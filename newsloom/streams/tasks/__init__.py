@@ -27,12 +27,15 @@ from streams.services.web_scraper import web_scraper as web_scraper_service
 from streams.services.google_doc_creator import google_doc_creator as google_doc_creator_service
 from streams.services.doc_publisher import publish_docs
 from streams.services.telegram_bulk_parser import run_telegram_parser
+from streams.services.link_parser import enrich_links
 
 
 @app.task(bind=True)
 @stream_processing(stream_type="sitemap_news")
 def sitemap_news(self, stream: Stream) -> None:
     links = sitemap_news_service(**stream.configuration)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -40,6 +43,8 @@ def sitemap_news(self, stream: Stream) -> None:
 @stream_processing(stream_type="sitemap_blog")
 def sitemap_blog(self, stream: Stream) -> None:
     links = sitemap_news_service(**stream.configuration)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -53,6 +58,8 @@ def playwright_link_extractor(self, stream: Stream) -> None:
         max_links=stream.configuration['max_links'],
     )
     links = playwright_extractor(url=stream.configuration['url'], extractor=extractor)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -60,6 +67,8 @@ def playwright_link_extractor(self, stream: Stream) -> None:
 @stream_processing(stream_type="rss_feed")
 def rss_feed(self, stream: Stream) -> None:
     links = rss_feed_parser(**stream.configuration)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -92,6 +101,8 @@ def article_searcher(self, stream: Stream) -> None:
         max_links=stream.configuration.get('max_links') or 10,
     )
     links = playwright_extractor(url=stream.configuration['url'], extractor=extractor)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -99,6 +110,8 @@ def article_searcher(self, stream: Stream) -> None:
 @stream_processing(stream_type="bing_search")
 def bing_search(self, stream: Stream) -> None:
     links = search_bing(**stream.configuration)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -106,6 +119,8 @@ def bing_search(self, stream: Stream) -> None:
 @stream_processing(stream_type="google_search")
 def google_search(self, stream: Stream) -> None:
     links = search_google(**stream.configuration)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -113,6 +128,8 @@ def google_search(self, stream: Stream) -> None:
 @stream_processing(stream_type="duckduckgo_search")
 def duckduckgo_search(self, stream: Stream) -> None:
     links = search_duckduckgo(**stream.configuration)
+    if stream.configuration.get('parse_now'):
+        links = enrich_links(links)
     create_news_from_links(stream.source, links)
 
 
@@ -175,20 +192,24 @@ TASK_CONFIG_EXAMPLES = {
         "sitemap_url": "https://example.com/sitemap.xml",
         "max_links": 100,
         "follow_next": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "sitemap_blog": {
         "sitemap_url": "https://example.com/blog-sitemap.xml",
         "max_links": 100,
         "follow_next": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "playwright_link_extractor": {
         "url": "https://example.com",
         "link_selector": "a.article-link",
         "max_links": 100,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "rss_feed": {
         "feed_url": "https://example.com/feed.xml",
         "max_entries": 100,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "web_article": {
         "base_url": "https://example.com",
@@ -219,12 +240,14 @@ TASK_CONFIG_EXAMPLES = {
         "article_selector_type": "css",
         "search_text": "białoruś",
         "max_links": 10,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "bing_search": {
         "keywords": ["climate change", "renewable energy"],
         "max_results_per_keyword": 5,
         "search_type": "news",
         "debug": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "google_search": {
         "keywords": ["climate change", "renewable energy"],
@@ -232,6 +255,7 @@ TASK_CONFIG_EXAMPLES = {
         "days_ago": 7,
         "search_type": "news",
         "debug": False,
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
     "telegram_bulk_parser": {
         "time_window_minutes": 120,  # 2 hours window
@@ -268,6 +292,7 @@ TASK_CONFIG_EXAMPLES = {
         "region": "wt-wt",
         "time_range": "d",
         "safesearch": "moderate",
+        "parse_now": True,  # Whether to parse links with Articlean immediately
     },
 }
 
