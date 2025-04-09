@@ -88,3 +88,5 @@ celery==5.4.0
 django-celery-beat==2.7.0
 flower
 django-split-settings==1.0.1
+# MCP SDK for Model Context Protocol implementation
+mcp>=1.6.0
