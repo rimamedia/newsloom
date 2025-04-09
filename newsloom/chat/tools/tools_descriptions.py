@@ -201,7 +201,8 @@ TOOLS = [
                         "telegram_bulk_parser",
                         "news_stream",
                         "doc_publisher",
-                        "articlean",
+                        # Legacy tools removed from available list
+                        # "articlean",
                     ],
                     "description": "Type of the stream",
                 },
@@ -258,7 +259,8 @@ TOOLS = [
                         "telegram_bulk_parser",
                         "news_stream",
                         "doc_publisher",
-                        "articlean",
+                        # Legacy tools removed from available list
+                        # "articlean",
                     ],
                     "description": "New type for the stream",
                 },

@@ -26,8 +26,9 @@ StreamType = Literal[
     "doc_publisher",
     "google_doc_creator",
     "telegram_doc_publisher",
-    "articlean",
-    "web_scraper",
+    # Legacy tools removed from available types
+    # "articlean",
+    # "web_scraper",
 ]
 
 

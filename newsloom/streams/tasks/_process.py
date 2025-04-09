@@ -15,7 +15,8 @@ def process_stream(self, stream_id: int, delay:bool=True) -> None:
     try:
         # stream = Stream.objects.filter(status__in=['active', 'failed']).get(pk=stream_id)
         stream = Stream.objects.get(pk=stream_id)
-        stream.execute_task(delay=delay)
+        if stream.status != 'paused':
+            stream.execute_task(delay=delay)
     except Stream.DoesNotExist:
         logger.error(f"Stream {stream_id} does not exist")
     except Exception as exc:
