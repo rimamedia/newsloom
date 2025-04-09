@@ -55,12 +55,12 @@ def articlean(stream: Stream, **kwargs) -> Dict[str, Any]:
             }
             logger.info(f"Making request to Articlean API with payload: {payload}")
 
-            api_url = f"{settings.ARTICLEAN_API_URL}/process-url"
-            logger.info(f"Sending request to: {api_url}")
+
+            logger.info(f"Sending request to: {settings.ARTICLEAN_API_URL}")
 
             # Send request
             response = requests.post(
-                api_url,
+                settings.ARTICLEAN_API_URL,
                 headers=headers,
                 data=payload,
                 timeout=30,  # Add 30 second timeout to prevent hanging
@@ -72,7 +72,7 @@ def articlean(stream: Stream, **kwargs) -> Dict[str, Any]:
             if response.status_code != 200:
                 logger.error(f"Process URL failed with status {response.status_code}")
                 logger.error(f"Response content: {response.text}")
-                logger.error(f"Request URL: {api_url}")
+                logger.error(f"Request URL: {settings.ARTICLEAN_API_URL}")
                 logger.error(f"Request headers: {headers}")
                 response.raise_for_status()
 

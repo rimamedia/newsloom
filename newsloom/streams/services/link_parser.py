@@ -25,9 +25,7 @@ def parse_link(url: str, timeout: int = 30) -> ParseLinkResult | None:
         "Content-Type": "application/json",
     }
     try:
-        response = requests.post(
-            f"{settings.ARTICLEAN_API_URL}/process-url", headers=headers, json={"url": url}, timeout=timeout
-        )
+        response = requests.post(settings.ARTICLEAN_API_URL, headers=headers, json={"url": url}, timeout=timeout)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
     except requests.exceptions.RequestException as e:
