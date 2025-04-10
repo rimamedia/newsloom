@@ -167,7 +167,8 @@ def telegram_doc_publisher(self, stream: Stream) -> None:
 @app.task(bind=True)
 @stream_processing(stream_type="articlean")
 def articlean(self, stream: Stream) -> None:
-    articlean_service(stream, **stream.configuration)
+    ...
+    # articlean_service(stream, **stream.configuration)
 
 
 @app.task(bind=True)
