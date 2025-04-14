@@ -1,5 +1,4 @@
 from .article_searcher import ArticleSearcherConfig
-from .articlean import ArticleanConfiguration
 from .bing_search import BingSearchConfig
 from .doc_publisher import DocPublisherConfig
 from .duckduckgo_search import DuckDuckGoSearchConfig
@@ -12,7 +11,8 @@ from .sitemap import BaseSitemapConfig
 from .telegram import TelegramBulkParserConfig, TelegramConfig, TelegramPublishConfig
 from .telegram_doc_publisher import TelegramDocPublisherConfig
 from .web_article import WebArticleConfig
-from .web_scraper import WebScraperConfig
+
+# Legacy tools - imports kept for backward compatibility
 
 STREAM_CONFIG_SCHEMAS = {
     "sitemap_news": BaseSitemapConfig,
@@ -30,7 +30,8 @@ STREAM_CONFIG_SCHEMAS = {
     "doc_publisher": DocPublisherConfig,
     "google_doc_creator": GoogleDocCreatorConfig,
     "telegram_doc_publisher": TelegramDocPublisherConfig,
-    "articlean": ArticleanConfiguration,
-    "web_scraper": WebScraperConfig,
+    # Legacy tools removed from available schemas
+    # "articlean": ArticleanConfiguration,
+    # "web_scraper": WebScraperConfig,
     "duckduckgo_search": DuckDuckGoSearchConfig,
 }
