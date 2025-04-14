@@ -1,4 +1,3 @@
-import os
 
 from newsloom.contrib.env import get_env_var
 
