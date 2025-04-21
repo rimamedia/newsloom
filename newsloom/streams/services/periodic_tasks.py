@@ -4,6 +4,14 @@ from django_celery_beat.models import CrontabSchedule, PeriodicTask
 
 from streams.models import Stream
 
+_EMPTY_CRONTAB = {
+    'minute': '*',
+    'hour': '*',
+    'day_of_week': '*',
+    'day_of_month': '*',
+    'month_of_year': '*',
+}
+
 STREAM_FREQUENCY_TO_CRONTAB = {
     "5min": {'minute': '*/5'},
     "15min": {'minute': '*/15'},
@@ -17,7 +25,9 @@ STREAM_FREQUENCY_TO_CRONTAB = {
 
 @lru_cache()
 def get_crontab_schedule_by_stream_frequency(frequency: str) -> CrontabSchedule:
-    crontab, _ = CrontabSchedule.objects.get_or_create(**STREAM_FREQUENCY_TO_CRONTAB[frequency])
+    _crontab = _EMPTY_CRONTAB.copy()
+    _crontab.update(STREAM_FREQUENCY_TO_CRONTAB[frequency])
+    crontab, _ = CrontabSchedule.objects.get_or_create(**_crontab)
     return crontab
 
 
