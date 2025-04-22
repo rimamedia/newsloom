@@ -6,7 +6,7 @@ allowing for standardized tool operations across chat and agents.
 """
 
 import logging
-import subprocess
+import subprocess  # nosec B404 - only used for type hints, not for execution
 from typing import Any, Dict, Optional
 
 # Import Django-specific utilities for async operations
@@ -80,8 +80,67 @@ class MCPClient:
             Exception: If the tool execution fails
         """
         try:
-            # In a real implementation, this would communicate with the MCP server
-            # For now, we'll directly import and call the tool functions
+            # First try to use the MCP server if the tool name starts with "execute_"
+            # This indicates it's a stream execution tool that should be handled by the MCP server
+            if tool_name.startswith("execute_"):
+                try:
+                    # Create a temporary server instance to get access to the server
+                    from .server import NewsloomMCPServer
+
+                    server = NewsloomMCPServer()
+
+                    # Set up the server's tool handlers
+                    server._setup_tool_handlers()
+
+                    # Prepare the request
+                    request_id = "1"
+                    request_data = {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "method": "call_tool",
+                        "params": {"name": tool_name, "arguments": kwargs},
+                    }
+
+                    # Call the tool through the server
+                    response = await server.server.handle_request(request_data)
+
+                    # Check for errors
+                    if "error" in response:
+                        error = response["error"]
+                        raise ValueError(
+                            f"MCP server error: {error.get('message', 'Unknown error')}"
+                        )
+
+                    # Extract the result
+                    if "result" in response and "content" in response["result"]:
+                        content = response["result"]["content"]
+                        if (
+                            isinstance(content, list)
+                            and len(content) > 0
+                            and "text" in content[0]
+                        ):
+                            # Try to parse the JSON result
+                            try:
+                                import json
+
+                                return json.loads(content[0]["text"])
+                            except (json.JSONDecodeError, ValueError):
+                                # If parsing fails, return the raw text
+                                return content[0]["text"]
+                        return content
+
+                    return response.get("result", {})
+
+                except Exception as mcp_error:
+                    logger.error(
+                        f"Error calling tool through MCP server: {str(mcp_error)}"
+                    )
+                    # If MCP server call fails and fallback is enabled, try direct function call
+                    if not self.use_fallback:
+                        raise
+                    # Otherwise, continue to the fallback path
+
+            # Fallback to direct function call
             if tool_name not in tool_functions:
                 raise ValueError(f"Unknown tool: {tool_name}")
 
