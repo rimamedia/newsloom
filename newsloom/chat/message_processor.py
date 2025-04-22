@@ -20,22 +20,12 @@ from .message_storage import MessageStorage
 from .models import Chat, ChatMessage
 from .system_prompt import SYSTEM_PROMPT
 
-# Import MCP client and server (with fallback for backward compatibility)
-try:
-    from mcp.client import MCPClient
-    from mcp.server import NewsloomMCPServer
+# Import MCP client and server for tool execution
+from mcp.client import MCPClient
+from mcp.server import NewsloomMCPServer
 
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    # Import old tools for backward compatibility
-    from .tools import tool_functions
-    from .tools.tools_descriptions import TOOLS
-
-    logger = logging.getLogger(__name__)
-    logger.warning(
-        "MCP client not available, falling back to direct tool function calls"
-    )
+# Import TOOLS for fallback in case of errors with MCP
+from .tools.tools_descriptions import TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -379,25 +369,19 @@ class MessageProcessor:
             # If token counting fails, still try to proceed with original history
             logger.error(f"Error in context management: {str(e)}", exc_info=True)
 
-        # Get tool descriptions from MCP server if available
+        # Get tool descriptions from MCP server
         tools = None
-        if MCP_AVAILABLE:
-            try:
-                # Create a temporary server instance to get tool descriptions
-                server = NewsloomMCPServer()
-                # Get tool descriptions from the server
-                tools = await MessageProcessor._get_tool_descriptions(server)
-                logger.info(f"Using {len(tools)} tools from MCP server")
-            except Exception as e:
-                logger.error(
-                    f"Error getting tool descriptions from MCP server: {str(e)}"
-                )
-                # Fall back to old tool descriptions
-                tools = TOOLS
-                logger.info("Falling back to old tool descriptions")
-        else:
-            # Use old tool descriptions
+        try:
+            # Create a temporary server instance to get tool descriptions
+            server = NewsloomMCPServer()
+            # Get tool descriptions from the server
+            tools = await MessageProcessor._get_tool_descriptions(server)
+            logger.info(f"Using {len(tools)} tools from MCP server")
+        except Exception as e:
+            logger.error(f"Error getting tool descriptions from MCP server: {str(e)}")
+            # Fall back to old tool descriptions
             tools = TOOLS
+            logger.info("Falling back to old tool descriptions")
 
         # Create a task for the API call that can be cancelled
         api_task = asyncio.create_task(
@@ -434,14 +418,17 @@ class MessageProcessor:
     @staticmethod
     async def _process_tool_calls(content_list, chat_history: List[Dict[str, Any]]):
         """
-        Process tool calls from the AI response.
+        Process tool calls from the AI response using MCP.
 
         Parameters:
             content_list: The content list from the AI response
             chat_history: The current chat history to append tool results to
         """
-        # Initialize MCP client if available, otherwise use None
-        mcp_client = MCPClient() if MCP_AVAILABLE else None
+        # Initialize MCP client
+        mcp_client = MCPClient()
+
+        # Connect to the MCP server
+        await mcp_client.connect()
 
         for content in content_list:
             if content.type == "tool_use":
@@ -456,23 +443,9 @@ class MessageProcessor:
 
                 # Execute the tool asynchronously
                 try:
-                    if mcp_client:
-                        # Use MCP client to call the tool
-                        logger.info(f"Using MCP client to execute tool: {tool_name}")
-                        tool_result = await mcp_client.call_tool(
-                            tool_name, **tool_input
-                        )
-                    else:
-                        # Fallback to direct tool function call
-                        logger.info(f"Using direct tool function call for: {tool_name}")
-                        tool_func = tool_functions.get(tool_name)
-                        if tool_func is None:
-                            raise ValueError(f"Unknown tool: {tool_name}")
-
-                        # Wrap tool execution in shield to ensure it can be cancelled
-                        tool_result = await asyncio.shield(
-                            sync_to_async(tool_func)(**tool_input)
-                        )
+                    # Use MCP client to call the tool
+                    logger.info(f"Using MCP client to execute tool: {tool_name}")
+                    tool_result = await mcp_client.call_tool(tool_name, **tool_input)
 
                     logger.info(f"Tool execution successful. Result: {tool_result}")
 
@@ -492,6 +465,8 @@ class MessageProcessor:
 
                 except asyncio.CancelledError:
                     logger.info(f"Tool execution cancelled: {tool_name}")
+                    # Disconnect from the MCP server before raising
+                    await mcp_client.disconnect()
                     raise
                 except Exception as e:
                     logger.error(f"Tool execution failed: {str(e)}")
@@ -508,6 +483,9 @@ class MessageProcessor:
                             ],
                         }
                     )
+
+        # Disconnect from the MCP server when done
+        await mcp_client.disconnect()
 
     @staticmethod
     async def _get_tool_descriptions(server):
@@ -543,9 +521,6 @@ class MessageProcessor:
         # This would normally be done through the server's API
         # but for now we'll use a direct call to the server's internal methods
         try:
-            # Create a mock request
-            request = MockRequest()
-
             # Get the list of tools from the server
             # This is a simplified implementation that assumes the server has a method
             # to get the list of tools
