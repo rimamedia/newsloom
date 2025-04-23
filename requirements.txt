@@ -89,3 +89,4 @@ django-celery-beat==2.7.0
 flower
 django-split-settings==1.0.1
 uWSGI==2.0.28
+mcp>=1.6.0

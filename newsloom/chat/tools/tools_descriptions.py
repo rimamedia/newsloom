@@ -1,6 +1,258 @@
 """Tools for database operations through Claude API."""
 
 TOOLS = [
+    # Stream execution tools
+    {
+        "name": "execute_news_stream",
+        "description": "Process news items using the specified agent",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "stream_id": {
+                    "type": "integer",
+                    "description": "ID of the stream",
+                },
+                "agent_id": {
+                    "type": "integer",
+                    "description": "ID of the agent to use",
+                },
+                "time_window_minutes": {
+                    "type": "integer",
+                    "description": "Time window in minutes to look back for news (default: 60)",
+                },
+                "max_items": {
+                    "type": "integer",
+                    "description": "Maximum number of news items to process (default: 100)",
+                },
+                "save_to_docs": {
+                    "type": "boolean",
+                    "description": "Whether to save the processed output to docs (default: true)",
+                },
+            },
+            "required": ["stream_id", "agent_id"],
+        },
+    },
+    {
+        "name": "execute_web_scraper",
+        "description": "Scrape content for news articles with empty text",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "stream_id": {
+                    "type": "integer",
+                    "description": "ID of the stream",
+                },
+                "batch_size": {
+                    "type": "integer",
+                    "description": "Number of news articles to process in each batch (default: 10)",
+                },
+            },
+            "required": ["stream_id"],
+        },
+    },
+    {
+        "name": "execute_doc_publisher",
+        "description": "Publish docs from database to Telegram channel",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "stream_id": {
+                    "type": "integer",
+                    "description": "ID of the stream",
+                },
+                "channel_id": {
+                    "type": "string",
+                    "description": "Telegram channel ID",
+                },
+                "bot_token": {
+                    "type": "string",
+                    "description": "Telegram bot token",
+                },
+                "batch_size": {
+                    "type": "integer",
+                    "description": "Maximum number of docs to process (default: 10)",
+                },
+                "google_doc_links": {
+                    "type": "boolean",
+                    "description": "Whether to include Google Doc links in messages "
+                    "(default: false)",
+                },
+            },
+            "required": ["stream_id", "channel_id", "bot_token"],
+        },
+    },
+    {
+        "name": "execute_google_doc_creator",
+        "description": "Create Google Docs for documents in the database",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "stream_id": {
+                    "type": "integer",
+                    "description": "ID of the stream",
+                },
+                "folder_id": {
+                    "type": "string",
+                    "description": "Google Drive folder ID",
+                },
+                "template_id": {
+                    "type": "string",
+                    "description": "Optional: Google Doc template ID",
+                },
+                "batch_size": {
+                    "type": "integer",
+                    "description": "Maximum number of docs to process (default: 10)",
+                },
+            },
+            "required": ["stream_id", "folder_id"],
+        },
+    },
+    {
+        "name": "execute_telegram_bulk_parser",
+        "description": "Parse Telegram channels for content",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "stream_id": {
+                    "type": "integer",
+                    "description": "ID of the stream",
+                },
+                "time_window_minutes": {
+                    "type": "integer",
+                    "description": "Time window in minutes to look back (default: 120)",
+                },
+                "max_scrolls": {
+                    "type": "integer",
+                    "description": "Maximum number of scrolls (default: 50)",
+                },
+                "wait_time": {
+                    "type": "integer",
+                    "description": "Wait time between scrolls in seconds (default: 5)",
+                },
+            },
+            "required": ["stream_id"],
+        },
+    },
+    {
+        "name": "execute_link_parser",
+        "description": "Enrich links with content using web scraping",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "links": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of URLs to enrich with content",
+                },
+            },
+            "required": ["links"],
+        },
+    },
+    {
+        "name": "execute_sitemap_parser",
+        "description": "Extract links from a sitemap URL",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sitemap_url": {
+                    "type": "string",
+                    "description": "URL of the sitemap to parse",
+                },
+                "max_links": {
+                    "type": "integer",
+                    "description": "Maximum number of links to extract (default: 100)",
+                },
+                "follow_next": {
+                    "type": "boolean",
+                    "description": "Whether to follow next page links (default: false)",
+                },
+            },
+            "required": ["sitemap_url"],
+        },
+    },
+    {
+        "name": "execute_rss_parser",
+        "description": "Extract links from an RSS feed URL",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "feed_url": {
+                    "type": "string",
+                    "description": "URL of the RSS feed to parse",
+                },
+                "max_entries": {
+                    "type": "integer",
+                    "description": "Maximum number of entries to extract (default: 100)",
+                },
+            },
+            "required": ["feed_url"],
+        },
+    },
+    {
+        "name": "execute_playwright_extractor",
+        "description": "Extract links from a webpage using Playwright",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL of the webpage to extract links from",
+                },
+                "link_selector": {
+                    "type": "string",
+                    "description": "CSS selector for links",
+                },
+                "max_links": {
+                    "type": "integer",
+                    "description": "Maximum number of links to extract (default: 100)",
+                },
+            },
+            "required": ["url", "link_selector"],
+        },
+    },
+    {
+        "name": "execute_search_engine",
+        "description": "Search for content using various search engines",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "engine": {
+                    "type": "string",
+                    "enum": ["google", "bing", "duckduckgo"],
+                    "description": "Search engine to use",
+                },
+                "keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Keywords to search for",
+                },
+                "max_results_per_keyword": {
+                    "type": "integer",
+                    "description": "Maximum number of results per keyword (default: 5)",
+                },
+                "search_type": {
+                    "type": "string",
+                    "enum": ["news", "web"],
+                    "description": "Type of search to perform (default: news)",
+                },
+                "days_ago": {
+                    "type": "integer",
+                    "description": "For Google: Number of days to look back (default: 7)",
+                },
+                "region": {
+                    "type": "string",
+                    "description": "For DuckDuckGo: Region code (default: wt-wt)",
+                },
+                "time_range": {
+                    "type": "string",
+                    "enum": ["d", "w", "m"],
+                    "description": "For DuckDuckGo: Time range (d=day, w=week, m=month) (default: d)",  # noqa E501
+                },
+            },
+            "required": ["engine", "keywords"],
+        },
+    },
+    # Database operation tools
     {
         "name": "list_media",
         "description": "Get a paginated list of media entries from the database",

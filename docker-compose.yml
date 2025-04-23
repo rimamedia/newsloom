@@ -16,6 +16,9 @@ services:
       - CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
       - CSRF_COOKIE_SECURE=0
       - CSRF_USE_SESSIONS=0
+      - BEDROCK_AWS_REGION=${BEDROCK_AWS_REGION}
+      - BEDROCK_AWS_ACCESS_KEY_ID=${BEDROCK_AWS_ACCESS_KEY_ID}
+      - BEDROCK_AWS_SECRET_ACCESS_KEY=${BEDROCK_AWS_SECRET_ACCESS_KEY}
     volumes:
       - ./newsloom:/app/newsloom
       - ./docs:/app/docs # Mount docs directory

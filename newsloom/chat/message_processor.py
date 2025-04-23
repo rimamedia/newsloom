@@ -19,7 +19,12 @@ from .constants import MODEL_NAME, MAX_TOKENS, API_TEMPERATURE, API_TIMEOUT
 from .message_storage import MessageStorage
 from .models import Chat, ChatMessage
 from .system_prompt import SYSTEM_PROMPT
-from .tools import tool_functions
+
+# Import MCP client and server for tool execution
+from mcp.client import MCPClient
+from mcp.server import NewsloomMCPServer
+
+# Import TOOLS for fallback in case of errors with MCP
 from .tools.tools_descriptions import TOOLS
 
 logger = logging.getLogger(__name__)
@@ -274,8 +279,8 @@ class MessageProcessor:
                         f"Multiple tool usages detected ({tool_usage_count}), generating summary"  # noqa E501
                     )
 
-                    # Add a message requesting a summary
-                    summary_request = "Please provide a concise summary of all the actions and steps taken in this conversation."  # noqa E501
+                    # Add a message requesting a summary - maintain the same language as the user
+                    summary_request = "Please provide a concise summary of all the actions and steps taken in this conversation. IMPORTANT: Respond in the SAME LANGUAGE as the user's original message."  # noqa E501
                     chat_history.append({"role": "user", "content": summary_request})
 
                     # Get summary from AI
@@ -364,6 +369,20 @@ class MessageProcessor:
             # If token counting fails, still try to proceed with original history
             logger.error(f"Error in context management: {str(e)}", exc_info=True)
 
+        # Get tool descriptions from MCP server
+        tools = None
+        try:
+            # Create a temporary server instance to get tool descriptions
+            server = NewsloomMCPServer()
+            # Get tool descriptions from the server
+            tools = await MessageProcessor._get_tool_descriptions(server)
+            logger.info(f"Using {len(tools)} tools from MCP server")
+        except Exception as e:
+            logger.error(f"Error getting tool descriptions from MCP server: {str(e)}")
+            # Fall back to old tool descriptions
+            tools = TOOLS
+            logger.info("Falling back to old tool descriptions")
+
         # Create a task for the API call that can be cancelled
         api_task = asyncio.create_task(
             sync_to_async(client.messages.create)(
@@ -371,7 +390,7 @@ class MessageProcessor:
                 max_tokens=MAX_TOKENS,
                 temperature=API_TEMPERATURE,
                 system=SYSTEM_PROMPT,
-                tools=TOOLS,
+                tools=tools,
                 messages=managed_history,
             )
         )
@@ -399,12 +418,18 @@ class MessageProcessor:
     @staticmethod
     async def _process_tool_calls(content_list, chat_history: List[Dict[str, Any]]):
         """
-        Process tool calls from the AI response.
+        Process tool calls from the AI response using MCP.
 
         Parameters:
             content_list: The content list from the AI response
             chat_history: The current chat history to append tool results to
         """
+        # Initialize MCP client
+        mcp_client = MCPClient()
+
+        # Connect to the MCP server
+        await mcp_client.connect()
+
         for content in content_list:
             if content.type == "tool_use":
                 # Extract tool details
@@ -418,15 +443,10 @@ class MessageProcessor:
 
                 # Execute the tool asynchronously
                 try:
-                    # Get tool function from dictionary
-                    tool_func = tool_functions.get(tool_name)
-                    if tool_func is None:
-                        raise ValueError(f"Unknown tool: {tool_name}")
+                    # Use MCP client to call the tool
+                    logger.info(f"Using MCP client to execute tool: {tool_name}")
+                    tool_result = await mcp_client.call_tool(tool_name, **tool_input)
 
-                    # Wrap tool execution in shield to ensure it can be cancelled
-                    tool_result = await asyncio.shield(
-                        sync_to_async(tool_func)(**tool_input)
-                    )
                     logger.info(f"Tool execution successful. Result: {tool_result}")
 
                     # Add tool result to history with role: user
@@ -445,6 +465,8 @@ class MessageProcessor:
 
                 except asyncio.CancelledError:
                     logger.info(f"Tool execution cancelled: {tool_name}")
+                    # Disconnect from the MCP server before raising
+                    await mcp_client.disconnect()
                     raise
                 except Exception as e:
                     logger.error(f"Tool execution failed: {str(e)}")
@@ -461,3 +483,75 @@ class MessageProcessor:
                             ],
                         }
                     )
+
+        # Disconnect from the MCP server when done
+        await mcp_client.disconnect()
+
+    @staticmethod
+    async def _get_tool_descriptions(server):
+        """
+        Get tool descriptions from the MCP server.
+
+        Parameters:
+            server: The MCP server instance
+
+        Returns:
+            List of tool descriptions in the format expected by the AI service
+        """
+        # This is a simplified implementation that would need to be expanded
+        # to actually query the MCP server for tool descriptions
+        # For now, we'll return a hardcoded list of tools that matches the
+        # format expected by the AI service
+
+        # In a real implementation, this would query the server for available tools
+        # and convert them to the format expected by the AI service
+
+        # Create a mock request handler to get tool descriptions
+        class MockRequest:
+            def __init__(self):
+                self.params = None
+
+        # Get tool descriptions from the server
+        tools = []
+
+        # Set up the server's tool handlers
+        server._setup_tool_handlers()
+
+        # Get the list of tools from the server
+        # This would normally be done through the server's API
+        # but for now we'll use a direct call to the server's internal methods
+        try:
+            # Get the list of tools from the server
+            # This is a simplified implementation that assumes the server has a method
+            # to get the list of tools
+            # In a real implementation, this would use the server's API
+            tools_response = await server.server.handle_request(
+                {"jsonrpc": "2.0", "id": "1", "method": "list_tools", "params": {}}
+            )
+
+            # Convert the tools to the format expected by the AI service
+            if "result" in tools_response and "tools" in tools_response["result"]:
+                for tool in tools_response["result"]["tools"]:
+                    tools.append(
+                        {
+                            "name": tool["name"],
+                            "description": tool.get("description", ""),
+                            "input_schema": tool.get("input_schema", {}),
+                        }
+                    )
+
+            logger.info(f"Got {len(tools)} tools from MCP server")
+
+            # If no tools were found, fall back to old tool descriptions
+            if not tools:
+                logger.warning(
+                    "No tools found in MCP server, falling back to old tool descriptions"
+                )
+                return TOOLS
+
+            return tools
+
+        except Exception as e:
+            logger.error(f"Error getting tool descriptions from MCP server: {str(e)}")
+            # Fall back to old tool descriptions
+            return TOOLS
