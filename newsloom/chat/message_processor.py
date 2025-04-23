@@ -279,8 +279,8 @@ class MessageProcessor:
                         f"Multiple tool usages detected ({tool_usage_count}), generating summary"  # noqa E501
                     )
 
-                    # Add a message requesting a summary
-                    summary_request = "Please provide a concise summary of all the actions and steps taken in this conversation."  # noqa E501
+                    # Add a message requesting a summary - maintain the same language as the user
+                    summary_request = "Please provide a concise summary of all the actions and steps taken in this conversation. IMPORTANT: Respond in the SAME LANGUAGE as the user's original message."  # noqa E501
                     chat_history.append({"role": "user", "content": summary_request})
 
                     # Get summary from AI
