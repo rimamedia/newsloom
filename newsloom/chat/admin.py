@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import Chat, ChatMessage, ChatMessageDetail
+from .models import Chat, ChatMessage, ChatMessageDetail, CallAIServiceLog
 
 
 class ChatMessageDetailInline(admin.TabularInline):
@@ -101,3 +101,9 @@ class ChatMessageDetailAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("chat_message")
+
+
+@admin.register(CallAIServiceLog)
+class CallAIServiceLogAdmin(admin.ModelAdmin):
+    list_display = ('chat_id', 'message', 'message_uid', 'created_at', 'updated_at',)
+

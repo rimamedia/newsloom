@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import re
+import uuid
 from typing import Any, Dict, List, Tuple
 
 from anthropic import AnthropicBedrock
@@ -17,7 +18,7 @@ from asgiref.sync import sync_to_async
 
 from .constants import MODEL_NAME, MAX_TOKENS, API_TEMPERATURE, API_TIMEOUT
 from .message_storage import MessageStorage
-from .models import Chat, ChatMessage
+from .models import Chat, ChatMessage, CallAIServiceLog
 from .system_prompt import SYSTEM_PROMPT
 from .tools import tool_functions
 from .tools.tools_descriptions import TOOLS
@@ -231,13 +232,14 @@ class MessageProcessor:
         try:
             # Add new user message to history
             chat_history.append({"role": "user", "content": message})
+            message_uid = uuid.uuid4().hex
 
             # Counter to track the number of tool usage iterations
             tool_usage_count = 0
 
             while True:
                 # Process the message with the AI service
-                response = await MessageProcessor._call_ai_service(client, chat_history)
+                response = await MessageProcessor._call_ai_service(client, chat_history, chat.id, message, message_uid)
 
                 # Check if response contains tool calls
                 if response.stop_reason == "tool_use":
@@ -280,7 +282,7 @@ class MessageProcessor:
 
                     # Get summary from AI
                     summary_response = await MessageProcessor._call_ai_service(
-                        client, chat_history
+                        client, chat_history, chat.id, message, message_uid
                     )
                     summary = summary_response.content[0].text
 
@@ -295,7 +297,7 @@ class MessageProcessor:
 
                 # Save the message and response
                 chat_message = await MessageStorage.save_message(
-                    chat=chat, user=user, message=message, response=final_response
+                    chat=chat, user=user, message=message, response=final_response, message_uid=message_uid
                 )
 
                 # Save detailed message flow
@@ -311,7 +313,7 @@ class MessageProcessor:
 
     @staticmethod
     async def _call_ai_service(
-        client: AnthropicBedrock, chat_history: List[Dict[str, Any]]
+        client: AnthropicBedrock, chat_history: List[Dict[str, Any]], chat_id: int, init_message: str, message_uid: str
     ):
         """
         Call the AI service with the current chat history, managing context size.
@@ -365,6 +367,7 @@ class MessageProcessor:
             logger.error(f"Error in context management: {str(e)}", exc_info=True)
 
         # Create a task for the API call that can be cancelled
+        log = await create_ai_log(managed_history, chat_id, init_message, message_uid)
         api_task = asyncio.create_task(
             sync_to_async(client.messages.create)(
                 model=MODEL_NAME,
@@ -379,9 +382,14 @@ class MessageProcessor:
         try:
             # Wait for the API call with timeout
             response = await asyncio.wait_for(api_task, timeout=API_TIMEOUT)
+
             logger.info(f"API Response: {json.dumps(response.model_dump(), indent=2)}")
+            log.response = response.content
+            await save_ai_log(log)
             return response
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
+            log.error = f'{e}'
+            await save_ai_log(log)
             api_task.cancel()
             try:
                 await api_task
@@ -461,3 +469,23 @@ class MessageProcessor:
                             ],
                         }
                     )
+
+
+@sync_to_async
+def create_ai_log(managed_history, chat_id, init_message, message_uid) -> CallAIServiceLog:
+    return CallAIServiceLog.objects.create(
+        model=MODEL_NAME,
+        max_tokens=MAX_TOKENS,
+        temperature=API_TEMPERATURE,
+        system=SYSTEM_PROMPT,
+        tools=TOOLS,
+        messages=managed_history,
+        chat_id=chat_id,
+        message=init_message,
+        message_uid=message_uid,
+    )
+
+@sync_to_async
+def save_ai_log(log:CallAIServiceLog) -> CallAIServiceLog:
+    log.save()
+    return log

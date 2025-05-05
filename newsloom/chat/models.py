@@ -85,6 +85,7 @@ class ChatMessage(models.Model):
     )  # No longer nullable
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
+    message_uid = models.CharField(max_length=100, null=True, blank=True, db_index=True)
     response = models.TextField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     slack_ts = models.CharField(max_length=100, null=True, blank=True)
@@ -174,3 +175,19 @@ class ChatMessageDetail(models.Model):
         if not self.chat_id and self.chat_message_id:
             self.chat = self.chat_message.chat
         super().save(*args, **kwargs)
+
+
+class CallAIServiceLog(models.Model):
+    model = models.CharField(max_length=255)
+    max_tokens = models.IntegerField()
+    temperature = models.IntegerField()
+    system = models.TextField()
+    tools = models.JSONField(encoder=DjangoJSONEncoder)
+    messages = models.JSONField(encoder=DjangoJSONEncoder)
+    chat_id = models.IntegerField()
+    message = models.TextField()
+    message_uid = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+    response = models.TextField(null=True, blank=True)
+    error = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

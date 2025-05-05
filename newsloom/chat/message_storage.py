@@ -116,7 +116,7 @@ class MessageStorage:
 
     @staticmethod
     @database_sync_to_async
-    def save_message(chat, user, message, response) -> ChatMessage:
+    def save_message(chat, user, message, response, message_uid) -> ChatMessage:
         """
         Save a message and its response to the database.
 
@@ -130,7 +130,7 @@ class MessageStorage:
             ChatMessage: The created message object
         """
         return ChatMessage.objects.create(
-            chat=chat, user=user, message=message, response=response
+            chat=chat, user=user, message=message, response=response, message_uid=message_uid
         )
 
     @staticmethod
