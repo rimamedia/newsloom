@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     redis \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install poetry==2.1.1
+
 # Install CloudWatch agent based on architecture
 RUN arch=$(dpkg --print-architecture) && \
     if [ "$arch" = "amd64" ]; then \
@@ -38,9 +40,11 @@ RUN arch=$(dpkg --print-architecture) && \
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/mediafiles
 
-# Copy requirements and install dependencies
-COPY ./00/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies
+ADD ./00/poetry.* ./00/pyproject.toml ./
+RUN poetry config virtualenvs.create false
+RUN poetry install -v --no-interaction --no-ansi --no-root
+
 
 # Install Playwright and browsers
 RUN playwright install chromium

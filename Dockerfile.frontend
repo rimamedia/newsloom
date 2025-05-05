@@ -10,21 +10,25 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # System dependencies and Nginx
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    supervisor \
-    nginx \
-    netcat-traditional \
-    curl \
-    redis \
+RUN  apt update -y \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        supervisor \
+        nginx \
+        netcat-traditional \
+        curl \
+        redis \
     && rm -rf /var/lib/apt/lists/*
+
+RUN pip install poetry==2.1.1
 
 # Copy pre-built frontend files
 COPY frontend-dist/ /app/dist/
 
-# Copy requirements and install dependencies
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies
+ADD poetry.* pyproject.toml ${WORKDIR}/
+RUN poetry config virtualenvs.create false
+RUN poetry install -v --no-interaction --no-ansi --no-root
 
 # Install Playwright and browsers
 RUN playwright install chromium
