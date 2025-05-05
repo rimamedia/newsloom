@@ -4,7 +4,7 @@ import random
 from urllib.parse import quote
 
 from django.conf import settings
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 from playwright_stealth import stealth_sync
 
 from sources.dataclasses import Link
@@ -23,6 +23,7 @@ def search_google(
     max_results_per_keyword: int = 5,
     days_ago: int | None = None,
     search_type: str = "news",
+    **_kwargs
 ) -> list[Link]:
     """
     Search Google for articles matching the given keywords.
@@ -79,9 +80,14 @@ def search_google(
                 link_selector = None
                 for selector in link_selectors:
                     # Reduced timeout for each attempt
-                    element = page.wait_for_selector(selector, timeout=10000)
+                    try:
+                        element = page.wait_for_selector(selector, timeout=10000)
+                    except PlaywrightTimeoutError:
+                        continue
+
                     if element:
                         link_selector = selector
+                        break
 
                 if not link_selector:
                     raise Exception(
