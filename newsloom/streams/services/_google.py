@@ -1,28 +1,83 @@
+import base64
+import json
 import logging
 import random
-
-from urllib.parse import quote
+from typing import Optional
+from urllib.parse import quote, urlparse
 
 from django.conf import settings
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 from playwright_stealth import stealth_sync
 
 from sources.dataclasses import Link
 
-
 logger = logging.getLogger(__name__)
-
 
 GOOGLE_SEARCH_URL = "https://www.google.com/search"
 GOOGLE_NEWS_URL = "https://news.google.com/search"
 
 
+def decode_jslog(jslog_value: str) -> Optional[str]:
+    """
+    Decode Google jslog attribute to extract original URL
+    """
+    if not jslog_value:
+        return None
+
+    parts = jslog_value.split(';')
+
+    # Find the part that contains Base64 data
+    base64_part = None
+    for part in parts:
+        if ':' in part and part.strip().split(':')[0].isdigit():
+            base64_part = part.strip().split(':', 1)[1].strip()
+            break
+
+    if not base64_part:
+        return None
+
+    try:
+        # Decode the Base64 string
+        decoded_bytes = base64.b64decode(base64_part)
+        decoded_str = decoded_bytes.decode('utf-8')
+
+        # The decoded string often contains a JSON-like array structure
+        # Try to parse it as JSON if it starts with "[" and ends with "]"
+        if decoded_str.startswith('[') and decoded_str.endswith(']'):
+            try:
+                json_data = json.loads(decoded_str)
+
+                for item in json_data:
+                    if isinstance(item, str) and (item.startswith('http://') or item.startswith('https://')):
+                        return item
+
+                return json_data
+            except json.JSONDecodeError:
+                return decoded_str
+
+        return decoded_str
+    except Exception as e:
+        logger.error(f"Error decoding jslog_value={jslog_value} jslog: {e} ")
+        return None
+
+
+def is_url(string):
+    if not string.startswith(('http://', 'https://')):
+        string = 'http://' + string
+
+    try:
+        result = urlparse(string)
+        return all([result.scheme, result.netloc])
+    except Exception:
+        return False
+
 
 def search_google(
-    keywords: list[str],
-    max_results_per_keyword: int = 5,
-    days_ago: int | None = None,
-    search_type: str = "news",
+        keywords: list[str],
+        max_results_per_keyword: int = 5,
+        days_ago: int | None = None,
+        search_type: str = "news",
+        **_kwargs
 ) -> list[Link]:
     """
     Search Google for articles matching the given keywords.
@@ -67,9 +122,8 @@ def search_google(
                 # Target article headlines in Google News
                 # Using multiple possible selectors for better reliability
                 link_selectors = [
-                    "article h3 > a[href]",  # Primary selector
-                    "article a[href]",  # Fallback selector
-                    ".VDXfz",  # Alternative class-based selector
+                    "article",  # News Elements
+                    ".IFHyqb.DeXSAc.stiNJd",  # Alternative class-based selector
                 ]
 
                 # Navigate with longer timeout and wait for load
@@ -79,9 +133,14 @@ def search_google(
                 link_selector = None
                 for selector in link_selectors:
                     # Reduced timeout for each attempt
-                    element = page.wait_for_selector(selector, timeout=10000)
+                    try:
+                        element = page.wait_for_selector(selector, timeout=10000)
+                    except PlaywrightTimeoutError:
+                        continue
+
                     if element:
                         link_selector = selector
+                        break
 
                 if not link_selector:
                     raise Exception(
@@ -106,13 +165,30 @@ def search_google(
 
             # Process found elements
             for element in elements[:max_results_per_keyword]:
-                href = element.get_attribute("href")
                 # Get text content without timeout
                 # Get title from the element itself for news articles
-                if search_type == "news":
-                    title = element.inner_text()
-                else:
+                title = None
+                a_element = element.query_selector("a[href][tabindex='0']")
+                if a_element and a_element.inner_text():
+                    title = a_element.inner_text()
+                if not title:
                     title = element.evaluate("el => el.textContent")
+                if not title:
+                    title = element.inner_text()
+
+                # Get news href
+                # Get original link, but there may be an error
+                #  because this is jslog format from google
+                href = element.get_attribute("href")
+                jslog_element = element.query_selector("a[jslog]")
+                if jslog_element:
+                    _url = decode_jslog(jslog_element.get_attribute('jslog'))
+                    if is_url(_url):
+                        href = _url
+                # get base href for a tag
+                a_href_element = element.query_selector("div>div>a").get_attribute('href')
+                if not a_href_element:
+                    href = element.get_attribute('href')
 
                 if href:
                     # Handle Google News article URLs
